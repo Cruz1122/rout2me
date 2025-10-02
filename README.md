@@ -1,54 +1,293 @@
-## **Arquitectura Conceptual del Sistema Route2Me**
+# Route2Me — Plataforma de rastreo y visualización de buses en tiempo real
 
-La arquitectura de **Route2Me** está diseñada como un sistema moderno, escalable y rentable, centrado en una plataforma de **Backend como Servicio (BaaS)** para acelerar el desarrollo y reducir la carga operativa. El objetivo principal es procesar y visualizar un flujo constante de datos de geolocalización en tiempo real para mejorar la experiencia de los pasajeros y la gestión de los administradores de flotas.
+Sistema moderno, escalable y rentable, centrado en **BaaS (Supabase)** + **apps Ionic/React** para procesar y visualizar ubicaciones GPS en vivo.
+
+---
+
+## Arquitectura Conceptual
 
 ![Diagrama de la arquitectura del sistema Route2Me](arquitectura.png)
 
-Los pilares tecnológicos de esta arquitectura son:
-* **Aplicaciones Cliente Multiplataforma**: Se utiliza **Ionic con React** para desarrollar una única base de código que funciona tanto en la web como en dispositivos móviles, maximizando la productividad del equipo de desarrollo.
-* **Backend Centralizado (Supabase)**: En lugar de construir y mantener un backend tradicional, se opta por **Supabase**. Esta plataforma proporciona una base de datos PostgreSQL gestionada, autenticación, APIs automáticas y un motor de tiempo real, lo que permite al equipo centrarse en las funcionalidades del producto.
-* **Base de Datos Geoespacial**: El núcleo del sistema es una base de datos **PostgreSQL** con la extensión **PostGIS**. Esta elección es fundamental para realizar consultas geoespaciales complejas (como "buscar paraderos cercanos") de manera eficiente y a un costo predecible, ideal para la carga de trabajo de alta escritura del proyecto.
-* **Servicios de Mapas Sostenibles**: Para la visualización de mapas, se integra la **API de Stadia Maps** (un proveedor basado en OpenStreetMap) para evitar los costos potencialmente exponenciales de otros proveedores premium, garantizando la viabilidad financiera del proyecto a largo plazo.
+**Pilares tecnológicos**  
+- **Aplicaciones Cliente Multiplataforma:** **Ionic + React** para una sola base de código web/móvil.  
+- **Backend como Servicio (Supabase):** PostgreSQL gestionado, Auth, Realtime y APIs autogeneradas (PostgREST).  
+- **Base de Datos Geoespacial:** PostgreSQL + **PostGIS** para consultas espaciales eficientes.  
+- **Mapas sostenibles:** **Stadia Maps** (OpenStreetMap) para capas/tiles y geocodificación.
 
 ---
 
-## **Desglose de Componentes (Paso a Paso)**
+## Visión del Proyecto
 
-Cada parte del diagrama cumple una función específica dentro del ecosistema.
+**Problema**  
+El transporte público genera incertidumbre para pasajeros (ruta/horarios, buses llenos) y administradores (poca visibilidad en tiempo real).
 
-### **1. Usuarios y Sistemas Externos**
-Estos son los actores y sistemas que interactúan con la plataforma desde el exterior.
-* **Pasajero**: El usuario final de la aplicación móvil. Busca reducir la incertidumbre de su viaje obteniendo información en tiempo real sobre rutas, paraderos y la ubicación de los buses.
-* **Administrador**: El gestor de la flota de transporte. Utiliza el panel web para monitorear la operación en vivo, optimizar rutas y tomar decisiones basadas en datos.
-* **Flota de Buses (con Dispositivos GPS)**: El origen de los datos en tiempo real. Cada bus está equipado con un dispositivo GPS que envía su ubicación periódicamente a la plataforma.
+**Objetivos**  
+- **Experiencia del pasajero:** ubicación del bus, ocupación y ETA en tiempo real.  
+- **Gestión de flota:** decisiones basadas en datos en vivo para mejorar eficiencia y costos.
 
-### **2. Plataforma Route2Me**
-Este es el núcleo del sistema, compuesto por las aplicaciones cliente y el backend.
+**Alcance (MVP)**  
+- **Pasajeros (app móvil):** ver rutas y paraderos cercanos; seguimiento en vivo con ocupación y ETA; próxima parada durante el viaje.  
+- **Administradores (panel web):** mapa con toda la flota en vivo y datos por vehículo (ruta/ocupación).
 
-#### **Aplicaciones Cliente**
-* **App Móvil Pasajero (Ionic / React)**: La interfaz para los pasajeros. Sus funcionalidades clave incluyen la visualización de rutas en un mapa, la localización de paraderos cercanos, el seguimiento en vivo de un bus y la estimación de su tiempo de llegada (ETA).
-* **Panel Web Administrador (React)**: La herramienta para los administradores. Permite ver la ubicación de toda la flota en un único mapa y consultar datos específicos de cada vehículo, como su ruta y nivel de ocupación.
+**Fuera del MVP (posteriores)**  
+Pagos/tarifas, calificaciones, alertas, soporte/objetos perdidos, reportes e IA para demanda, datos de accesibilidad.
 
-#### **Backend como Servicio (Supabase)**
-* **Endpoint de Ingesta GPS (Supabase Edge Function)**: Es la puerta de entrada para los datos de los buses. Este microservicio recibe, valida y procesa las coordenadas GPS antes de almacenarlas.
-* **Base de Datos PostgreSQL (con PostGIS)**: El "cerebro" del sistema. Almacena toda la información geoespacial (rutas, polígonos, paraderos) y operativa (horarios, estado de los buses, posiciones en tiempo real).
-* **Motor de Tiempo Real**: El componente que permite la magia del "en vivo". Cuando la base de datos recibe una nueva ubicación de un bus, este motor la notifica instantáneamente a todas las aplicaciones cliente conectadas mediante suscripciones WebSocket.
-* **APIs Autogeneradas (PostgREST)**: Supabase crea automáticamente una API RESTful sobre la base de datos. Las aplicaciones cliente la utilizan para consultas iniciales, como cargar el listado de todas las rutas disponibles al iniciar la app.
-* **Autenticación**: Servicio que gestiona el inicio de sesión seguro y los permisos para los administradores, asegurando que solo personal autorizado pueda acceder al panel de control.
+**Usuarios**  
+- **Pasajeros** de transporte público.  
+- **Administradores de flota** (empresas/entidades).
 
-### **3. Servicios de Terceros**
-* **API de Stadia Maps**: Proporciona las "capas" o "tiles" visuales que componen el mapa de fondo sobre el cual se dibujan las rutas y los buses. Es un servicio externo esencial para el contexto visual de la aplicación.
+**Restricciones**  
+Se requiere GPS en buses y conectividad; factores externos (tráfico/clima) afectan la precisión del ETA. Se prioriza **usabilidad**, **privacidad/seguridad** y **escalabilidad**.
 
 ---
 
-## **Flujo de Funcionamiento General**
+## Herramientas seleccionadas
 
-El funcionamiento del sistema se puede resumir en el siguiente ciclo de datos e interacción:
+- **Frontend móvil/web:** **Ionic + React**  
+- **Mapas:** **Stadia Maps** (OSM)  
+- **BaaS:** **Supabase** (PostgreSQL + PostGIS, Auth, Realtime, PostgREST)
 
-1.  **Generación de Datos**: Un bus de la flota envía su ubicación GPS al **Endpoint de Ingesta GPS** de la plataforma.
-2.  **Almacenamiento**: El endpoint procesa la información y la guarda como una nueva coordenada en la **Base de Datos PostgreSQL**.
-3.  **Disparo de Evento en Tiempo Real**: El cambio en la base de datos activa automáticamente el **Motor de Tiempo Real**.
-4.  **Distribución de Datos**: El motor de tiempo real envía la nueva ubicación a todos los clientes (tanto la app del pasajero como el panel del administrador) que estén suscritos a esa ruta o vehículo.
-5.  **Visualización en el Cliente**: Las aplicaciones reciben la actualización y mueven el ícono del bus en el mapa casi instantáneamente. El mapa de fondo sobre el que se mueve el bus es proporcionado por la **API de Stadia Maps**.
-6.  **Consulta de Datos Estáticos**: Cuando un usuario abre la aplicación por primera vez, esta utiliza las **APIs Autogeneradas** para descargar información que no cambia constantemente, como el trazado completo de las rutas y la ubicación de todos los paraderos.
-7.  **Acceso Seguro**: Si el usuario es un administrador, primero debe iniciar sesión a través del servicio de **Autenticación** para poder acceder al panel de monitoreo.
+**Motivación**  
+- **Ionic (React):** acelera desarrollo con un solo código; rendimiento abordable con clustering de marcadores y renderizado por viewport.  
+- **Stadia Maps:** modelo de precios sostenible para escenarios en tiempo real.  
+- **Supabase:** menos DevOps, base PostgreSQL adecuada para alta escritura y consultas geoespaciales.
+
+---
+
+## Versionado **definitivo** (compatibilidad primero)
+
+> Política: fijar **mayor+menor** con `~x.y.z` (solo acepta parches). Entornos bloqueados con `engines` y `packageManager`.
+
+### Matriz de versiones
+
+| Componente | Versión fijada | Notas |
+|---|---:|---|
+| **Node.js** | **22.x (LTS)** | `engines.node: "22.x"` |
+| **Gestor de paquetes** | **pnpm 10** | `packageManager: "pnpm@10"` |
+| **Ionic Framework (React)** | **~8.7.5** | Última 8.x estable |
+| **Capacitor (core/cli/android/ios)** | **~6.2.1** | Requiere Node >=18 |
+| **React / ReactDOM** | **18.3.1** | Línea 18 estable |
+| **React Router DOM** | **6.30.1** | Mantener 6.x inicialmente |
+| **Bundler** | **~6.0.0 (Vite)** | Soporta Node 22 |
+| **TypeScript** | **5.9.2** | Estable y compatible con React 18 |
+| **Pruebas** | **Vitest 3.2.4**, **@testing-library/react 16.3.0** | JSDOM para unit/integration |
+| **Linter/Formateo** | **ESLint 8.57.1**, **Prettier 3.6.0** | Flat config opcional |
+| **Mapas (raster)** | **Leaflet 1.9.4** | Estable 1.9 |
+| **Mapas (vector, opcional)** | **MapLibre GL JS 5.7.2** | Opcional si se usan tiles vector |
+| **SDK Supabase JS** | **2.58.0** | Cliente oficial |
+| **Supabase CLI** | **2.47.2** | Local dev/migraciones |
+| **PostgreSQL (hosted)** | **17.x** | Alinear local con hosted |
+| **PostgreSQL (local)** | **17.x** | Igual a remoto |
+| **PostGIS** | **3.5.3** | Compatible con PG 17 |
+
+**`package.json` (control de entorno)**
+
+```json
+{
+  "name": "route2me",
+  "private": true,
+  "packageManager": "pnpm@10",
+  "engines": { "node": "22.x" },
+  "overrides": {
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0"
+  }
+}
+```
+
+> **Regla de oro Supabase/Postgres**: crea el proyecto hosted primero y fija la misma versión *mayor* de PostgreSQL en local (CLI) para que `db diff` y migraciones no fallen.
+
+---
+
+## Flujos de funcionamiento detallados
+
+### 1) Inicio de la app del pasajero (bootstrap de datos y suscripciones)
+
+```mermaid
+sequenceDiagram
+    participant P as App Pasajero
+    participant API as PostgREST API
+    participant DB as PostgreSQL+PostGIS
+    participant RT as Realtime (WS)
+    participant MAP as Stadia Maps
+
+    P->>API: GET /rutas
+    API->>DB: SELECT rutas
+    DB-->>API: filas (geojson)
+    API-->>P: rutas iniciales
+
+    P->>API: GET /paraderos
+    API->>DB: SELECT paraderos
+    DB-->>API: filas (geojson)
+    API-->>P: paraderos iniciales
+
+    P->>MAP: Solicitar tiles de mapa
+    MAP-->>P: Tiles raster/vector
+
+    P->>RT: Suscribirse a canales de rutas visibles
+    RT-->>P: Confirmación de suscripción
+```
+
+Cuando la persona abre la app, primero pedimos las rutas y paraderos para pintar el mapa sin demoras. Mientras llegan los tiles del mapa, la app se suscribe a los canales de tiempo real que correspondan a lo que se ve en pantalla, así cualquier movimiento de buses aparecerá al instante.
+
+### 2) Ingesta de posiciones desde el bus (validación y broadcast)
+
+```mermaid
+sequenceDiagram
+    participant GPS as Dispositivo GPS Bus
+    participant EDGE as Edge Function (Ingesta)
+    participant DB as PostgreSQL+PostGIS
+    participant RT as Realtime (WS)
+    
+    GPS->>EDGE: POST /gps {bus_id, lat, lng, ts, token}
+    EDGE->>EDGE: Validar token, esquema y rangos
+    EDGE->>DB: INSERT INTO posiciones(bus_id, geom, ts)
+    DB-->>RT: Trigger/Cambio (replicación)
+    RT-->>* P/Panel: Evento {bus_id, lat, lng, ts}
+    EDGE-->>GPS: 202 Accepted
+```
+
+El rastreador del bus envía su ubicación y el microservicio de ingesta la revisa para evitar datos malos. Si todo está bien, la guarda y ese cambio dispara el sistema en tiempo real, que envía la nueva posición a todas las pantallas que estén escuchando.
+
+### 3) Seguimiento en vivo en el teléfono (render y ETA inmediato)
+
+```mermaid
+sequenceDiagram
+    participant P as App Pasajero
+    participant RT as Realtime (WS)
+
+    RT-->>P: {bus_id, lat, lng, ts}
+    P->>P: Mover marcador en el mapa
+    P->>P: Recalcular ETA local (velocidad/últimos puntos)
+    P-->>P: Actualizar UI (contador, próxima parada)
+```
+
+Cada vez que llega una nueva posición, el ícono del bus se mueve suavemente y la app recalcula el tiempo estimado de llegada con base en la velocidad reciente y la ruta, para que la persona sepa cuánto falta sin tener que tocar nada.
+
+### 4) "Paraderos cercanos a mí" usando PostGIS
+
+```mermaid
+sequenceDiagram
+    participant P as App Pasajero
+    participant API as PostgREST API (RPC)
+    participant DB as PostgreSQL+PostGIS
+
+    P->>API: RPC paraderos_cercanos(lat, lng, radio)
+    API->>DB: SELECT ... WHERE ST_DWithin(geom, punto, radio)
+    DB-->>API: Paraderos ordenados por distancia
+    API-->>P: Lista con distancias y tiempos a pie
+```
+
+Cuando la persona quiere ubicar dónde subirse, la app manda su ubicación y un radio razonable; el servidor geoespacial devuelve los paraderos más próximos ya ordenados, junto con la distancia para que tomar una decisión sea inmediato.
+
+### 5) Estimación de ETA hasta un destino (función almacenada)
+
+```mermaid
+sequenceDiagram
+    participant P as App Pasajero
+    participant API as PostgREST API (RPC)
+    participant DB as PostgreSQL+PostGIS
+
+    P->>API: RPC estimar_eta(bus_id, parada_destino_id)
+    API->>DB: Calcular distancia restante sobre la geometría de ruta
+    DB->>DB: Velocidad media últimos N puntos del bus
+    DB-->>API: ETA en minutos
+    API-->>P: {eta_min}
+    P->>P: Mostrar cuenta regresiva/horario estimado
+```
+
+Si el usuario elige una parada destino, el sistema calcula cuánto tramo falta sobre la propia línea de la ruta y lo divide por la velocidad real que trae el bus en los últimos minutos. La app lo muestra como un tiempo concreto para llegar.
+
+### 6) Acceso del administrador al panel seguro (Auth + RLS)
+
+```mermaid
+sequenceDiagram
+    participant A as Panel Admin (Web)
+    participant AUTH as Auth (Supabase)
+    participant API as PostgREST API
+    participant DB as PostgreSQL+PostGIS
+    participant RT as Realtime (WS)
+
+    A->>AUTH: Login {email, password}
+    AUTH-->>A: Access Token (JWT)
+    A->>API: GET /buses  (Authorization: Bearer ...)
+    API->>DB: SELECT ... (RLS aplica permisos por rol)
+    DB-->>API: Filas visibles para ese rol
+    API-->>A: Datos iniciales de flota
+    A->>RT: Suscripción a flota/alertas
+    RT-->>A: Eventos en vivo (posiciones/alertas)
+```
+
+El administrador inicia sesión y recibe un token. Toda consulta posterior al API pasa por reglas de seguridad que sólo devuelven lo que le corresponde ver. Con las suscripciones activas, el panel muestra la operación en vivo sin recargar.
+
+### 7) Vista de flota con filtros y alertas (fuera de ruta, inactividad)
+
+```mermaid
+sequenceDiagram
+    participant A as Panel Admin
+    participant API as PostgREST API
+    participant DB as PostgreSQL+PostGIS
+    participant RT as Realtime (WS)
+
+    A->>API: GET /buses?ruta=R1&estado=activo
+    API->>DB: SELECT con filtros
+    DB-->>API: Lista de buses filtrada
+    API-->>A: Datos para render y tabla
+
+    RT-->>A: {bus_id, alerta:"fuera_de_ruta" | "inactivo"}
+    A->>A: Resaltar bus, abrir ficha y sugerir acción
+```
+
+El panel permite centrarse en lo importante con filtros simples. Si un bus se sale del trazado o deja de reportar, el sistema lo notifica en tiempo real y el panel lo resalta para actuar rápido.
+
+### 8) Degradación controlada cuando un bus deja de reportar
+
+```mermaid
+sequenceDiagram
+    participant SCHED as Job/Trigger en DB
+    participant DB as PostgreSQL+PostGIS
+    participant RT as Realtime (WS)
+    participant A as Panel Admin
+    participant P as App Pasajero
+
+    SCHED->>DB: Marcar bus como "stale" si última_pos > N min
+    DB-->>RT: Cambio de estado (stale)
+    RT-->>A: Notificación de bus "stale"
+    RT-->>P: Notificación de bus "stale"
+
+    A->>A: Atenuar marcador, mostrar último ts y acciones
+    P->>P: Mostrar aviso y hora de última ubicación conocida
+```
+
+Si un bus pierde cobertura o el GPS falla, un proceso marca la posición como "vencida" y lo anuncia. La interfaz baja el brillo del ícono, muestra la hora del último reporte y ofrece opciones para que nadie se quede esperando algo que no viene.
+
+---
+
+## Estructura del repo
+
+```
+apps/
+  admin-web/           # React
+  passenger-app/       # Ionic + React + Capacitor
+infra/
+  supabase/            # migraciones, policies, seeds
+packages/
+  shared/              # modelos TS, utils
+docs/
+  ADR/                 # decisiones de arquitectura
+  README.md
+.github/
+  ISSUE_TEMPLATE/  PULL_REQUEST_TEMPLATE.md  CODEOWNERS
+```
+
+---
+
+## Puesta en marcha
+
+```bash
+# Requisitos: Node 22.x, pnpm 10, Docker (para Supabase CLI)
+pnpm dlx supabase@2 --version        # verificar CLI
+pnpm i
+pnpm -C apps/passenger-app dev       # arranca Ionic/React
+pnpm -C apps/admin-web dev
+```
