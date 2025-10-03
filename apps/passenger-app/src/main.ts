@@ -1,4 +1,7 @@
-import { APP_NAME, BusLocation } from '@shared/index';
+import {
+  APP_NAME,
+  BusLocation,
+} from '../../../packages/shared/dist/src/index.js';
 
 const currentLocation: BusLocation = {
   id: 'bus-001',

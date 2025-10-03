@@ -2,13 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "baseUrl": "../../",
-    "paths": {
-      "@shared/*": ["packages/shared/src/*"]
-    }
+    "baseUrl": ".",
+    "allowJs": true
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../../packages/shared" }
-  ]
+  "include": ["src/**/*"]
 }
