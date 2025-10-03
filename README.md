@@ -1,6 +1,5 @@
 # Route2Me
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9%2B-blue.svg)](https://www.typescriptlang.org/)
 [![Ionic](https://img.shields.io/badge/Ionic-8%2B-blue.svg)](https://ionicframework.com/)
