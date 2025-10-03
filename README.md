@@ -46,6 +46,8 @@ pnpm dev
 
 ## Documentación
 
+**[Guía de Desarrollo](./docs/README-DEV.md)** - Setup completo para desarrolladores nuevos
+
 **[Documentación Completa](./docs/README.md)** - Arquitectura, flujos y detalles técnicos
 
 - [Architecture Decision Records (ADR)](./docs/ADR/)
@@ -66,7 +68,7 @@ pnpm dev
 # Instalar dependencias
 pnpm install
 
-# Desarrollo (todas las apps)
+# Desarrollo (todas las apps ~ de frontend)
 pnpm dev
 
 # Build del proyecto completo

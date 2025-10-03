@@ -5,27 +5,37 @@
   "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "turbo run dev --parallel",
+    "dev:full": "concurrently \"pnpm supabase:start\" \"sleep 8 && pnpm dev\"",
+    "dev:passenger": "turbo run dev --filter=passenger-app",
+    "dev:admin": "turbo run dev --filter=admin-web",
     "build": "turbo run build",
     "lint": "turbo run lint",
+    "format": "turbo run format",
+    "type-check": "turbo run type-check",
     "lint:root": "eslint . --ext .ts,.tsx,.js,.jsx",
     "test": "turbo run test",
     "prepare": "husky",
+    "setup": "pnpm install && pnpm supabase:start && echo \"✅ Setup completo! Usar: pnpm dev\"",
     "supabase:start": "cd infra/supabase && pnpm dlx supabase start",
     "supabase:stop": "cd infra/supabase && pnpm dlx supabase stop",
     "supabase:status": "cd infra/supabase && pnpm dlx supabase status",
-    "supabase:reset": "cd infra/supabase && pnpm dlx supabase db reset"
+    "supabase:studio": "cd infra/supabase && pnpm dlx supabase studio",
+    "supabase:reset": "cd infra/supabase && pnpm dlx supabase db reset",
+    "db:diff": "cd infra/supabase && pnpm dlx supabase db diff",
+    "db:push": "cd infra/supabase && pnpm dlx supabase db push"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "^5.6.0",
-    "eslint": "^9.0.0",
     "@eslint/js": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.0.0",
     "eslint-plugin-react-refresh": "^0.4.0",
-    "prettier": "^3.3.0",
     "husky": "^9.1.0",
-    "lint-staged": "^15.2.0"
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.3.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.6.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
