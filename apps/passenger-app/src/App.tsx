@@ -6,7 +6,8 @@ import {
   IonToolbar,
   IonButton,
 } from '@ionic/react';
-import { APP_NAME, BusLocation } from '@rout2me/shared';
+import { APP_NAME } from '@rout2me/shared';
+import type { BusLocation } from '@rout2me/shared';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';

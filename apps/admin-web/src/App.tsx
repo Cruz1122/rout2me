@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { APP_NAME, User } from '@rout2me/shared';
+import { APP_NAME } from '@rout2me/shared';
+import type { User } from '@rout2me/shared';
 import './App.css';
 
 function App() {
@@ -27,6 +28,20 @@ function App() {
               </div>
             ))}
           </div>
+          <button
+            onClick={() =>
+              setUsers([
+                ...users,
+                {
+                  id: Date.now().toString(),
+                  name: 'New User',
+                  email: 'new@rout2me.com',
+                },
+              ])
+            }
+          >
+            Add User
+          </button>
         </section>
       </main>
     </div>
