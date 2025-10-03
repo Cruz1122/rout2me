@@ -118,3 +118,6 @@ www/
 # Supabase
 .branches
 .temp
+
+# Turbo
+.turbo/
