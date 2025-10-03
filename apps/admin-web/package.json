@@ -8,8 +8,5 @@
     "lint": "eslint . --ext .ts",
     "dev": "echo 'Dev server not implemented yet'",
     "clean": "rm -rf dist"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.0"
   }
 }
