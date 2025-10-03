@@ -1,26 +1,32 @@
 {
-  "name": "route2me",
-  "version": "0.1.0",
-  "description": "Plataforma de rastreo y visualización de buses en tiempo real",
+  "name": "rout2me",
+  "type": "module",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "packageManager": "pnpm@10.15.1",
   "scripts": {
-    "dev": "pnpm --parallel --filter './apps/*' dev",
-    "build": "pnpm --filter './packages/*' build && pnpm --filter './apps/*' build",
-    "lint": "pnpm --parallel --filter './apps/*' --filter './packages/*' lint",
-    "test": "pnpm --parallel --filter './apps/*' --filter './packages/*' test",
-    "clean": "pnpm --parallel --filter './apps/*' --filter './packages/*' clean"
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:root": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "test": "turbo run test",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "turbo": "^2.0.0",
+    "typescript": "^5.6.0",
+    "eslint": "^9.0.0",
+    "@eslint/js": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint-plugin-react-refresh": "^0.4.0",
+    "prettier": "^3.3.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0"
   },
-  "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
-  },
-  "packageManager": "pnpm@8.15.0"
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier -w"
+    ]
+  }
 }
