@@ -9,7 +9,11 @@
     "lint": "turbo run lint",
     "lint:root": "eslint . --ext .ts,.tsx,.js,.jsx",
     "test": "turbo run test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "supabase:start": "cd infra/supabase && pnpm dlx supabase start",
+    "supabase:stop": "cd infra/supabase && pnpm dlx supabase stop",
+    "supabase:status": "cd infra/supabase && pnpm dlx supabase status",
+    "supabase:reset": "cd infra/supabase && pnpm dlx supabase db reset"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

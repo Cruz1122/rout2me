@@ -14,13 +14,19 @@ Sistema moderno, escalable y rentable para el seguimiento de transporte público
 ## Inicio Rápido
 
 ```bash
-# Requisitos: Node 22.x, pnpm 10+
+# Requisitos: Node 22.x, pnpm 10+, Docker Desktop
 npm install -g pnpm
 pnpm install
+
+# Configurar Supabase local
+cd infra/supabase
+pnpm dlx supabase start
 
 # Desarrollo
 pnpm dev
 ```
+
+> **Nota**: El desarrollo local requiere Docker Desktop ejecutándose para los servicios de Supabase
 
 ## Aplicaciones
 
@@ -34,6 +40,10 @@ pnpm dev
 ## Infraestructura
 
 - **[Supabase](./infra/supabase/)** - Configuración de backend, migraciones y políticas
+  - PostgreSQL + PostGIS para datos geoespaciales
+  - Auth JWT para autenticación
+  - Realtime para actualizaciones en vivo
+  - Storage para archivos multimedia
 
 ## Documentación
 
@@ -47,6 +57,31 @@ pnpm dev
 - **Frontend**: Ionic, React, TypeScript, Capacitor
 - **Backend**: Supabase (PostgreSQL + PostGIS, Auth, Realtime)  
 - **Mapas**: Stadia Maps (OpenStreetMap)
-- **Monorepo**: pnpm workspaces
+- **Monorepo**: pnpm workspaces, Turbo
+- **CI/CD**: GitHub Actions
+- **Desarrollo Local**: Docker, Supabase CLI
+
+## Comandos Útiles
+
+```bash
+# Instalar dependencias
+pnpm install
+
+# Desarrollo (todas las apps)
+pnpm dev
+
+# Build del proyecto completo
+pnpm build
+
+# Linting y formato
+pnpm lint
+pnpm format
+
+# Supabase local
+cd infra/supabase
+pnpm dlx supabase start    # Iniciar servicios
+pnpm dlx supabase status   # Ver estado
+pnpm dlx supabase stop     # Detener servicios
+```
 
 
