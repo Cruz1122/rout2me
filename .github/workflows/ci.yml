@@ -1,7 +1,7 @@
 name: CI
 on:
-  push: { branches: ["main"] }
-  pull_request: { branches: ["main"] }
+  push: { branches: ["main", "develop", "feature/*"] }
+  pull_request: { branches: ["main", "develop", "feature/*"] }
 jobs:
   build:
     runs-on: ubuntu-latest
