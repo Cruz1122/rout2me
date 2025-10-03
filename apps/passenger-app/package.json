@@ -8,5 +8,8 @@
     "lint": "eslint . --ext .ts",
     "dev": "echo 'Dev server not implemented yet'",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@rout2me/shared": "workspace:*"
   }
 }

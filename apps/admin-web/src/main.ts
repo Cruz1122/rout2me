@@ -1,4 +1,4 @@
-import { APP_NAME, User } from '../../../packages/shared/dist/src/index.js';
+import { APP_NAME, User } from '@rout2me/shared';
 
 const adminUser: User = {
   id: '1',

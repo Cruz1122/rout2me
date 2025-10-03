@@ -1,7 +1,4 @@
-import {
-  APP_NAME,
-  BusLocation,
-} from '../../../packages/shared/dist/src/index.js';
+import { APP_NAME, BusLocation } from '@rout2me/shared';
 
 const currentLocation: BusLocation = {
   id: 'bus-001',
