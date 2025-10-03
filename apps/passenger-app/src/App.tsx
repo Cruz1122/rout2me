@@ -4,17 +4,8 @@ import {
   IonHeader,
   IonTitle,
   IonToolbar,
-  IonButton,
 } from '@ionic/react';
-import {
-  APP_NAME,
-  calculateDistance,
-  formatCoordinate,
-  success,
-  error,
-  isSuccess,
-} from '@rout2me/shared';
-import type { LatLng, VehiclePing, Result } from '@rout2me/shared';
+import { APP_NAME } from '@rout2me/shared';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -35,72 +26,64 @@ import '@ionic/react/css/display.css';
 /* Theme variables */
 import './theme/variables.css';
 
+/* App styles */
+import './App.css';
+
 function App() {
-  // Demo vehicle pings using new types
-  const vehiclePings: VehiclePing[] = [
-    {
-      id: 'bus-001',
-      ts: new Date().toISOString(),
-      pos: { lat: -12.0464, lng: -77.0428 },
-      speed: 45,
-    },
-    {
-      id: 'bus-002',
-      ts: new Date().toISOString(),
-      pos: { lat: -12.05, lng: -77.04 },
-      speed: 32,
-    },
-  ];
-
-  const userLocation: LatLng = { lat: -12.048, lng: -77.042 };
-
-  // Calculate distances using shared utilities
-  const nearestBus = vehiclePings.reduce((nearest, ping) => {
-    const distance = calculateDistance(userLocation, ping.pos);
-    const nearestDistance = calculateDistance(userLocation, nearest.pos);
-    return distance < nearestDistance ? ping : nearest;
-  }, vehiclePings[0]);
-
-  const distanceToNearest = calculateDistance(userLocation, nearestBus.pos);
-
-  // Demo Result type usage
-  const findBusResult: Result<VehiclePing> =
-    distanceToNearest < 2
-      ? success(nearestBus)
-      : error('No buses found nearby');
-
   return (
     <IonApp>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>{APP_NAME} - Passenger App</IonTitle>
-        </IonToolbar>
-      </IonHeader>
       <IonContent className="ion-padding">
-        <h1>Welcome to {APP_NAME}</h1>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 'calc(100vh - 200px)',
+            textAlign: 'center',
+            padding: '2rem',
+            maxWidth: '500px',
+            margin: '0 auto',
+            boxSizing: 'border-box',
+          }}
+        >
+          <h1
+            style={{
+              color: '#ffffff',
+              marginBottom: '1rem',
+              fontSize: '2.5rem',
+              fontWeight: '800',
+            }}
+          >
+            Passenger App
+          </h1>
 
-        <div className="location-info">
-          <h2>Your Location</h2>
-          <p>{formatCoordinate(userLocation)}</p>
+          <p
+            style={{
+              fontSize: '1.1rem',
+              color: '#888',
+              marginBottom: '2rem',
+              lineHeight: '1.5',
+            }}
+          >
+            Aplicación móvil para que los pasajeros puedan rastrear buses en
+            tiempo real
+          </p>
+
+          <div
+            style={{
+              background: '#f8f9fa',
+              border: '1px solid #e9ecef',
+              borderRadius: '8px',
+              padding: '1.5rem',
+              width: '100%',
+            }}
+          >
+            <p style={{ margin: 0, color: '#000', fontSize: '0.9rem' }}>
+              Listo para desarrollo
+            </p>
+          </div>
         </div>
-
-        <div className="bus-search">
-          <h2>Nearest Bus</h2>
-          {isSuccess(findBusResult) ? (
-            <div>
-              <p>Bus {findBusResult.data.id} found!</p>
-              <p>Location: {formatCoordinate(findBusResult.data.pos)}</p>
-              <p>Distance: {distanceToNearest.toFixed(2)} km</p>
-              <p>Speed: {findBusResult.data.speed} km/h</p>
-            </div>
-          ) : (
-            <p>Error: {findBusResult.error}</p>
-          )}
-        </div>
-
-        <IonButton expand="block" color="primary">
-          Track Bus
-        </IonButton>
       </IonContent>
     </IonApp>
   );
