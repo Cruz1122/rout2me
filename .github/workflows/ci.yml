@@ -1,6 +1,6 @@
 name: CI
 on:
-  push: { branches: ["main"] }
+  push: { branches: ["main", "develop", "fix/update-lockfile"] }
   pull_request: { branches: ["main"] }
 jobs:
   build:
