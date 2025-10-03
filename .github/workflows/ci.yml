@@ -1,7 +1,7 @@
 name: CI
 on:
-  push: { branches: ["main", "develop", "fix/update-lockfile"] }
-  pull_request: { branches: ["main"] }
+  push: { branches: ["main", "develop"] }
+  pull_request: { branches: ["main", "develop"] }
 jobs:
   build:
     runs-on: ubuntu-latest
