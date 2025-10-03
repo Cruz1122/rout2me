@@ -1,0 +1,26 @@
+{
+  "name": "route2me",
+  "version": "0.1.0",
+  "description": "Plataforma de rastreo y visualización de buses en tiempo real",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "build": "pnpm --filter './packages/*' build && pnpm --filter './apps/*' build",
+    "lint": "pnpm --parallel --filter './apps/*' --filter './packages/*' lint",
+    "test": "pnpm --parallel --filter './apps/*' --filter './packages/*' test",
+    "clean": "pnpm --parallel --filter './apps/*' --filter './packages/*' clean"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
