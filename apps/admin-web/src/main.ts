@@ -1,4 +1,4 @@
-import { APP_NAME, User } from '../../../packages/shared/src/index';
+import { APP_NAME, User } from '@shared/index';
 
 const adminUser: User = {
   id: '1',
