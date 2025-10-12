@@ -4,6 +4,7 @@ import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import './theme/variables.css';
 import './theme/tabs.css';
 import './index.css';
