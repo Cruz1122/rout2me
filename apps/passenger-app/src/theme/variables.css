@@ -9,6 +9,11 @@
   --color-surface:  #D6E4F0;
   --color-text:     #163172;
   --color-accent:   #1E56A0;
+  
+  /* RGB versions for transparency effects */
+  --color-primary-rgb: 22, 49, 114;   /* #163172 in RGB */
+  --color-secondary-rgb: 30, 86, 160; /* #1E56A0 in RGB */
+  
   --ion-color-primary: var(--color-primary);
   --ion-color-secondary: var(--color-secondary);
 }
