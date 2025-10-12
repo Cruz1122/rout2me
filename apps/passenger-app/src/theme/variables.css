@@ -1,2 +1,15 @@
 /* Ionic theme variables - most styling now handled by Tailwind */
 /* Custom Ionic variables can be added here if needed for specific Ionic components */
+
+/* Color palette */
+:root {
+  --color-primary:  #163172;
+  --color-secondary:#1E56A0;
+  --color-bg:       #F6F6F6;
+  --color-surface:  #D6E4F0;
+  --color-text:     #163172;
+  --color-accent:   #1E56A0;
+  --ion-color-primary: var(--color-primary);
+  --ion-color-secondary: var(--color-secondary);
+}
+
