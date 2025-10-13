@@ -11,17 +11,11 @@ import {
 } from 'react-icons/ri';
 import { IoSearchOutline, IoSearch } from 'react-icons/io5';
 import type { R2MSearchBarProps } from '../types/search';
+import FilterSwitcher, { type FilterOption } from './FilterSwitcher';
 
 type FilterType = 'all' | 'stops' | 'routes';
 
-interface FilterOption {
-  readonly id: FilterType;
-  readonly label: string;
-  readonly iconOutline: React.ComponentType<{ size?: number }>;
-  readonly iconFilled: React.ComponentType<{ size?: number }>;
-}
-
-const FILTER_OPTIONS: readonly FilterOption[] = [
+const FILTER_OPTIONS: readonly FilterOption<FilterType>[] = [
   {
     id: 'all',
     label: 'Todos',
@@ -50,56 +44,6 @@ interface R2MCleanSearchBarProps extends R2MSearchBarProps {
     min: number | undefined,
     max: number | undefined,
   ) => void;
-}
-
-interface FilterButtonProps {
-  readonly option: FilterOption;
-  readonly isSelected: boolean;
-  readonly onClick: () => void;
-}
-
-function FilterButton({ option, isSelected, onClick }: FilterButtonProps) {
-  const IconOutline = option.iconOutline;
-  const IconFilled = option.iconFilled;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 flex-1 justify-center relative overflow-hidden"
-      style={{
-        color: isSelected
-          ? 'rgb(var(--color-primary-rgb))'
-          : 'rgb(107, 114, 128)',
-      }}
-    >
-      <div className="relative w-4 h-4">
-        <div
-          className="absolute inset-0 transition-all duration-300"
-          style={{
-            opacity: isSelected ? 0 : 1,
-            transform: isSelected
-              ? 'scale(0.8) rotate(-90deg)'
-              : 'scale(1) rotate(0deg)',
-          }}
-        >
-          <IconOutline size={16} />
-        </div>
-        <div
-          className="absolute inset-0 transition-all duration-300"
-          style={{
-            opacity: isSelected ? 1 : 0,
-            transform: isSelected
-              ? 'scale(1) rotate(0deg)'
-              : 'scale(0.8) rotate(90deg)',
-          }}
-        >
-          <IconFilled size={16} />
-        </div>
-      </div>
-      <span className="text-sm font-medium">{option.label}</span>
-    </button>
-  );
 }
 
 export default function R2MSearchBar({
@@ -170,9 +114,10 @@ export default function R2MSearchBar({
     onFilterClick?.();
   };
 
-  const handleTypeChange = (type: FilterType) => {
-    setSelectedType(type);
-    onFilterTypeChange?.(type);
+  const handleTypeChange = (type: FilterType | null) => {
+    const newType = type || 'all';
+    setSelectedType(newType);
+    onFilterTypeChange?.(newType);
   };
 
   const handleFareChange = (type: 'min' | 'max', value: string) => {
@@ -289,16 +234,11 @@ export default function R2MSearchBar({
             <div className="p-4">
               <div className="space-y-3">
                 {/* Switcher con iconos animados */}
-                <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
-                  {FILTER_OPTIONS.map((option) => (
-                    <FilterButton
-                      key={option.id}
-                      option={option}
-                      isSelected={selectedType === option.id}
-                      onClick={() => handleTypeChange(option.id)}
-                    />
-                  ))}
-                </div>
+                <FilterSwitcher
+                  options={FILTER_OPTIONS}
+                  activeFilter={selectedType}
+                  onFilterChange={handleTypeChange}
+                />
 
                 <div className="border-t border-gray-100 pt-3">
                   <div className="block text-xs font-medium text-gray-600 mb-3">
