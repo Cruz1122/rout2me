@@ -13,6 +13,9 @@
   /* RGB versions for transparency effects */
   --color-primary-rgb: 22, 49, 114;   /* #163172 in RGB */
   --color-secondary-rgb: 30, 86, 160; /* #1E56A0 in RGB */
+  --color-bg-rgb: 246, 246, 246;      /* #F6F6F6 in RGB */
+  --color-surface-rgb: 214, 228, 240; /* #D6E4F0 in RGB */
+  --color-text-rgb: 22, 49, 114;      /* #163172 in RGB */
   
   --ion-color-primary: var(--color-primary);
   --ion-color-secondary: var(--color-secondary);

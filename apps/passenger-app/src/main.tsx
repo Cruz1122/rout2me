@@ -7,6 +7,7 @@ import '@ionic/react/css/typography.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './theme/variables.css';
 import './theme/tabs.css';
+import './theme/search.css';
 import './index.css';
 
 import App from './App';
