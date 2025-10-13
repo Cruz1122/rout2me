@@ -1,7 +1,5 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
-  RiSearchEyeLine,
-  RiSearchEyeFill,
   RiFilterLine,
   RiFilterFill,
   RiMapPinLine,
@@ -11,16 +9,97 @@ import {
   RiGridLine,
   RiGridFill,
 } from 'react-icons/ri';
+import { IoSearchOutline, IoSearch } from 'react-icons/io5';
 import type { R2MSearchBarProps } from '../types/search';
+
+type FilterType = 'all' | 'stops' | 'routes';
+
+interface FilterOption {
+  readonly id: FilterType;
+  readonly label: string;
+  readonly iconOutline: React.ComponentType<{ size?: number }>;
+  readonly iconFilled: React.ComponentType<{ size?: number }>;
+}
+
+const FILTER_OPTIONS: readonly FilterOption[] = [
+  {
+    id: 'all',
+    label: 'Todos',
+    iconOutline: RiGridLine,
+    iconFilled: RiGridFill,
+  },
+  {
+    id: 'stops',
+    label: 'Paraderos',
+    iconOutline: RiMapPinLine,
+    iconFilled: RiMapPinFill,
+  },
+  {
+    id: 'routes',
+    label: 'Rutas',
+    iconOutline: RiBusLine,
+    iconFilled: RiBusFill,
+  },
+] as const;
 
 interface R2MCleanSearchBarProps extends R2MSearchBarProps {
   readonly showFilters?: boolean;
   readonly onToggleFilters?: () => void;
-  readonly onFilterTypeChange?: (type: 'all' | 'stops' | 'routes') => void;
+  readonly onFilterTypeChange?: (type: FilterType) => void;
   readonly onFareRangeChange?: (
     min: number | undefined,
     max: number | undefined,
   ) => void;
+}
+
+interface FilterButtonProps {
+  readonly option: FilterOption;
+  readonly isSelected: boolean;
+  readonly onClick: () => void;
+}
+
+function FilterButton({ option, isSelected, onClick }: FilterButtonProps) {
+  const IconOutline = option.iconOutline;
+  const IconFilled = option.iconFilled;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 flex-1 justify-center relative overflow-hidden"
+      style={{
+        color: isSelected
+          ? 'rgb(var(--color-primary-rgb))'
+          : 'rgb(107, 114, 128)',
+      }}
+    >
+      <div className="relative w-4 h-4">
+        <div
+          className="absolute inset-0 transition-all duration-300"
+          style={{
+            opacity: isSelected ? 0 : 1,
+            transform: isSelected
+              ? 'scale(0.8) rotate(-90deg)'
+              : 'scale(1) rotate(0deg)',
+          }}
+        >
+          <IconOutline size={16} />
+        </div>
+        <div
+          className="absolute inset-0 transition-all duration-300"
+          style={{
+            opacity: isSelected ? 1 : 0,
+            transform: isSelected
+              ? 'scale(1) rotate(0deg)'
+              : 'scale(0.8) rotate(90deg)',
+          }}
+        >
+          <IconFilled size={16} />
+        </div>
+      </div>
+      <span className="text-sm font-medium">{option.label}</span>
+    </button>
+  );
 }
 
 export default function R2MSearchBar({
@@ -37,11 +116,25 @@ export default function R2MSearchBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedType, setSelectedType] = useState<'all' | 'stops' | 'routes'>(
-    'all',
-  );
+  const [selectedType, setSelectedType] = useState<FilterType>('all');
   const [fareMin, setFareMin] = useState<string>('');
   const [fareMax, setFareMax] = useState<string>('');
+  const [isFilterClosing, setIsFilterClosing] = useState(false);
+  const [shouldRenderFilters, setShouldRenderFilters] = useState(false);
+
+  useEffect(() => {
+    if (showFilters) {
+      setShouldRenderFilters(true);
+      setIsFilterClosing(false);
+    } else if (shouldRenderFilters) {
+      setIsFilterClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRenderFilters(false);
+        setIsFilterClosing(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [showFilters, shouldRenderFilters]);
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -77,7 +170,7 @@ export default function R2MSearchBar({
     onFilterClick?.();
   };
 
-  const handleTypeChange = (type: 'all' | 'stops' | 'routes') => {
+  const handleTypeChange = (type: FilterType) => {
     setSelectedType(type);
     onFilterTypeChange?.(type);
   };
@@ -130,9 +223,9 @@ export default function R2MSearchBar({
             }}
           >
             {isFocused || value ? (
-              <RiSearchEyeFill size={20} />
+              <IoSearch size={20} />
             ) : (
-              <RiSearchEyeLine size={20} />
+              <IoSearchOutline size={20} />
             )}
           </div>
 
@@ -184,10 +277,10 @@ export default function R2MSearchBar({
         </div>
 
         {/* Filters Dropdown - Inline */}
-        {showFilters && (
+        {shouldRenderFilters && (
           <div
-            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl 
-                       overflow-hidden z-50 animate-slide-down w-full"
+            className={`absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl 
+                       overflow-hidden z-50 w-full ${isFilterClosing ? 'animate-slide-up-fade' : 'animate-slide-down'}`}
             style={{
               border: `1px solid rgba(var(--color-surface-rgb), 0.5)`,
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -195,70 +288,16 @@ export default function R2MSearchBar({
           >
             <div className="p-4">
               <div className="space-y-3">
-                {/* Switcher con iconos */}
-                <div className="flex items-center bg-gray-100 rounded-xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => handleTypeChange('all')}
-                    className={`
-                      flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 flex-1 justify-center
-                    `}
-                    style={{
-                      color:
-                        selectedType === 'all'
-                          ? 'rgb(var(--color-primary-rgb))'
-                          : 'rgb(107, 114, 128)',
-                    }}
-                  >
-                    {selectedType === 'all' ? (
-                      <RiGridFill size={16} />
-                    ) : (
-                      <RiGridLine size={16} />
-                    )}
-                    <span className="text-sm font-medium">Todos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleTypeChange('stops')}
-                    className={`
-                      flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 flex-1 justify-center
-                    `}
-                    style={{
-                      color:
-                        selectedType === 'stops'
-                          ? 'rgb(var(--color-primary-rgb))'
-                          : 'rgb(107, 114, 128)',
-                    }}
-                  >
-                    {selectedType === 'stops' ? (
-                      <RiMapPinFill size={16} />
-                    ) : (
-                      <RiMapPinLine size={16} />
-                    )}
-                    <span className="text-sm font-medium">Paraderos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleTypeChange('routes')}
-                    className={`
-                      flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 flex-1 justify-center
-                    `}
-                    style={{
-                      color:
-                        selectedType === 'routes'
-                          ? 'rgb(var(--color-primary-rgb))'
-                          : 'rgb(107, 114, 128)',
-                    }}
-                  >
-                    {selectedType === 'routes' ? (
-                      <RiBusFill size={16} />
-                    ) : (
-                      <RiBusLine size={16} />
-                    )}
-                    <span className="text-sm font-medium">Rutas</span>
-                  </button>
+                {/* Switcher con iconos animados */}
+                <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
+                  {FILTER_OPTIONS.map((option) => (
+                    <FilterButton
+                      key={option.id}
+                      option={option}
+                      isSelected={selectedType === option.id}
+                      onClick={() => handleTypeChange(option.id)}
+                    />
+                  ))}
                 </div>
 
                 <div className="border-t border-gray-100 pt-3">

@@ -4,6 +4,8 @@ import { useSearch } from '../hooks/useSearch';
 import R2MSearchBar from './R2MSearchBar';
 import R2MResultsList from './R2MResultsList';
 
+type FilterType = 'all' | 'stops' | 'routes';
+
 interface R2MSearchOverlayProps {
   readonly onItemSelect: (item: SearchItem) => void;
   readonly onLayoutChange?: () => void;
@@ -60,7 +62,7 @@ export default function R2MSearchOverlay({
   }, [onLayoutChange]);
 
   const handleFilterTypeChange = useCallback(
-    (type: 'all' | 'stops' | 'routes') => {
+    (type: FilterType) => {
       const newFilters = {
         ...filters,
         onlyStops: type === 'stops',

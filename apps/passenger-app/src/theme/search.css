@@ -21,6 +21,21 @@
   animation: slide-down 0.3s ease-out;
 }
 
+@keyframes slide-up-fade {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade 0.3s ease-in;
+}
+
 /* Search icon pulse animation */
 @keyframes search-pulse {
   0%, 100% {
@@ -136,6 +151,17 @@
   }
 }
 
+@keyframes slide-down-fade {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
 @keyframes shrink-progress {
   from {
     width: 100%;
@@ -147,6 +173,10 @@
 
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
+}
+
+.animate-slide-down-fade {
+  animation: slide-down-fade 0.3s ease-in;
 }
 
 .animate-shrink-progress {

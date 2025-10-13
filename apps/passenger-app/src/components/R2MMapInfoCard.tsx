@@ -15,28 +15,33 @@ export default function R2MMapInfoCard({
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     if (selectedItem) {
       setIsVisible(true);
-      // Resetear el estado de drag para la nueva card
+      setIsClosing(false);
       setDragX(0);
       setIsDragging(false);
     } else {
       setIsVisible(false);
+      setIsClosing(false);
     }
   }, [selectedItem]);
 
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && !isClosing) {
       const timer = setTimeout(() => {
-        setIsVisible(false);
-        onClose();
-      }, 30000); // Auto-hide after 30 seconds
+        setIsClosing(true);
+        setTimeout(() => {
+          setIsVisible(false);
+          onClose();
+        }, 300);
+      }, 5000);
 
       return () => clearTimeout(timer);
     }
-  }, [isVisible, onClose]);
+  }, [isVisible, isClosing, onClose]);
 
   // Cleanup cuando el componente se desmonta o selectedItem cambia a null
   useEffect(() => {
@@ -84,12 +89,14 @@ export default function R2MMapInfoCard({
     if (!isDragging) return;
     setIsDragging(false);
 
-    // Si se arrastra más de 80px, cerrar el modal
+    // Si se arrastra más de 80px, cerrar el modal con animación
     if (Math.abs(dragX) > 80) {
-      // Resetear completamente el estado antes de cerrar
       setDragX(0);
-      setIsVisible(false);
-      onClose();
+      setIsClosing(true);
+      setTimeout(() => {
+        setIsVisible(false);
+        onClose();
+      }, 300);
     } else {
       // Volver a la posición original
       setDragX(0);
@@ -141,8 +148,9 @@ export default function R2MMapInfoCard({
       style={{ transform: 'translateX(-50%)' }}
     >
       <div
-        className="bg-white rounded-2xl p-4 backdrop-blur-lg w-80 mx-auto
-                   transform transition-all duration-300 animate-slide-up cursor-grab active:cursor-grabbing"
+        className={`bg-white rounded-2xl p-4 backdrop-blur-lg w-80 mx-auto
+                   transform transition-all duration-300 cursor-grab active:cursor-grabbing
+                   ${isClosing ? 'animate-slide-down-fade' : 'animate-slide-up'}`}
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
@@ -218,7 +226,7 @@ export default function R2MMapInfoCard({
             <div
               className="h-full rounded-full animate-shrink-progress"
               style={{
-                animationDuration: '30s',
+                animationDuration: '5s',
                 backgroundColor: 'rgb(var(--color-primary-rgb))',
               }}
             />

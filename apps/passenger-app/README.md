@@ -51,11 +51,12 @@ Una aplicación web moderna de transporte público desarrollada para Manizales, 
 ```
 src/
 ├── components/          # Componentes UI reutilizables
-│   ├── R2MSearchBar.tsx        # Barra de búsqueda principal con filtros
+│   ├── R2MSearchBar.tsx        # Barra de búsqueda principal con filtros integrados
 │   ├── R2MSearchOverlay.tsx    # Contenedor de overlay de búsqueda
 │   ├── R2MResultsList.tsx      # Visualización de resultados de búsqueda
-│   ├── R2MFiltersSheet.tsx     # Hoja de opciones de filtro
 │   ├── R2MMapInfoCard.tsx      # Tarjeta de info del mapa con acciones de deslizar
+│   ├── R2MLoader.tsx           # Loader personalizado con branding
+│   ├── GlobalLoader.tsx        # Wrapper de loader para Suspense
 │   └── AnimatedTabIcon.tsx     # Iconos de navegación animados
 ├── pages/               # Páginas principales de la aplicación
 │   ├── HomePage.tsx            # Interfaz de mapa y búsqueda (FUNCIONAL)

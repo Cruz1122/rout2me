@@ -46,10 +46,3 @@ export interface R2MResultsListProps {
   onSelect: (item: SearchItem) => void;
   isVisible: boolean;
 }
-
-export interface R2MFiltersSheetProps {
-  isOpen: boolean;
-  onClose: () => void;
-  filters: SearchFilters;
-  onFiltersChange: (filters: SearchFilters) => void;
-}

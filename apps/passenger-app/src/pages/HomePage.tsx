@@ -22,6 +22,7 @@ import type { SearchItem } from '../types/search';
 export default function HomePage() {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<MlMap | null>(null);
+  const currentMarker = useRef<maplibregl.Marker | null>(null);
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
   const [mapBearing, setMapBearing] = useState(0);
 
@@ -31,21 +32,21 @@ export default function HomePage() {
     if (!mapInstance.current) return;
 
     if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
+      if (currentMarker.current) {
+        currentMarker.current.remove();
+      }
+
       mapInstance.current.flyTo({
         center: [item.lng, item.lat],
         zoom: 17,
         duration: 1000,
       });
 
-      const marker = new maplibregl.Marker({
+      currentMarker.current = new maplibregl.Marker({
         color: '#1E56A0',
       })
         .setLngLat([item.lng, item.lat])
         .addTo(mapInstance.current);
-
-      setTimeout(() => {
-        marker.remove();
-      }, 5000);
 
       setSelectedItem(item);
     }
@@ -181,18 +182,24 @@ export default function HomePage() {
       style: {
         version: 8 as const,
         sources: {
-          'osm-tiles': {
+          'carto-light': {
             type: 'raster' as const,
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tiles: [
+              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+            ],
             tileSize: 256,
-            attribution: '© OpenStreetMap contributors',
+            attribution: '© OpenStreetMap contributors © CARTO',
+            maxzoom: 19,
           },
         },
         layers: [
           {
-            id: 'osm-layer',
+            id: 'carto-light-layer',
             type: 'raster' as const,
-            source: 'osm-tiles',
+            source: 'carto-light',
           },
         ],
       },
@@ -265,12 +272,13 @@ export default function HomePage() {
         >
           <button
             onClick={handleZoomIn}
-            className="w-12 h-12 rounded-xl backdrop-blur-lg 
+            className="w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
                        hover:scale-105 active:scale-95 shadow-lg"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
               border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              borderRadius: '50%',
               boxShadow:
                 '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             }}
@@ -281,12 +289,13 @@ export default function HomePage() {
 
           <button
             onClick={handleZoomOut}
-            className="w-12 h-12 rounded-xl backdrop-blur-lg 
+            className="w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
                        hover:scale-105 active:scale-95 shadow-lg"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
               border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              borderRadius: '50%',
               boxShadow:
                 '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             }}
@@ -299,7 +308,7 @@ export default function HomePage() {
             onClick={handleResetBearing}
             onMouseDown={handleCompassMouseDown}
             onTouchStart={handleCompassTouchStart}
-            className={`w-12 h-12 rounded-xl backdrop-blur-lg 
+            className={`w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
                        hover:scale-105 active:scale-95 shadow-lg select-none
                        ${isDraggingCompass ? 'cursor-grabbing scale-105' : 'cursor-pointer'}`}
@@ -308,6 +317,7 @@ export default function HomePage() {
                 ? 'rgba(30, 86, 160, 0.95)'
                 : 'rgba(255, 255, 255, 0.95)',
               border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              borderRadius: '50%',
               boxShadow:
                 '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             }}
@@ -325,12 +335,13 @@ export default function HomePage() {
 
           <button
             onClick={handleLocationRequest}
-            className="w-12 h-12 rounded-xl backdrop-blur-lg 
+            className="w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
                        hover:scale-105 active:scale-95 shadow-lg"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
               border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              borderRadius: '50%',
               boxShadow:
                 '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             }}

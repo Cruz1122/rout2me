@@ -6,11 +6,11 @@ import {
   IonTabBar,
   IonTabButton,
   IonTabs,
-  IonSpinner,
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
 import AnimatedTabIcon from './components/AnimatedTabIcon';
+import GlobalLoader from './components/GlobalLoader';
 import { useActiveTab } from './hooks/useActiveTab';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -25,16 +25,7 @@ function TabsWithIcons() {
   return (
     <IonTabs>
       <IonRouterOutlet>
-        <Suspense
-          fallback={
-            <div
-              className="ion-padding"
-              style={{ display: 'flex', justifyContent: 'center' }}
-            >
-              <IonSpinner name="crescent" />
-            </div>
-          }
-        >
+        <Suspense fallback={<GlobalLoader />}>
           <Route exact path="/inicio" component={HomePage} />
           <Route exact path="/rutas" component={RoutesPage} />
           <Route exact path="/en-vivo" component={LivePage} />
