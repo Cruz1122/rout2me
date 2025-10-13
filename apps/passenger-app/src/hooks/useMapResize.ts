@@ -31,7 +31,6 @@ export function useMapResize(
         clearTimeout(resizeTimeoutRef.current);
       }
     };
-    // Dynamic dependencies array is intentional for this hook
   }, [mapInstance, ...dependencies]);
 
   return {
