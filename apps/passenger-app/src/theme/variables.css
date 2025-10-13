@@ -5,6 +5,7 @@
 :root {
   --color-primary:  #163172;
   --color-secondary:#1E56A0;
+  --color-terciary: #97A3B1;
   --color-bg:       #F6F6F6;
   --color-surface:  #D6E4F0;
   --color-text:     #163172;
@@ -13,11 +14,16 @@
   /* RGB versions for transparency effects */
   --color-primary-rgb: 22, 49, 114;   /* #163172 in RGB */
   --color-secondary-rgb: 30, 86, 160; /* #1E56A0 in RGB */
+  --color-terciary-rgb: 151, 163, 177; /* #97A3B1 in RGB */
   --color-bg-rgb: 246, 246, 246;      /* #F6F6F6 in RGB */
   --color-surface-rgb: 214, 228, 240; /* #D6E4F0 in RGB */
   --color-text-rgb: 22, 49, 114;      /* #163172 in RGB */
   
   --ion-color-primary: var(--color-primary);
   --ion-color-secondary: var(--color-secondary);
+  --ion-color-terciary: var(--color-terciary);
+  --ion-color-bg: var(--color-bg);
+  --ion-color-surface: var(--color-surface);
+  --ion-color-text: var(--color-text);
+  --ion-color-accent: var(--color-accent);
 }
-

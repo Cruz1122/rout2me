@@ -6,7 +6,7 @@ export default function R2MFiltersSheet({
   onClose,
   filters,
   onFiltersChange,
-}: R2MFiltersSheetProps) {
+}: Readonly<R2MFiltersSheetProps>) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
