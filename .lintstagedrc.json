@@ -1,0 +1,10 @@
+{
+  "apps/passenger-app/**/*.{ts,tsx,js,jsx}": [
+    "pnpm --filter @rout2me/passenger-app eslint --fix",
+    "prettier -w"
+  ],
+  "apps/admin-web/**/*.{ts,tsx,js,jsx}": [
+    "pnpm --filter @rout2me/admin-web eslint --fix",
+    "prettier -w"
+  ]
+}
