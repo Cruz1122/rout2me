@@ -31,6 +31,7 @@ export function useMapResize(
         clearTimeout(resizeTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapInstance, ...dependencies]);
 
   return {
