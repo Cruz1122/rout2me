@@ -34,7 +34,6 @@ export function UserLocationDebug() {
     const newLocation = AVAILABLE_LOCATIONS[locationName];
     // Update the user location state
     userLocationState.set(newLocation);
-    // eslint-disable-next-line no-console
     console.log(
       `📍 Ubicación cambiada a: ${locationLabels[locationName]}`,
       newLocation,

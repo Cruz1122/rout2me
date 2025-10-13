@@ -8,6 +8,7 @@ import type { Map as MlMap } from 'maplibre-gl';
 export function useMapResize(
   mapInstance: React.RefObject<MlMap | null>,
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dependencies: any[] = [],
 ) {
   const resizeTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
