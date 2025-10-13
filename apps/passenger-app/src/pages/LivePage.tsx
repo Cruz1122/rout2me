@@ -2,10 +2,16 @@ import { useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import { RiBusLine } from 'react-icons/ri';
-import { mockBuses, nearbyBuses, type Bus } from '../data/busesMock';
+import { mockBuses, type Bus } from '../data/busesMock';
 import FilterSwitcher, {
   type FilterOption,
 } from '../components/FilterSwitcher';
+import {
+  getDistanceBetweenLocations,
+  formatDistance,
+} from '../utils/distanceUtils';
+import { useUserLocation } from '../hooks/useUserLocation';
+import { getNearbyBuses } from '../utils/busUtils';
 
 type FilterTab = 'all' | 'active' | 'nearby';
 
@@ -34,6 +40,7 @@ export default function LivePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const userLocation = useUserLocation();
 
   const handleFilterChange = (filter: FilterTab | null) => {
     setActiveFilter(filter);
@@ -44,13 +51,11 @@ export default function LivePage() {
 
     // Aplicar filtro de categoría (no excluyentes)
     if (activeFilter === 'active') {
-      // Activos incluye tanto 'active' como 'nearby' (cercanos también están activos)
-      buses = buses.filter(
-        (bus) => bus.status === 'active' || bus.status === 'nearby',
-      );
+      // Activos solo muestra buses que no estén offline
+      buses = buses.filter((bus) => bus.status !== 'offline');
     } else if (activeFilter === 'nearby') {
-      // Cercanos solo muestra los buses cercanos
-      buses = nearbyBuses;
+      // Cercanos calcula dinámicamente basado en la ubicación del usuario
+      buses = getNearbyBuses(buses, userLocation);
     }
 
     // Aplicar filtro de búsqueda
@@ -148,7 +153,7 @@ export default function LivePage() {
           ) : (
             <div className="space-y-3">
               {filteredBuses.map((bus) => (
-                <BusCard key={bus.id} bus={bus} />
+                <BusCard key={bus.id} bus={bus} userLocation={userLocation} />
               ))}
             </div>
           )}
@@ -160,9 +165,23 @@ export default function LivePage() {
 
 interface BusCardProps {
   readonly bus: Bus;
+  readonly userLocation: { latitude: number; longitude: number };
 }
 
-function BusCard({ bus }: BusCardProps) {
+function BusCard({ bus, userLocation }: BusCardProps) {
+  // Calcular distancia en tiempo real
+  const distance = getDistanceBetweenLocations(userLocation, bus.location);
+  const isNearby = bus.status !== 'offline' && distance <= 1.5; // 1.5 km threshold
+
+  // Determinar estado dinámico basado en la distancia
+  const getDynamicStatus = (): Bus['status'] => {
+    if (bus.status === 'offline') return 'offline';
+    if (isNearby) return 'nearby';
+    return 'active';
+  };
+
+  const dynamicStatus = getDynamicStatus();
+
   const getOccupancyColor = (occupancy: Bus['occupancy']) => {
     switch (occupancy) {
       case 'low':
@@ -173,19 +192,6 @@ function BusCard({ bus }: BusCardProps) {
         return '#EF4444'; // Rojo
       default:
         return '#9CA3AF'; // Gris
-    }
-  };
-
-  const getOccupancyLabel = (occupancy: Bus['occupancy']) => {
-    switch (occupancy) {
-      case 'low':
-        return 'Ocupación baja';
-      case 'medium':
-        return 'Ocupación media';
-      case 'high':
-        return 'Ocupación alta';
-      default:
-        return 'Sin datos';
     }
   };
 
@@ -228,7 +234,7 @@ function BusCard({ bus }: BusCardProps) {
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white"
           style={{
-            backgroundColor: getStatusColor(bus.status),
+            backgroundColor: getStatusColor(dynamicStatus),
           }}
         >
           <RiBusLine size={24} />
@@ -241,7 +247,7 @@ function BusCard({ bus }: BusCardProps) {
               <h3
                 className="font-semibold text-sm leading-tight"
                 style={{
-                  color: bus.status === 'offline' ? '#9CA3AF' : 'inherit',
+                  color: dynamicStatus === 'offline' ? '#9CA3AF' : 'inherit',
                 }}
               >
                 Bus {bus.routeNumber} - {bus.routeName}
@@ -255,45 +261,53 @@ function BusCard({ bus }: BusCardProps) {
             <span
               className="text-xs font-medium px-2 py-1 rounded flex-shrink-0"
               style={{
-                backgroundColor: `${getStatusColor(bus.status)}20`,
-                color: getStatusColor(bus.status),
+                backgroundColor: `${getStatusColor(dynamicStatus)}20`,
+                color: getStatusColor(dynamicStatus),
               }}
             >
-              {getStatusLabel(bus.status)}
+              {getStatusLabel(dynamicStatus)}
             </span>
           </div>
 
           {/* Información adicional */}
           <p
             className="text-xs text-gray-500"
-            style={{ marginBottom: bus.status === 'offline' ? 0 : '0.5rem' }}
+            style={{ marginBottom: dynamicStatus === 'offline' ? 0 : '0.5rem' }}
           >
-            {bus.distance}
+            {dynamicStatus === 'offline'
+              ? 'Fuera de servicio'
+              : formatDistance(distance)}
           </p>
 
           {/* Ocupación */}
-          {bus.status !== 'offline' && (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full transition-all duration-300"
-                  style={{
-                    width:
-                      bus.occupancy === 'low'
-                        ? '33%'
-                        : bus.occupancy === 'medium'
-                          ? '66%'
-                          : '100%',
-                    backgroundColor: getOccupancyColor(bus.occupancy),
-                  }}
-                />
+          {dynamicStatus !== 'offline' && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">Ocupación</span>
+                <span
+                  className="font-medium"
+                  style={{ color: getOccupancyColor(bus.occupancy) }}
+                >
+                  {bus.currentCapacity}/{bus.maxCapacity} pasajeros
+                </span>
               </div>
-              <span
-                className="text-xs font-medium"
-                style={{ color: getOccupancyColor(bus.occupancy) }}
-              >
-                {getOccupancyLabel(bus.occupancy)}
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{
+                      width: `${(bus.currentCapacity / bus.maxCapacity) * 100}%`,
+                      backgroundColor: getOccupancyColor(bus.occupancy),
+                    }}
+                  />
+                </div>
+                <span
+                  className="text-xs font-medium min-w-[60px] text-right"
+                  style={{ color: getOccupancyColor(bus.occupancy) }}
+                >
+                  {Math.round((bus.currentCapacity / bus.maxCapacity) * 100)}%
+                </span>
+              </div>
             </div>
           )}
         </div>

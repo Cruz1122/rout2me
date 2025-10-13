@@ -37,7 +37,7 @@ export default function R2MMapInfoCard({
           setIsVisible(false);
           onClose();
         }, 300);
-      }, 5000);
+      }, 50000);
 
       return () => clearTimeout(timer);
     }
@@ -147,12 +147,15 @@ export default function R2MMapInfoCard({
       className="fixed bottom-20 left-1/2 z-40"
       style={{ transform: 'translateX(-50%)' }}
     >
-      <div
-        className={`bg-white rounded-2xl p-4 backdrop-blur-lg w-80 mx-auto
+      <button
+        type="button"
+        aria-label={`Información de ${selectedItem.type === 'stop' ? 'paradero' : 'ruta'}: ${selectedItem.name}. Desliza o presiona Escape para cerrar`}
+        className={`bg-white !rounded-3xl !p-5 backdrop-blur-lg w-80 mx-auto overflow-hidden
                    transform transition-all duration-300 cursor-grab active:cursor-grabbing
+                   text-left border-none
                    ${isClosing ? 'animate-slide-down-fade' : 'animate-slide-up'}`}
         style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: 'rgba(255, 255, 255, 0.98)',
           border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           transform: `translateX(${dragX}px) ${isDragging ? 'rotate(' + Math.max(-5, Math.min(5, dragX * 0.05)) + 'deg)' : ''}`,
@@ -168,6 +171,16 @@ export default function R2MMapInfoCard({
         onMouseMove={handleMouseMove}
         onMouseUp={handleTouchEnd}
         onMouseLeave={handleTouchEnd}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            setIsClosing(true);
+            setTimeout(() => {
+              setIsVisible(false);
+              onClose();
+            }, 300);
+          }
+        }}
       >
         {/* Indicador de swipe */}
         <div className="flex justify-center mb-2">
@@ -232,7 +245,7 @@ export default function R2MMapInfoCard({
             />
           </div>
         </div>
-      </div>
+      </button>
     </div>
   );
 }

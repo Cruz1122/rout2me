@@ -42,7 +42,7 @@ export interface R2MSearchBarProps {
 }
 
 export interface R2MResultsListProps {
-  items: SearchItem[];
-  onSelect: (item: SearchItem) => void;
-  isVisible: boolean;
+  readonly items: SearchItem[];
+  readonly onSelect: (item: SearchItem) => void;
+  readonly isVisible: boolean;
 }

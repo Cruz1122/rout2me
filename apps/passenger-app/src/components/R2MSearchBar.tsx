@@ -66,19 +66,34 @@ export default function R2MSearchBar({
   const [isFilterClosing, setIsFilterClosing] = useState(false);
   const [shouldRenderFilters, setShouldRenderFilters] = useState(false);
 
+  // Manejo de animación de apertura de filtros
   useEffect(() => {
+    if (!showFilters && !shouldRenderFilters) {
+      return;
+    }
+
     if (showFilters) {
-      setShouldRenderFilters(true);
-      setIsFilterClosing(false);
-    } else if (shouldRenderFilters) {
-      setIsFilterClosing(true);
-      const timer = setTimeout(() => {
-        setShouldRenderFilters(false);
-        setIsFilterClosing(false);
-      }, 300);
-      return () => clearTimeout(timer);
+      openFilters();
+    } else {
+      closeFilters();
     }
   }, [showFilters, shouldRenderFilters]);
+
+  const openFilters = () => {
+    setShouldRenderFilters(true);
+    setIsFilterClosing(false);
+  };
+
+  const closeFilters = () => {
+    if (!shouldRenderFilters) return;
+
+    setIsFilterClosing(true);
+    const timer = setTimeout(() => {
+      setShouldRenderFilters(false);
+      setIsFilterClosing(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  };
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -110,8 +125,12 @@ export default function R2MSearchBar({
   };
 
   const handleFilterToggle = () => {
-    onToggleFilters?.();
-    onFilterClick?.();
+    if (onToggleFilters) {
+      onToggleFilters();
+    }
+    if (onFilterClick) {
+      onFilterClick();
+    }
   };
 
   const handleTypeChange = (type: FilterType | null) => {

@@ -11,7 +11,7 @@ export default function R2MResultsList({
   items,
   onSelect,
   isVisible,
-}: R2MResultsListProps) {
+}: Readonly<R2MResultsListProps>) {
   const [activeIndex, setActiveIndex] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -125,15 +125,26 @@ export default function R2MResultsList({
       }}
       role="listbox"
       aria-label="Resultados de búsqueda"
+      aria-activedescendant={
+        activeIndex >= 0 ? `search-result-${items[activeIndex]?.id}` : undefined
+      }
+      tabIndex={0}
     >
       {items.map((item, index) => (
         <div
           key={item.id}
+          id={`search-result-${item.id}`}
           ref={(el) => {
             itemRefs.current[index] = el;
           }}
           onClick={() => onSelect(item)}
           onMouseEnter={() => setActiveIndex(index)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSelect(item);
+            }
+          }}
           className={`
             r2m-result-item flex items-center gap-3 px-3 py-3 cursor-pointer transition-all duration-200
             r2m-touch-target
@@ -149,7 +160,8 @@ export default function R2MResultsList({
           }}
           role="option"
           aria-selected={index === activeIndex}
-          tabIndex={-1}
+          aria-label={`${item.type === 'stop' ? 'Paradero' : 'Ruta'} ${item.name}, código ${item.code}`}
+          tabIndex={index === activeIndex ? 0 : -1}
         >
           {getItemIcon(item, index === activeIndex)}
 
