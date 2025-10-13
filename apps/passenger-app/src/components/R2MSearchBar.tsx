@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import {
   RiFilterLine,
   RiFilterFill,
@@ -66,6 +66,22 @@ export default function R2MSearchBar({
   const [isFilterClosing, setIsFilterClosing] = useState(false);
   const [shouldRenderFilters, setShouldRenderFilters] = useState(false);
 
+  const openFilters = useCallback(() => {
+    setShouldRenderFilters(true);
+    setIsFilterClosing(false);
+  }, []);
+
+  const closeFilters = useCallback(() => {
+    if (!shouldRenderFilters) return;
+
+    setIsFilterClosing(true);
+    const timer = setTimeout(() => {
+      setShouldRenderFilters(false);
+      setIsFilterClosing(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [shouldRenderFilters]);
+
   // Manejo de animación de apertura de filtros
   useEffect(() => {
     if (!showFilters && !shouldRenderFilters) {
@@ -77,23 +93,7 @@ export default function R2MSearchBar({
     } else {
       closeFilters();
     }
-  }, [showFilters, shouldRenderFilters]);
-
-  const openFilters = () => {
-    setShouldRenderFilters(true);
-    setIsFilterClosing(false);
-  };
-
-  const closeFilters = () => {
-    if (!shouldRenderFilters) return;
-
-    setIsFilterClosing(true);
-    const timer = setTimeout(() => {
-      setShouldRenderFilters(false);
-      setIsFilterClosing(false);
-    }, 300);
-    return () => clearTimeout(timer);
-  };
+  }, [showFilters, shouldRenderFilters, openFilters, closeFilters]);
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -288,7 +288,7 @@ export default function R2MSearchBar({
                               'rgba(var(--color-primary-rgb), 0.3)',
                             borderColor: 'rgba(var(--color-surface-rgb), 0.5)',
                             backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          } as any
+                          } as React.CSSProperties
                         }
                       />
                     </div>
@@ -321,7 +321,7 @@ export default function R2MSearchBar({
                               'rgba(var(--color-primary-rgb), 0.3)',
                             borderColor: 'rgba(var(--color-surface-rgb), 0.5)',
                             backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          } as any
+                          } as React.CSSProperties
                         }
                       />
                     </div>

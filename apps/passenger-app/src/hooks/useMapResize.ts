@@ -7,6 +7,7 @@ import type { Map as MlMap } from 'maplibre-gl';
  */
 export function useMapResize(
   mapInstance: React.RefObject<MlMap | null>,
+
   dependencies: any[] = [],
 ) {
   const resizeTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -30,7 +31,8 @@ export function useMapResize(
         clearTimeout(resizeTimeoutRef.current);
       }
     };
-  }, dependencies);
+    // Dynamic dependencies array is intentional for this hook
+  }, [mapInstance, ...dependencies]);
 
   return {
     triggerResize: () => {

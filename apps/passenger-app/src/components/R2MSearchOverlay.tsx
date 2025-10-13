@@ -36,16 +36,13 @@ export default function R2MSearchOverlay({
     [updateSearchTerm],
   );
 
-  const handleSearchSubmit = useCallback(
-    (_value: string) => {
-      if (results.length > 0) {
-        onItemSelect(results[0]);
-        setShowResults(false);
-        clearSearch();
-      }
-    },
-    [results, onItemSelect, clearSearch],
-  );
+  const handleSearchSubmit = useCallback(() => {
+    if (results.length > 0) {
+      onItemSelect(results[0]);
+      setShowResults(false);
+      clearSearch();
+    }
+  }, [results, onItemSelect, clearSearch]);
 
   const handleItemSelect = useCallback(
     (item: SearchItem) => {
