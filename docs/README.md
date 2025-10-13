@@ -261,6 +261,198 @@ sequenceDiagram
 
 Si un bus pierde cobertura o el GPS falla, un proceso marca la posición como "vencida" y lo anuncia. La interfaz baja el brillo del ícono, muestra la hora del último reporte y ofrece opciones para que nadie se quede esperando algo que no viene.
 
+### 9) Diagrama de clases
+```mermaid
+erDiagram
+  PROFILE {
+    UUID id PK
+    TEXT name
+    TEXT email
+    TEXT password
+    TIMESTAMPTZ created_at
+  }
+
+  USER_ROLES {
+    UUID user_id PK, FK
+    TEXT role    PK
+  }
+
+  COMPANIES {
+    UUID id PK
+    TEXT name
+    TEXT short_name
+  }
+
+  MEMBERSHIPS {
+    UUID id PK
+    UUID user_id    FK
+    UUID company_id FK
+    TEXT org_role
+    TIMESTAMPTZ started_at
+    TIMESTAMPTZ ended_at
+  }
+
+  ROUTES {
+    UUID id PK
+    TEXT code
+    TEXT name
+    BOOLEAN active
+    TIMESTAMPTZ created_at
+  }
+
+  ROUTE_VARIANTS {
+    UUID id PK
+    UUID route_id FK
+    TEXT direction
+    LINESTRING_4326 geometry
+    REAL length_m
+  }
+
+  STOPS {
+    UUID id PK
+    TEXT name
+    POINT_4326 location
+    TIMESTAMPTZ created_at
+  }
+
+  ROUTE_VARIANT_STOPS {
+    UUID variant_id PK, FK
+    UUID stop_id   PK, FK
+    INT sequence
+    REAL distance_m
+  }
+
+  BUSES {
+    UUID id PK
+    UUID company_id FK
+    TEXT plate
+    INT capacity
+    TEXT status
+    TIMESTAMPTZ created_at
+    TIMESTAMPTZ last_maintenance
+  }
+
+  ASSIGNMENTS {
+    UUID id PK
+    UUID bus_id  FK
+    UUID route_id FK
+    TIMESTAMPTZ assigned_at
+    TIMESTAMPTZ unassigned_at
+    TEXT reason
+    UUID assigned_by_membership_id FK
+  }
+
+  TRIPS {
+    UUID id PK
+    UUID route_variant_id FK
+    UUID bus_id FK
+    TIMESTAMPTZ started_at
+    TIMESTAMPTZ ended_at
+  }
+
+  DEVICES {
+    UUID id PK
+    TEXT type
+    TEXT status
+    TEXT vendor
+    TEXT serial
+    TIMESTAMPTZ installed_at
+    TIMESTAMPTZ last_maintenance
+  }
+
+  BUS_DEVICES {
+    UUID bus_id    PK, FK
+    UUID device_id PK, FK
+    TIMESTAMPTZ mounted_at PK
+    TIMESTAMPTZ unmounted_at
+  }
+
+  VEHICLE_POSITIONS {
+    UUID id PK
+    UUID bus_id FK
+    UUID device_id FK
+    UUID trip_id FK
+    POINT_4326 location
+    REAL speed_kph
+    REAL heading
+    TIMESTAMPTZ at
+  }
+
+  OCCUPANCY_SAMPLES {
+    UUID id PK
+    UUID bus_id FK
+    UUID device_id FK
+    INT seats_taken
+    INT seats_total
+    NUMERIC pct
+    POINT_4326 location
+    TIMESTAMPTZ at
+  }
+
+  ETA_ESTIMATES {
+    UUID id PK
+    UUID trip_id FK
+    UUID stop_id FK
+    POINT_4326 target_point
+    TIMESTAMPTZ eta
+    REAL confidence
+    TEXT method
+    TIMESTAMPTZ computed_at
+  }
+
+  INCIDENTS {
+    UUID id PK
+    TEXT type
+    TEXT description
+    TEXT severity
+    TIMESTAMPTZ at
+    POINT_4326 location
+    UUID bus_id FK
+    UUID route_id FK
+  }
+
+  PLACES {
+    UUID id PK
+    UUID user_id FK
+    TEXT name
+    POINT_4326 location
+  }
+
+  %% Relaciones
+  PROFILE    ||--o{ USER_ROLES              : rol_global
+  PROFILE    ||--o{ MEMBERSHIPS             : pertenece
+  COMPANIES  ||--o{ MEMBERSHIPS             : admite
+
+  COMPANIES  ||--o{ BUSES                   : posee
+  ROUTES     ||--o{ ROUTE_VARIANTS          : tiene
+  ROUTE_VARIANTS ||--o{ ROUTE_VARIANT_STOPS : define
+  STOPS      ||--o{ ROUTE_VARIANT_STOPS     : listado_en
+
+  MEMBERSHIPS ||--o{ ASSIGNMENTS            : asigna
+  BUSES      ||--o{ ASSIGNMENTS             : obtiene
+  ROUTES     ||--o{ ASSIGNMENTS             : se_asigna_en
+
+  ROUTE_VARIANTS ||--o{ TRIPS               : sirve
+  %% 1 bus por trip (ejecución)
+  BUSES          ||--o{ TRIPS               : opera
+
+  DEVICES    ||--o{ BUS_DEVICES             : monta
+  BUSES      ||--o{ BUS_DEVICES             : usa
+
+  BUSES      ||--o{ VEHICLE_POSITIONS       : emite
+  TRIPS      ||--o{ VEHICLE_POSITIONS       : durante
+
+
+  BUSES      ||--o{ OCCUPANCY_SAMPLES       : reporta
+  TRIPS      ||--o{ ETA_ESTIMATES           : calcula
+  STOPS      ||--o{ ETA_ESTIMATES           : paradero_ref
+
+  BUSES      ||--o{ INCIDENTS               : puede_tener
+  ROUTES     ||--o{ INCIDENTS               : puede_afectar
+  PROFILE    ||--o{ PLACES                  : guarda
+```
+
+
 ---
 
 ## Estructura del repo
