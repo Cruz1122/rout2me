@@ -2,6 +2,8 @@
 
 Una aplicación web moderna de transporte público desarrollada para Manizales, Colombia. Esta aplicación web móvil ayuda a los usuarios a encontrar rutas de autobús, paradas y información de transporte en tiempo real.
 
+**Backend futuro:** El backend será BaaS con Supabase (Postgres, Auth, Storage, Realtime, Functions). Actualmente solo hay datos mock, pero la arquitectura y scripts ya están preparados para integración con Supabase.
+
 ## Stack Tecnológico
 
 - **Framework Frontend**: React 19
@@ -42,8 +44,8 @@ Una aplicación web moderna de transporte público desarrollada para Manizales, 
 - **Perfil de Usuario**: Solo muestra "Funcionalidad en desarrollo"
 
 ### Datos Actuales
-- **Fuente de Datos**: Datos mock estáticos (no hay backend real)
-- **Ubicación**: Centrado en Manizales con ~10 paradas ficticias
+- **Fuente de Datos**: Datos mock estáticos (no hay backend real, pero la integración con Supabase está planificada)
+- **Ubicación**: Centrado en Manizales con ~10 paradas ficticias y 6 buses con coordenadas reales
 - **Rutas**: Datos de ejemplo, no conectado a sistema real de transporte
 
 ## Estructura del Proyecto
@@ -329,9 +331,9 @@ test: adición/actualización de tests
 ## Limitaciones Actuales
 
 ### Funcionalidades NO Implementadas
-- Backend real o API
-- Base de datos
-- Autenticación de usuarios  
+- Backend real o API (planificado: Supabase BaaS)
+- Base de datos (planificado: Supabase Postgres)
+- Autenticación de usuarios (planificado: Supabase Auth)
 - Datos reales de transporte público
 - Seguimiento en tiempo real
 - Notificaciones push
