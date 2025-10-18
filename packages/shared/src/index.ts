@@ -35,3 +35,6 @@ export type BusLocation = {
 // Export utilities
 export * from './geo-utils';
 export * from './result-utils';
+export * from './supabaseClient';
+export * as AuthApi from './api/auth';
+export * as BusesApi from './api/buses';
