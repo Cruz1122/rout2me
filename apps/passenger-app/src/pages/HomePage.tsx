@@ -25,6 +25,8 @@ export default function HomePage() {
   const currentMarker = useRef<maplibregl.Marker | null>(null);
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
   const [mapBearing, setMapBearing] = useState(0);
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  const [shouldInitMap, setShouldInitMap] = useState(false);
 
   const { triggerResize } = useMapResize(mapInstance);
 
@@ -174,45 +176,88 @@ export default function HomePage() {
     };
   }, [isDraggingCompass, handleCompassMove, handleCompassEnd]);
 
+  // Lazy loading: inicializar solo cuando el contenedor sea visible
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setShouldInitMap(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(mapRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Inicialización del mapa con tiles vectoriales
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current || !shouldInitMap) return;
+
     const map = new maplibregl.Map({
       container: mapRef.current,
+      // Tiles optimizadas de CARTO pero con mejor configuración de caché
       style: {
-        version: 8 as const,
+        version: 8,
         sources: {
           'carto-light': {
-            type: 'raster' as const,
+            type: 'raster',
             tiles: [
               'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
               'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
               'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-              'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
             ],
             tileSize: 256,
             attribution: '© OpenStreetMap contributors © CARTO',
             maxzoom: 19,
+            // Configuración mejorada para caché
+            scheme: 'xyz',
           },
         },
         layers: [
           {
             id: 'carto-light-layer',
-            type: 'raster' as const,
+            type: 'raster',
             source: 'carto-light',
+            // Optimizar transiciones
+            paint: {
+              'raster-fade-duration': 300,
+            },
           },
         ],
       },
       center: [-75.5138, 5.0703],
       zoom: 15,
+      maxZoom: 19,
+      minZoom: 5, // Evitar cargar tiles innecesarios en zoom muy alejado
+      hash: false, // Deshabilitar URL hash para mejor rendimiento
+      trackResize: true,
+      // Opciones de rendimiento que no afectan calidad visual
+      fadeDuration: 300, // Animación de fade suave pero rápida
+      crossSourceCollisions: false, // Mejor rendimiento en labels
+      preserveDrawingBuffer: false, // Mejor rendimiento general
+      refreshExpiredTiles: false, // No refrescar tiles automáticamente
+      // Caché de tiles optimizado
+      maxTileCacheSize: 100, // Aumentar caché para reusar tiles
     });
 
     map.on('load', () => {
       console.log('Mapa cargado correctamente');
+      setIsMapLoading(false);
+    });
+
+    map.on('idle', () => {
+      setIsMapLoading(false);
     });
 
     map.on('error', (e) => {
       console.error('Error al cargar el mapa:', e);
+      setIsMapLoading(false);
     });
 
     map.on('rotate', () => {
@@ -227,7 +272,7 @@ export default function HomePage() {
         mapInstance.current = null;
       }
     };
-  }, []);
+  }, [shouldInitMap]);
 
   useIonViewDidEnter(() => {
     if (mapInstance.current) {
@@ -258,6 +303,32 @@ export default function HomePage() {
             touchAction: 'pan-x pan-y',
           }}
         />
+
+        {/* Indicador de carga del mapa */}
+        {isMapLoading && (
+          <div
+            className="fixed inset-0 flex items-center justify-center backdrop-blur-sm z-50"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
+          >
+            <div className="text-center">
+              <div
+                className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 mx-auto mb-4"
+                style={{
+                  borderTopColor: 'rgb(var(--color-primary-rgb))',
+                }}
+              />
+              <p
+                className="text-lg font-medium"
+                style={{ color: 'rgb(var(--color-primary-rgb))' }}
+              >
+                Cargando mapa...
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Optimizado para tu conexión
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="fixed top-4 left-4 right-4 z-50" slot="fixed">
           <R2MSearchOverlay

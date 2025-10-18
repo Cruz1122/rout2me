@@ -37,7 +37,7 @@ export default function R2MMapInfoCard({
           setIsVisible(false);
           onClose();
         }, 300);
-      }, 50000);
+      }, 5000);
 
       return () => clearTimeout(timer);
     }
