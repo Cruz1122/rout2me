@@ -76,7 +76,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
       // Punto de inicio - Marcador azul estándar
       const startMarker = new maplibregl.Marker({
-        color: 'var(--color-secondary)', // #1E56A0
+        color: '#1E56A0', // Color azul hardcodeado
         scale: 1.2,
       })
         .setLngLat(startPoint)
@@ -84,7 +84,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
       // Punto de fin - Marcador azul estándar
       const endMarker = new maplibregl.Marker({
-        color: 'var(--color-secondary)', // #1E56A0
+        color: '#1E56A0', // Color azul hardcodeado
         scale: 1.2,
       })
         .setLngLat(endPoint)
@@ -113,13 +113,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
     ) => {
       if (!mapInstance.current) return;
 
-      const {
-        color = 'var(--color-secondary)', // #1E56A0
-        width = 4,
-        opacity = 0.9,
-        outlineColor = '#ffffff',
-        outlineWidth = 8,
-      } = options;
+      const { color = '#1E56A0', width = 6, opacity = 0.9 } = options;
 
       const sourceId = `route-${routeId}`;
       const shadowLayerId = `route-shadow-${routeId}`;
@@ -148,7 +142,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         },
       });
 
-      // Agregar capa de sombra (efecto Google Maps)
+      // Agregar capa de sombra (efecto Google Maps) - PRIMERA CAPA
       mapInstance.current.addLayer({
         id: shadowLayerId,
         type: 'line',
@@ -159,13 +153,13 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         },
         paint: {
           'line-color': '#000000',
-          'line-width': outlineWidth + 2,
+          'line-width': 12, // outlineWidth + 2 hardcodeado
           'line-opacity': 0.3,
           'line-translate': [2, 2],
         },
       });
 
-      // Agregar capa de contorno (más gruesa, color diferente)
+      // Agregar capa de contorno (más gruesa, color diferente) - SEGUNDA CAPA
       mapInstance.current.addLayer({
         id: outlineLayerId,
         type: 'line',
@@ -175,13 +169,13 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           'line-cap': 'round',
         },
         paint: {
-          'line-color': outlineColor,
-          'line-width': outlineWidth,
+          'line-color': '#ffffff', // outlineColor hardcodeado
+          'line-width': 10, // outlineWidth hardcodeado
           'line-opacity': 1,
         },
       });
 
-      // Agregar capa principal de la ruta
+      // Agregar capa principal de la ruta - TERCERA CAPA (MÁS ARRIBA)
       mapInstance.current.addLayer({
         id: mainLayerId,
         type: 'line',
@@ -191,13 +185,13 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           'line-cap': 'round',
         },
         paint: {
-          'line-color': color,
-          'line-width': width,
-          'line-opacity': opacity,
+          'line-color': '#1E56A0', // color hardcodeado
+          'line-width': 6, // width hardcodeado
+          'line-opacity': 0.9, // opacity hardcodeado
         },
       });
 
-      // Agregar capa de brillo (efecto Google Maps)
+      // Agregar capa de brillo (efecto Google Maps) - CUARTA CAPA (MÁS ARRIBA)
       mapInstance.current.addLayer({
         id: glowLayerId,
         type: 'line',
@@ -207,8 +201,8 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           'line-cap': 'round',
         },
         paint: {
-          'line-color': color,
-          'line-width': width + 2,
+          'line-color': '#1E56A0', // color hardcodeado
+          'line-width': 8, // width + 2 hardcodeado
           'line-opacity': 0.3,
           'line-blur': 3,
         },
