@@ -113,6 +113,14 @@ export const mockRoutes: Route[] = [
     type: 'route',
     fare: 2500,
     stops: ['stop-1', 'stop-2', 'stop-5', 'stop-7', 'stop-9'],
+    coordinates: [
+      [-75.5138, 5.0703], // Centro de Manizales
+      [-75.5, 5.065], // Universidad Nacional
+      [-75.512, 5.071], // Alcaldía
+      [-75.514, 5.07], // Parque Caldas
+      [-75.513, 5.0705], // Centro
+    ],
+    color: '#1E56A0',
   },
   {
     id: 'route-2',
@@ -122,6 +130,13 @@ export const mockRoutes: Route[] = [
     type: 'route',
     fare: 2500,
     stops: ['stop-3', 'stop-6', 'stop-5', 'stop-8'],
+    coordinates: [
+      [-75.52, 5.075], // Hospital Caldas
+      [-75.498, 5.062], // Terminal de Transportes
+      [-75.512, 5.071], // Alcaldía
+      [-75.4934, 5.0556], // Universidad de Caldas
+    ],
+    color: '#1E56A0',
   },
   {
     id: 'route-3',
@@ -131,6 +146,13 @@ export const mockRoutes: Route[] = [
     type: 'route',
     fare: 3000,
     stops: ['stop-1', 'stop-3', 'stop-6', 'stop-9'],
+    coordinates: [
+      [-75.5138, 5.0703], // Paradero Central
+      [-75.52, 5.075], // Hospital Caldas
+      [-75.498, 5.062], // Terminal de Transportes
+      [-75.513, 5.0705], // Centro
+    ],
+    color: '#1E56A0',
   },
   {
     id: 'route-4',
@@ -140,6 +162,13 @@ export const mockRoutes: Route[] = [
     type: 'route',
     fare: 2200,
     stops: ['stop-2', 'stop-4', 'stop-7', 'stop-9'],
+    coordinates: [
+      [-75.5, 5.065], // Universidad Nacional
+      [-75.51, 5.068], // Centro Comercial Fundadores
+      [-75.514, 5.07], // Parque Caldas
+      [-75.513, 5.0705], // Centro
+    ],
+    color: '#1E56A0',
   },
   {
     id: 'route-5',
@@ -149,6 +178,13 @@ export const mockRoutes: Route[] = [
     type: 'route',
     fare: 2800,
     stops: ['stop-10', 'stop-4', 'stop-6', 'stop-8'],
+    coordinates: [
+      [-75.495, 5.058], // La Enea
+      [-75.51, 5.068], // Centro Comercial Fundadores
+      [-75.498, 5.062], // Terminal de Transportes
+      [-75.4934, 5.0556], // Universidad de Caldas
+    ],
+    color: '#1E56A0',
   },
 ];
 

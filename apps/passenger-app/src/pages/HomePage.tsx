@@ -12,12 +12,14 @@ import {
   RiAddLine,
   RiSubtractLine,
   RiCompassLine,
+  RiDeleteBinLine,
 } from 'react-icons/ri';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import R2MSearchOverlay from '../components/R2MSearchOverlay';
 import R2MMapInfoCard from '../components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
 import { useMapResize } from '../hooks/useMapResize';
+import { useRouteDrawing } from '../hooks/useRouteDrawing';
 import type { SearchItem } from '../types/search';
 
 export default function HomePage() {
@@ -30,30 +32,74 @@ export default function HomePage() {
   const [shouldInitMap, setShouldInitMap] = useState(false);
 
   const { triggerResize } = useMapResize(mapInstance);
+  const { addRouteToMap, clearAllRoutes, fitBoundsToRoute, highlightRoute } =
+    useRouteDrawing(mapInstance);
 
-  const handleItemSelect = useCallback((item: SearchItem) => {
-    if (!mapInstance.current) return;
+  const handleItemSelect = useCallback(
+    (item: SearchItem) => {
+      if (!mapInstance.current) return;
 
-    if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
-      if (currentMarker.current) {
-        currentMarker.current.remove();
+      if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
+        // Limpiar rutas anteriores al seleccionar una parada
+        clearAllRoutes();
+
+        if (currentMarker.current) {
+          currentMarker.current.remove();
+        }
+
+        mapInstance.current.flyTo({
+          center: [item.lng, item.lat],
+          zoom: 17,
+          duration: 1000,
+        });
+
+        currentMarker.current = new maplibregl.Marker({
+          color: '#1E56A0',
+        })
+          .setLngLat([item.lng, item.lat])
+          .addTo(mapInstance.current);
+
+        setSelectedItem(item);
+      } else if (
+        item.type === 'route' &&
+        'coordinates' in item &&
+        item.coordinates
+      ) {
+        // Limpiar marcadores de paradas
+        if (currentMarker.current) {
+          currentMarker.current.remove();
+          currentMarker.current = null;
+        }
+
+        // Limpiar todas las rutas anteriores antes de agregar la nueva
+        clearAllRoutes();
+
+        // Agregar nueva ruta al mapa
+        addRouteToMap(item.id, item.coordinates, {
+          color: '#1E56A0', // Color estándar azul
+          width: 4,
+          opacity: 0.9,
+          outlineColor: '#ffffff',
+          outlineWidth: 8,
+        });
+
+        // Ajustar vista para mostrar toda la ruta
+        fitBoundsToRoute(item.coordinates);
+
+        // Resaltar la ruta seleccionada
+        highlightRoute(item.id, true);
+
+        setSelectedItem(item);
       }
-
-      mapInstance.current.flyTo({
-        center: [item.lng, item.lat],
-        zoom: 17,
-        duration: 1000,
-      });
-
-      currentMarker.current = new maplibregl.Marker({
-        color: '#1E56A0',
-      })
-        .setLngLat([item.lng, item.lat])
-        .addTo(mapInstance.current);
-
-      setSelectedItem(item);
-    }
-  }, []);
+    },
+    [
+      mapInstance,
+      addRouteToMap,
+      clearAllRoutes,
+      fitBoundsToRoute,
+      highlightRoute,
+    ],
+  );
 
   const handleLocationRequest = useCallback(() => {
     if (!mapInstance.current) return;
@@ -91,12 +137,35 @@ export default function HomePage() {
     mapInstance.current.zoomOut({ duration: 300 });
   }, []);
 
+  const handleClearRoutes = useCallback(() => {
+    setIsClearingRoutes(true);
+
+    // Limpiar rutas y marcadores
+    clearAllRoutes();
+    setSelectedItem(null);
+    if (currentMarker.current) {
+      currentMarker.current.remove();
+      currentMarker.current = null;
+    }
+
+    // Feedback visual con vibración si está disponible
+    if (navigator.vibrate) {
+      navigator.vibrate(50); // Vibración corta
+    }
+
+    // Resetear el estado visual después de un breve delay
+    setTimeout(() => {
+      setIsClearingRoutes(false);
+    }, 500); // Aumentado para mejor feedback visual
+  }, [clearAllRoutes]);
+
   const [isDraggingCompass, setIsDraggingCompass] = useState(false);
   const [dragStart, setDragStart] = useState<{
     x: number;
     y: number;
     bearing: number;
   } | null>(null);
+  const [isClearingRoutes, setIsClearingRoutes] = useState(false);
 
   const handleResetBearing = useCallback(() => {
     if (!mapInstance.current) return;
@@ -398,11 +467,49 @@ export default function HomePage() {
           >
             <RiFocus3Line size={20} style={{ color: '#000000' }} />
           </button>
+
+          <button
+            onClick={handleClearRoutes}
+            className={`w-12 h-12 rounded-full backdrop-blur-lg 
+                       flex items-center justify-center transition-all duration-200
+                       hover:scale-105 active:scale-95 shadow-lg
+                       ${isClearingRoutes ? 'cursor-grabbing scale-105 animate-pulse' : 'cursor-pointer'}`}
+            style={{
+              backgroundColor: isClearingRoutes
+                ? 'rgba(220, 38, 38, 0.95)' // Rojo cuando está limpiando
+                : 'rgba(255, 255, 255, 0.95)',
+              border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              borderRadius: '50%',
+              boxShadow: isClearingRoutes
+                ? '0 10px 25px -5px rgba(220, 38, 38, 0.3), 0 4px 6px -2px rgba(220, 38, 38, 0.1)'
+                : '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            }}
+            aria-label="Limpiar rutas"
+          >
+            <RiDeleteBinLine
+              size={20}
+              style={{
+                color: isClearingRoutes ? '#FFFFFF' : '#000000',
+                transform: isClearingRoutes
+                  ? 'scale(1.1) rotate(10deg)'
+                  : 'scale(1) rotate(0deg)',
+                transition: 'all 0.3s ease',
+              }}
+            />
+          </button>
         </div>
 
         <R2MMapInfoCard
           selectedItem={selectedItem}
-          onClose={() => setSelectedItem(null)}
+          onClose={() => {
+            setSelectedItem(null);
+            // Solo limpiar marcadores de paradas cuando se cierra la tarjeta
+            // Las rutas se mantienen en el mapa
+            if (currentMarker.current) {
+              currentMarker.current.remove();
+              currentMarker.current = null;
+            }
+          }}
         />
       </IonContent>
     </IonPage>

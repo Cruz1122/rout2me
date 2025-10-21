@@ -11,6 +11,9 @@ export interface Route {
   status: 'active' | 'offline';
   isFavorite?: boolean;
   nextBus?: number;
+  // Coordenadas de la ruta para dibujar en el mapa
+  coordinates?: [number, number][]; // Array de [lng, lat]
+  color?: string; // Color de la línea en el mapa
 }
 
 export const mockRoutes: Route[] = [
@@ -27,6 +30,14 @@ export const mockRoutes: Route[] = [
     status: 'active',
     isFavorite: true,
     nextBus: 5,
+    // Coordenadas de ejemplo para Manizales
+    coordinates: [
+      [-75.5138, 5.0703], // Centro de Manizales
+      [-75.52, 5.075], // Punto intermedio 1
+      [-75.53, 5.08], // Punto intermedio 2
+      [-75.54, 5.085], // Punto final
+    ],
+    color: '#1E56A0',
   },
   {
     id: '102',
@@ -41,6 +52,13 @@ export const mockRoutes: Route[] = [
     status: 'active',
     isFavorite: true,
     nextBus: 8,
+    coordinates: [
+      [-75.5, 5.06], // Punto inicial
+      [-75.51, 5.065], // Punto intermedio 1
+      [-75.525, 5.07], // Punto intermedio 2
+      [-75.535, 5.075], // Punto final
+    ],
+    color: '#FF6B35',
   },
   {
     id: '501',
@@ -54,6 +72,13 @@ export const mockRoutes: Route[] = [
     activeBuses: 4,
     status: 'active',
     nextBus: 3,
+    coordinates: [
+      [-75.515, 5.072], // Punto inicial
+      [-75.505, 5.068], // Punto intermedio 1
+      [-75.495, 5.064], // Punto intermedio 2
+      [-75.485, 5.06], // Punto final
+    ],
+    color: '#4CAF50',
   },
   {
     id: '204',
@@ -67,6 +92,13 @@ export const mockRoutes: Route[] = [
     activeBuses: 5,
     status: 'active',
     nextBus: 6,
+    coordinates: [
+      [-75.52, 5.075], // Punto inicial
+      [-75.515, 5.07], // Punto intermedio 1
+      [-75.51, 5.065], // Punto intermedio 2
+      [-75.505, 5.06], // Punto final
+    ],
+    color: '#9C27B0',
   },
   {
     id: '301',
@@ -80,6 +112,13 @@ export const mockRoutes: Route[] = [
     activeBuses: 1,
     status: 'active',
     nextBus: 12,
+    coordinates: [
+      [-75.53, 5.08], // Punto inicial
+      [-75.525, 5.075], // Punto intermedio 1
+      [-75.52, 5.07], // Punto intermedio 2
+      [-75.515, 5.065], // Punto final
+    ],
+    color: '#FF9800',
   },
   {
     id: '105',
@@ -92,6 +131,13 @@ export const mockRoutes: Route[] = [
     fare: 800,
     activeBuses: 0,
     status: 'offline',
+    coordinates: [
+      [-75.54, 5.085], // Punto inicial
+      [-75.535, 5.08], // Punto intermedio 1
+      [-75.53, 5.075], // Punto intermedio 2
+      [-75.525, 5.07], // Punto final
+    ],
+    color: '#607D8B',
   },
 ];
 

@@ -17,6 +17,9 @@ export interface Route {
   type: 'route';
   fare?: number;
   stops?: string[];
+  // Coordenadas de la ruta para dibujar en el mapa
+  coordinates?: [number, number][]; // Array de [lng, lat]
+  color?: string; // Color de la línea en el mapa
 }
 
 export type SearchItem = Stop | Route;
