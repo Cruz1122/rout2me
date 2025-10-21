@@ -28,16 +28,16 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
       // Remover capas
       for (const layerId of layersToRemove) {
-        if (mapInstance.current!.getLayer(layerId)) {
-          mapInstance.current!.removeLayer(layerId);
+        if (mapInstance.current.getLayer(layerId)) {
+          mapInstance.current.removeLayer(layerId);
           routeLayers.current.delete(layerId);
         }
       }
 
       // Remover fuentes
       for (const sourceId of sourcesToRemove) {
-        if (mapInstance.current!.getSource(sourceId)) {
-          mapInstance.current!.removeSource(sourceId);
+        if (mapInstance.current.getSource(sourceId)) {
+          mapInstance.current.removeSource(sourceId);
           routeSources.current.delete(sourceId);
         }
       }
@@ -234,15 +234,15 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
     // Remover todas las capas
     for (const layerId of layersToRemove) {
-      if (mapInstance.current!.getLayer(layerId)) {
-        mapInstance.current!.removeLayer(layerId);
+      if (mapInstance.current.getLayer(layerId)) {
+        mapInstance.current.removeLayer(layerId);
       }
     }
 
     // Remover todas las fuentes
     for (const sourceId of sourcesToRemove) {
-      if (mapInstance.current!.getSource(sourceId)) {
-        mapInstance.current!.removeSource(sourceId);
+      if (mapInstance.current.getSource(sourceId)) {
+        mapInstance.current.removeSource(sourceId);
       }
     }
 

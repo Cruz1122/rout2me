@@ -18,10 +18,10 @@ export interface CacheConfig {
 }
 
 export class CacheService {
-  private dbName = 'rout2me-cache';
-  private dbVersion = 1;
+  private readonly dbName = 'rout2me-cache';
+  private readonly dbVersion = 1;
   private db: IDBDatabase | null = null;
-  private config: CacheConfig;
+  private readonly config: CacheConfig;
 
   constructor(config: Partial<CacheConfig> = {}) {
     this.config = {
@@ -39,7 +39,10 @@ export class CacheService {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.dbVersion);
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
       request.onsuccess = () => {
         this.db = request.result;
         resolve();
@@ -93,7 +96,10 @@ export class CacheService {
         resolve(result.data);
       };
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 
@@ -120,7 +126,10 @@ export class CacheService {
       const request = store.put(item);
 
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 
@@ -136,7 +145,10 @@ export class CacheService {
       const request = store.delete(key);
 
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 
@@ -165,7 +177,10 @@ export class CacheService {
         resolve(totalSize);
       };
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 
@@ -208,7 +223,10 @@ export class CacheService {
         resolve();
       };
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 
@@ -264,12 +282,15 @@ export class CacheService {
         resolve();
       };
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 
   /**
-   * Limpia todo el caché
+   * Limpia completamente el caché
    */
   async clear(): Promise<void> {
     if (!this.db) await this.init();
@@ -280,7 +301,10 @@ export class CacheService {
       const request = store.clear();
 
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 
@@ -326,7 +350,10 @@ export class CacheService {
         });
       };
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () =>
+        reject(
+          new Error(request.error?.message || 'Error al abrir base de datos'),
+        );
     });
   }
 }

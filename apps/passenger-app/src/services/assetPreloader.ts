@@ -148,7 +148,10 @@ export class AssetPreloader {
       const response = await fetch(fontUrl);
       if (response.ok) {
         const fontBlob = await response.blob();
-        const fontFace = new FontFace('preloaded-font', fontBlob);
+        const fontFace = new FontFace(
+          'preloaded-font',
+          await fontBlob.arrayBuffer(),
+        );
         await fontFace.load();
         document.fonts.add(fontFace);
       }
@@ -186,7 +189,7 @@ export class AssetPreloader {
     this.preloadProgress = progress;
 
     // Emitir evento de progreso si hay listeners
-    if (typeof globalThis.window !== 'undefined') {
+    if (globalThis.window !== undefined) {
       globalThis.window.dispatchEvent(
         new CustomEvent('preload-progress', {
           detail: { progress },

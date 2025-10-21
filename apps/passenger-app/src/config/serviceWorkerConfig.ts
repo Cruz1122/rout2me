@@ -29,8 +29,8 @@ export function isDevelopment(): boolean {
   return (
     import.meta.env.DEV ||
     import.meta.env.MODE === 'development' ||
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
+    globalThis.location.hostname === 'localhost' ||
+    globalThis.location.hostname === '127.0.0.1'
   );
 }
 
@@ -49,7 +49,7 @@ export function shouldEnableServiceWorker(): boolean {
   }
 
   // Verificar HTTPS (requerido para SW en producción)
-  if (!isDevelopment() && !window.location.protocol.startsWith('https')) {
+  if (!isDevelopment() && !globalThis.location.protocol.startsWith('https')) {
     return false;
   }
 

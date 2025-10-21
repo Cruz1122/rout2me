@@ -288,14 +288,14 @@ export class CacheStrategyService {
 
     if (strategy.maxAge) {
       // Implementar limpieza basada en edad
-      await this.cleanupByAge(strategy.maxAge);
+      await this.cleanupByAge();
     }
   }
 
   /**
    * Limpia recursos por edad
    */
-  private async cleanupByAge(maxAge: number): Promise<void> {
+  private async cleanupByAge(): Promise<void> {
     // Esta implementación requeriría acceso a metadatos de tiempo
     // Por simplicidad, usamos el método existente de limpieza
     await cacheService.cleanupExpired();

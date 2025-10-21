@@ -152,7 +152,7 @@ export class CacheCleanupService {
 
       if (currentSize > targetSize) {
         const spaceToFree = currentSize - targetSize;
-        await this.freeSpace(spaceToFree);
+        await this.freeSpace();
         console.log(`Espacio liberado: ${this.formatBytes(spaceToFree)}`);
       }
     } catch (error) {
@@ -163,7 +163,7 @@ export class CacheCleanupService {
   /**
    * Libera espacio eliminando elementos más antiguos
    */
-  private async freeSpace(spaceToFree: number): Promise<void> {
+  private async freeSpace(): Promise<void> {
     // Esta implementación requeriría acceso a metadatos de tiempo y tamaño
     // Por simplicidad, usamos el método existente de limpieza
     await cacheService.cleanupExpired();
@@ -221,8 +221,16 @@ export class CacheCleanupService {
   async getCacheStats(): Promise<{
     totalSize: number;
     totalItems: number;
-    imageCache: any;
-    tileCache: any;
+    imageCache: {
+      memoryCacheSize: number;
+      diskCacheSize: number;
+      diskCacheItems: number;
+    };
+    tileCache: {
+      totalTiles: number;
+      totalSize: number;
+      averageTileSize: number;
+    };
     isCleaning: boolean;
   }> {
     const [cacheStats, imageStats, tileStats] = await Promise.all([

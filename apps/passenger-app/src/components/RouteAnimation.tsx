@@ -20,15 +20,18 @@ export default function RouteAnimation({
   useEffect(() => {
     if (!mapInstance.current || !isActive || coordinates.length < 2) return;
 
+    // Capturar la referencia actual del mapa
+    const currentMap = mapInstance.current;
+
     const animateRoute = () => {
-      if (!mapInstance.current) return;
+      if (!currentMap) return;
 
       const sourceId = `route-animation-${routeId}`;
       const layerId = `route-animation-layer-${routeId}`;
 
       // Crear fuente de datos para la animación
-      if (!mapInstance.current.getSource(sourceId)) {
-        mapInstance.current.addSource(sourceId, {
+      if (!currentMap.getSource(sourceId)) {
+        currentMap.addSource(sourceId, {
           type: 'geojson',
           data: {
             type: 'Feature',
@@ -42,8 +45,8 @@ export default function RouteAnimation({
       }
 
       // Crear capa de animación si no existe
-      if (!mapInstance.current.getLayer(layerId)) {
-        mapInstance.current.addLayer({
+      if (!currentMap.getLayer(layerId)) {
+        currentMap.addLayer({
           id: layerId,
           type: 'line',
           source: sourceId,
@@ -85,7 +88,7 @@ export default function RouteAnimation({
       partialCoordinates.push(interpolatedCoord);
 
       // Actualizar datos de la fuente
-      const source = mapInstance.current.getSource(sourceId) as any;
+      const source = currentMap.getSource(sourceId) as maplibregl.GeoJSONSource;
       if (source) {
         source.setData({
           type: 'Feature',
@@ -110,17 +113,15 @@ export default function RouteAnimation({
         cancelAnimationFrame(animationRef.current);
       }
 
-      // Limpiar capa de animación
-      if (mapInstance.current) {
-        const layerId = `route-animation-layer-${routeId}`;
-        const sourceId = `route-animation-${routeId}`;
+      // Limpiar capa de animación usando la referencia capturada
+      const layerId = `route-animation-layer-${routeId}`;
+      const sourceId = `route-animation-${routeId}`;
 
-        if (mapInstance.current.getLayer(layerId)) {
-          mapInstance.current.removeLayer(layerId);
-        }
-        if (mapInstance.current.getSource(sourceId)) {
-          mapInstance.current.removeSource(sourceId);
-        }
+      if (currentMap.getLayer(layerId)) {
+        currentMap.removeLayer(layerId);
+      }
+      if (currentMap.getSource(sourceId)) {
+        currentMap.removeSource(sourceId);
       }
     };
   }, [mapInstance, routeId, coordinates, isActive]);

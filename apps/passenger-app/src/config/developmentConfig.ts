@@ -25,8 +25,8 @@ export function isDevelopment(): boolean {
   return (
     import.meta.env.DEV ||
     import.meta.env.MODE === 'development' ||
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
+    globalThis.location.hostname === 'localhost' ||
+    globalThis.location.hostname === '127.0.0.1'
   );
 }
 

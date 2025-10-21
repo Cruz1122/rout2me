@@ -13,7 +13,7 @@ export interface ServiceWorkerConfig {
 
 export class ServiceWorkerService {
   private static instance: ServiceWorkerService;
-  private config: ServiceWorkerConfig;
+  private readonly config: ServiceWorkerConfig;
   private registration: ServiceWorkerRegistration | null = null;
   private updateCheckTimer: NodeJS.Timeout | null = null;
 
@@ -155,7 +155,7 @@ export class ServiceWorkerService {
    */
   private notifyUpdateAvailable(): void {
     // Emitir evento personalizado
-    if (typeof globalThis.window !== 'undefined') {
+    if (globalThis.window !== undefined) {
       globalThis.window.dispatchEvent(
         new CustomEvent('sw-update-available', {
           detail: { registration: this.registration },
@@ -168,7 +168,7 @@ export class ServiceWorkerService {
    * Actualiza el Service Worker
    */
   async updateServiceWorker(): Promise<boolean> {
-    if (!this.registration || !this.registration.waiting) {
+    if (!this.registration?.waiting) {
       return false;
     }
 
