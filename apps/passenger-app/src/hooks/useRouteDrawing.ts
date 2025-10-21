@@ -1,9 +1,5 @@
 import { useRef, useCallback } from 'react';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
-import {
-  matchRouteToRoads,
-  MapMatchingResponse,
-} from '../services/mapMatchingService';
 
 export interface RouteDrawingOptions {
   color?: string;
@@ -11,8 +7,6 @@ export interface RouteDrawingOptions {
   opacity?: number;
   outlineColor?: string;
   outlineWidth?: number;
-  useMapMatching?: boolean; // Nueva opción para habilitar map matching
-  apiKey?: string; // API key para el servicio de map matching
 }
 
 export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
@@ -20,7 +14,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
   const routeLayers = useRef<Set<string>>(new Set());
 
   const addRouteToMap = useCallback(
-    async (
+    (
       routeId: string,
       coordinates: [number, number][],
       options: RouteDrawingOptions = {},
@@ -33,33 +27,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         opacity = 0.9,
         outlineColor = '#ffffff',
         outlineWidth = 8,
-        useMapMatching = true, // Habilitar por defecto
-        apiKey,
       } = options;
-
-      let finalCoordinates = coordinates;
-
-      // Aplicar map matching si está habilitado y hay API key
-      if (useMapMatching && apiKey && coordinates.length >= 2) {
-        try {
-          console.log(`Aplicando map matching a la ruta ${routeId}...`);
-          const matchedRoute: MapMatchingResponse = await matchRouteToRoads(
-            coordinates,
-            apiKey,
-          );
-          finalCoordinates = matchedRoute.matchedGeometry.coordinates as [
-            number,
-            number,
-          ][];
-          console.log(
-            `Ruta ${routeId} ajustada a las carreteras. Distancia: ${matchedRoute.distance}m, Duración: ${matchedRoute.duration}s`,
-          );
-        } catch (error) {
-          console.warn(`Error en map matching para ruta ${routeId}:`, error);
-          console.log('Usando coordenadas originales como fallback');
-          // Continuar con las coordenadas originales si falla el map matching
-        }
-      }
 
       const sourceId = `route-${routeId}`;
       const shadowLayerId = `route-shadow-${routeId}`;
@@ -83,7 +51,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           },
           geometry: {
             type: 'LineString',
-            coordinates: finalCoordinates,
+            coordinates: coordinates,
           },
         },
       });
@@ -155,7 +123,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       });
 
       // Agregar puntos de inicio y fin
-      addRouteEndpoints(routeId, finalCoordinates);
+      addRouteEndpoints(routeId, coordinates);
 
       routeSources.current.add(sourceId);
       routeLayers.current.add(shadowLayerId);
