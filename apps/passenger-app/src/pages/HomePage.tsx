@@ -20,6 +20,7 @@ import R2MMapInfoCard from '../components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
 import { useMapResize } from '../hooks/useMapResize';
 import { useRouteDrawing } from '../hooks/useRouteDrawing';
+import { matchRouteToRoads } from '../services/mapMatchingService';
 import type { SearchItem } from '../types/search';
 
 export default function HomePage() {
@@ -36,7 +37,7 @@ export default function HomePage() {
     useRouteDrawing(mapInstance);
 
   const handleItemSelect = useCallback(
-    (item: SearchItem) => {
+    async (item: SearchItem) => {
       if (!mapInstance.current) return;
 
       if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
@@ -54,7 +55,7 @@ export default function HomePage() {
         });
 
         currentMarker.current = new maplibregl.Marker({
-          color: '#1E56A0',
+          color: 'var(--color-secondary)', // #1E56A0
         })
           .setLngLat([item.lng, item.lat])
           .addTo(mapInstance.current);
@@ -74,22 +75,67 @@ export default function HomePage() {
         // Limpiar todas las rutas anteriores antes de agregar la nueva
         clearAllRoutes();
 
-        // Agregar nueva ruta al mapa
-        addRouteToMap(item.id, item.coordinates, {
-          color: '#1E56A0', // Color estándar azul
-          width: 4,
-          opacity: 0.9,
-          outlineColor: '#ffffff',
-          outlineWidth: 8,
-        });
+        // Mostrar loader mientras se procesa el map matching
+        setIsMapLoading(true);
 
-        // Ajustar vista para mostrar toda la ruta
-        fitBoundsToRoute(item.coordinates);
+        try {
+          // Obtener la API key desde las variables de entorno
+          const apiKey = import.meta.env.VITE_STADIA_API_KEY;
 
-        // Resaltar la ruta seleccionada
-        highlightRoute(item.id, true);
+          if (apiKey) {
+            // Aplicar map matching para ajustar la ruta a las calles reales
+            const matchedRoute = await matchRouteToRoads(
+              item.coordinates,
+              apiKey,
+            );
 
-        setSelectedItem(item);
+            // Usar las coordenadas ajustadas (matched) para dibujar la ruta
+            addRouteToMap(
+              item.id,
+              matchedRoute.matchedGeometry.coordinates as [number, number][],
+              {
+                color: 'var(--color-secondary)', // #1E56A0
+                width: 4,
+                opacity: 0.9,
+                outlineColor: '#ffffff',
+                outlineWidth: 8,
+              },
+            );
+
+            // Ajustar vista para mostrar toda la ruta ajustada
+            fitBoundsToRoute(
+              matchedRoute.matchedGeometry.coordinates as [number, number][],
+            );
+          } else {
+            // Usar coordenadas originales si no hay API key
+            addRouteToMap(item.id, item.coordinates, {
+              color: 'var(--color-secondary)', // #1E56A0
+              width: 4,
+              opacity: 0.9,
+              outlineColor: '#ffffff',
+              outlineWidth: 8,
+            });
+          }
+
+          // Resaltar la ruta seleccionada
+          highlightRoute(item.id, true);
+
+          setSelectedItem(item);
+        } catch {
+          // Fallback: usar coordenadas originales si falla el map matching
+          addRouteToMap(item.id, item.coordinates, {
+            color: 'var(--color-secondary)', // #1E56A0
+            width: 4,
+            opacity: 0.9,
+            outlineColor: '#ffffff',
+            outlineWidth: 8,
+          });
+          fitBoundsToRoute(item.coordinates);
+          highlightRoute(item.id, true);
+          setSelectedItem(item);
+        } finally {
+          setIsMapLoading(false);
+        }
       }
     },
     [
@@ -115,7 +161,7 @@ export default function HomePage() {
           });
 
           new maplibregl.Marker({
-            color: '#FF6B35',
+            color: 'var(--color-accent)', // #1E56A0 (usando accent para diferenciar)
           })
             .setLngLat([longitude, latitude])
             .addTo(mapInstance.current!);
@@ -137,7 +183,12 @@ export default function HomePage() {
     mapInstance.current.zoomOut({ duration: 300 });
   }, []);
 
+  const [isDraggingCompass, setIsDraggingCompass] = useState(false);
+  const [isClearingRoutes, setIsClearingRoutes] = useState(false);
+
   const handleClearRoutes = useCallback(() => {
+    if (isClearingRoutes) return; // Prevenir múltiples clicks
+
     setIsClearingRoutes(true);
 
     // Limpiar rutas y marcadores
@@ -150,22 +201,19 @@ export default function HomePage() {
 
     // Feedback visual con vibración si está disponible
     if (navigator.vibrate) {
-      navigator.vibrate(50); // Vibración corta
+      navigator.vibrate(50);
     }
 
-    // Resetear el estado visual después de un breve delay
+    // Resetear el estado visual después de la animación
     setTimeout(() => {
       setIsClearingRoutes(false);
-    }, 500); // Aumentado para mejor feedback visual
-  }, [clearAllRoutes]);
-
-  const [isDraggingCompass, setIsDraggingCompass] = useState(false);
+    }, 300);
+  }, [clearAllRoutes, isClearingRoutes]);
   const [dragStart, setDragStart] = useState<{
     x: number;
     y: number;
     bearing: number;
   } | null>(null);
-  const [isClearingRoutes, setIsClearingRoutes] = useState(false);
 
   const handleResetBearing = useCallback(() => {
     if (!mapInstance.current) return;
@@ -310,7 +358,6 @@ export default function HomePage() {
       // Opciones de rendimiento que no afectan calidad visual
       fadeDuration: 300, // Animación de fade suave pero rápida
       crossSourceCollisions: false, // Mejor rendimiento en labels
-      preserveDrawingBuffer: false, // Mejor rendimiento general
       refreshExpiredTiles: false, // No refrescar tiles automáticamente
       // Caché de tiles optimizado
       maxTileCacheSize: 100, // Aumentar caché para reusar tiles
@@ -470,19 +517,22 @@ export default function HomePage() {
 
           <button
             onClick={handleClearRoutes}
+            disabled={isClearingRoutes}
             className={`w-12 h-12 rounded-full backdrop-blur-lg 
-                       flex items-center justify-center transition-all duration-200
+                       flex items-center justify-center transition-all duration-300 ease-out
                        hover:scale-105 active:scale-95 shadow-lg
-                       ${isClearingRoutes ? 'cursor-grabbing scale-105 animate-pulse' : 'cursor-pointer'}`}
+                       ${isClearingRoutes ? 'scale-95' : 'cursor-pointer'}
+                       disabled:cursor-not-allowed`}
             style={{
               backgroundColor: isClearingRoutes
-                ? 'rgba(220, 38, 38, 0.95)' // Rojo cuando está limpiando
+                ? 'rgba(220, 38, 38, 0.95)'
                 : 'rgba(255, 255, 255, 0.95)',
-              border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              border: `1px solid ${isClearingRoutes ? 'rgba(220, 38, 38, 0.5)' : 'rgba(var(--color-surface-rgb), 0.3)'}`,
               borderRadius: '50%',
               boxShadow: isClearingRoutes
-                ? '0 10px 25px -5px rgba(220, 38, 38, 0.3), 0 4px 6px -2px rgba(220, 38, 38, 0.1)'
+                ? '0 10px 25px -5px rgba(220, 38, 38, 0.4), 0 4px 6px -2px rgba(220, 38, 38, 0.2)'
                 : '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              transform: isClearingRoutes ? 'scale(0.95)' : 'scale(1)',
             }}
             aria-label="Limpiar rutas"
           >
@@ -491,9 +541,9 @@ export default function HomePage() {
               style={{
                 color: isClearingRoutes ? '#FFFFFF' : '#000000',
                 transform: isClearingRoutes
-                  ? 'scale(1.1) rotate(10deg)'
-                  : 'scale(1) rotate(0deg)',
-                transition: 'all 0.3s ease',
+                  ? 'translateY(-2px)'
+                  : 'translateY(0)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
               }}
             />
           </button>

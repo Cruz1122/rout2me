@@ -120,7 +120,7 @@ export const mockRoutes: Route[] = [
       [-75.514, 5.07], // Parque Caldas
       [-75.513, 5.0705], // Centro
     ],
-    color: '#1E56A0',
+    color: 'var(--color-secondary)', // #1E56A0
   },
   {
     id: 'route-2',
@@ -136,7 +136,7 @@ export const mockRoutes: Route[] = [
       [-75.512, 5.071], // Alcaldía
       [-75.4934, 5.0556], // Universidad de Caldas
     ],
-    color: '#1E56A0',
+    color: 'var(--color-secondary)', // #1E56A0
   },
   {
     id: 'route-3',
@@ -152,7 +152,7 @@ export const mockRoutes: Route[] = [
       [-75.498, 5.062], // Terminal de Transportes
       [-75.513, 5.0705], // Centro
     ],
-    color: '#1E56A0',
+    color: 'var(--color-secondary)', // #1E56A0
   },
   {
     id: 'route-4',
@@ -168,7 +168,7 @@ export const mockRoutes: Route[] = [
       [-75.514, 5.07], // Parque Caldas
       [-75.513, 5.0705], // Centro
     ],
-    color: '#1E56A0',
+    color: 'var(--color-secondary)', // #1E56A0
   },
   {
     id: 'route-5',
@@ -184,7 +184,7 @@ export const mockRoutes: Route[] = [
       [-75.498, 5.062], // Terminal de Transportes
       [-75.4934, 5.0556], // Universidad de Caldas
     ],
-    color: '#1E56A0',
+    color: 'var(--color-secondary)', // #1E56A0
   },
 ];
 

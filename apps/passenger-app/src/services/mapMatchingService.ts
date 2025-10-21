@@ -31,60 +31,62 @@ export async function matchRouteToRoads(
     lon,
   }));
 
-  // Configurar parámetros de la solicitud
+  // Configurar parámetros de la solicitud para ajuste ESTRICTO a calles
   const requestBody = {
     shape,
     costing: 'bus', // Usar modo bus para rutas de transporte público
-    shape_match: 'map_snap', // Ajustar a las calles
-    filters: {
-      attributes: ['edge.id', 'edge.length', 'shape'],
-      action: 'include',
+    shape_match: 'map_snap', // Algoritmo de ajuste
+    // Configuración específica para el modo de costing
+    costing_options: {
+      bus: {
+        use_bus_routes: 1, // Preferir rutas de bus
+      },
     },
   };
 
-  try {
-    const response = await fetch(
-      `https://route.stadiamaps.com/trace_attributes?api_key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+  const response = await fetch(
+    `https://route.stadiamaps.com/trace_route?api_key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify(requestBody),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Map matching failed: ${response.status} ${response.statusText}`,
     );
-
-    if (!response.ok) {
-      throw new Error(`Map matching failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    // Extraer la geometría matched
-    const matchedShape = data.matched_points || data.trip?.legs?.[0]?.shape;
-
-    if (!matchedShape) {
-      throw new Error('No matched geometry returned from API');
-    }
-
-    // Decodificar polyline (si viene codificado) o usar directamente
-    const coordinates = decodePolyline(matchedShape);
-
-    const matchedGeometry: GeoJSON.LineString = {
-      type: 'LineString',
-      coordinates,
-    };
-
-    return {
-      matchedGeometry,
-      confidence: data.confidence || 1,
-      distance: data.trip?.summary?.length || 0,
-      duration: data.trip?.summary?.time || 0,
-    };
-  } catch (error) {
-    console.error('Error in map matching:', error);
-    throw error;
   }
+
+  const data = await response.json();
+
+  // trace_route devuelve la geometría en data.trip.legs[0].shape
+  const matchedShape =
+    data.trip?.legs?.[0]?.shape || data.shape || data.matched_points;
+
+  if (!matchedShape) {
+    throw new Error('No matched geometry returned from API');
+  }
+
+  // Decodificar polyline (si viene codificado) o usar directamente
+  const coordinates = decodePolyline(matchedShape);
+
+  const matchedGeometry: GeoJSON.LineString = {
+    type: 'LineString',
+    coordinates,
+  };
+
+  // Extraer métricas del trip.summary
+  const summary = data.trip?.summary || {};
+  return {
+    matchedGeometry,
+    confidence: data.confidence || 1,
+    distance: summary.length || 0, // distancia en kilómetros
+    duration: summary.time || 0, // duración en segundos
+  };
 }
 
 interface ValhallaPoint {
@@ -92,58 +94,93 @@ interface ValhallaPoint {
   lat: number;
 }
 
-/**
- * Decodifica un polyline codificado (formato Google/Valhalla) a coordenadas
- */
-function decodePolyline(encoded: string | ValhallaPoint[]): [number, number][] {
-  // Si ya viene como array de coordenadas, devolverlo
-  if (Array.isArray(encoded)) {
-    return encoded.map((point: ValhallaPoint | [number, number]) => {
-      if (Array.isArray(point)) return point as [number, number];
-      return [point.lon, point.lat];
-    });
-  }
+interface ValhallaEdge {
+  shape: string | ValhallaPoint[];
+}
 
-  // Decodificar polyline string
+/**
+ * Procesa un array de edges con shapes internos
+ */
+function processEdges(edges: ValhallaEdge[]): [number, number][] {
+  const allCoords: [number, number][] = [];
+  for (const edge of edges) {
+    const edgeCoords = decodePolyline(edge.shape);
+    allCoords.push(...edgeCoords);
+  }
+  return allCoords;
+}
+
+/**
+ * Procesa un array de puntos ValhallaPoint
+ */
+function processPoints(points: ValhallaPoint[]): [number, number][] {
+  return points.map((point) => [point.lon, point.lat]);
+}
+
+/**
+ * Decodifica un valor individual del polyline
+ */
+function decodeValue(encoded: string, index: { current: number }): number {
+  let b;
+  let shift = 0;
+  let result = 0;
+
+  do {
+    b = (encoded.codePointAt(index.current++) ?? 0) - 63;
+    result |= (b & 0x1f) << shift;
+    shift += 5;
+  } while (b >= 0x20);
+
+  return (result & 1) === 0 ? result >> 1 : ~(result >> 1);
+}
+
+/**
+ * Decodifica un polyline string a coordenadas
+ */
+function decodePolylineString(encoded: string): [number, number][] {
   const coordinates: [number, number][] = [];
-  let index = 0;
+  const index = { current: 0 };
   let lat = 0;
   let lng = 0;
 
-  while (index < encoded.length) {
-    let b;
-    let shift = 0;
-    let result = 0;
-
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-
-    const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+  while (index.current < encoded.length) {
+    const dlat = decodeValue(encoded, index);
     lat += dlat;
 
-    shift = 0;
-    result = 0;
-
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-
-    const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    const dlng = decodeValue(encoded, index);
     lng += dlng;
 
-    coordinates.push([lng / 1e5, lat / 1e5]);
+    // Valhalla usa precisión 6 (1e6) en lugar de precisión 5 (1e5)
+    coordinates.push([lng / 1e6, lat / 1e6]);
   }
 
   return coordinates;
 }
 
 /**
+ * Decodifica un polyline codificado (formato Google/Valhalla) a coordenadas
+ */
+function decodePolyline(
+  encoded: string | ValhallaPoint[] | ValhallaEdge[],
+): [number, number][] {
+  // Si ya viene como array, procesarlo
+  if (Array.isArray(encoded)) {
+    // Si es array de edges (cada edge tiene un shape)
+    if (encoded.length > 0 && 'shape' in encoded[0]) {
+      return processEdges(encoded as ValhallaEdge[]);
+    }
+
+    // Si es array de puntos ValhallaPoint
+    return processPoints(encoded as ValhallaPoint[]);
+  }
+
+  // Decodificar polyline string
+  return decodePolylineString(encoded);
+}
+
+/**
  * Codifica coordenadas a formato polyline para almacenamiento eficiente
+ * Usa precisión 6 (1e6) para ser compatible con Valhalla/Stadia Maps
  */
 export function encodePolyline(coordinates: [number, number][]): string {
   let encoded = '';
@@ -151,17 +188,18 @@ export function encodePolyline(coordinates: [number, number][]): string {
   let prevLng = 0;
 
   for (const [lng, lat] of coordinates) {
-    const latE5 = Math.round(lat * 1e5);
-    const lngE5 = Math.round(lng * 1e5);
+    // Valhalla usa precisión 6 (1e6) en lugar de precisión 5 (1e5)
+    const latE6 = Math.round(lat * 1e6);
+    const lngE6 = Math.round(lng * 1e6);
 
-    const dLat = latE5 - prevLat;
-    const dLng = lngE5 - prevLng;
+    const dLat = latE6 - prevLat;
+    const dLng = lngE6 - prevLng;
 
     encoded += encodeValue(dLat);
     encoded += encodeValue(dLng);
 
-    prevLat = latE5;
-    prevLng = lngE5;
+    prevLat = latE6;
+    prevLng = lngE6;
   }
 
   return encoded;
@@ -172,11 +210,11 @@ function encodeValue(value: number): string {
   let num = value < 0 ? ~(value << 1) : value << 1;
 
   while (num >= 0x20) {
-    encoded += String.fromCharCode((0x20 | (num & 0x1f)) + 63);
+    encoded += String.fromCodePoint((0x20 | (num & 0x1f)) + 63);
     num >>= 5;
   }
 
-  encoded += String.fromCharCode(num + 63);
+  encoded += String.fromCodePoint(num + 63);
   return encoded;
 }
 
@@ -203,14 +241,14 @@ export function simplifyGeometry(
     const dy = y2 - y1;
 
     if (dx === 0 && dy === 0) {
-      return Math.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2);
+      return Math.hypot(x0 - x1, y0 - y1);
     }
 
     const t = ((x0 - x1) * dx + (y0 - y1) * dy) / (dx * dx + dy * dy);
     const closestX = x1 + t * dx;
     const closestY = y1 + t * dy;
 
-    return Math.sqrt((x0 - closestX) ** 2 + (y0 - closestY) ** 2);
+    return Math.hypot(x0 - closestX, y0 - closestY);
   };
 
   const douglasPeucker = (

@@ -111,7 +111,56 @@ pnpm lint         # Ejecutar ESLint
 ## Configuración
 
 ### Variables de Entorno
-**ACTUALMENTE NO SE UTILIZAN VARIABLES DE ENTORNO**. El proyecto usa tiles de OpenStreetMap que no requieren API key.
+
+#### Map Matching (Opcional pero Recomendado)
+
+El proyecto incluye **Map Matching** para ajustar las rutas dibujadas a las calles reales usando **Stadia Maps API**:
+
+**Sin API Key (Modo Actual):**
+- ✅ El mapa funciona normalmente
+- ⚠️ Las rutas se muestran como líneas directas entre puntos
+- ⚠️ **NO se ajustan a las calles reales**
+
+**Con API Key (Recomendado):**
+- ✅ Las rutas se ajustan automáticamente a calles reales
+- ✅ Respeta sentidos de vías y geometría vial
+- ✅ Proporciona distancias y duraciones precisas
+
+**Configuración:**
+
+1. **Obtener API Key gratuita:**
+   - Ve a: https://client.stadiamaps.com/signup/
+   - Crea una cuenta (plan gratuito disponible)
+   - Copia tu API key
+
+2. **Crear archivo `.env` en la raíz del proyecto:**
+   ```bash
+   # .env
+   VITE_STADIA_API_KEY=tu_api_key_aquí
+   ```
+
+3. **Reiniciar el servidor de desarrollo:**
+   ```bash
+   pnpm dev
+   ```
+
+**Verificación:**
+- Selecciona una ruta en el mapa
+- Si el map matching está activo, verás que las rutas se ajustan automáticamente a las calles
+- Sin API key, las rutas se dibujan como líneas rectas entre puntos
+
+**Parámetros de Map Matching (en `src/services/mapMatchingService.ts`):**
+```typescript
+costing: 'bus'                // Modo de transporte (bus/auto/pedestrian)
+shape_match: 'map_snap'       // Algoritmo de ajuste a calles
+costing_options: {
+  bus: {
+    use_bus_routes: 1         // Preferir rutas de bus
+  }
+}
+```
+
+#### Otras Variables (Futuras)
 
 Para futuros proveedores de mapas que requieran autenticación:
 ```env

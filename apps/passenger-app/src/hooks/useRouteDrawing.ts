@@ -13,6 +13,98 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
   const routeSources = useRef<Set<string>>(new Set());
   const routeLayers = useRef<Set<string>>(new Set());
 
+  const removeRouteFromMap = useCallback(
+    (routeId: string) => {
+      if (!mapInstance.current) return;
+
+      const layersToRemove = [
+        `route-shadow-${routeId}`,
+        `route-outline-${routeId}`,
+        `route-main-${routeId}`,
+        `route-glow-${routeId}`,
+      ];
+
+      const sourcesToRemove = [`route-${routeId}`];
+
+      // Remover capas
+      for (const layerId of layersToRemove) {
+        if (mapInstance.current!.getLayer(layerId)) {
+          mapInstance.current!.removeLayer(layerId);
+          routeLayers.current.delete(layerId);
+        }
+      }
+
+      // Remover fuentes
+      for (const sourceId of sourcesToRemove) {
+        if (mapInstance.current!.getSource(sourceId)) {
+          mapInstance.current!.removeSource(sourceId);
+          routeSources.current.delete(sourceId);
+        }
+      }
+
+      // Remover marcadores
+      const mapWithMarkers = mapInstance.current as MlMap & {
+        _routeMarkers?: Record<string, maplibregl.Marker>;
+      };
+      const markers = mapWithMarkers._routeMarkers;
+      if (markers) {
+        if (
+          markers[`start-${routeId}`] &&
+          typeof markers[`start-${routeId}`].remove === 'function'
+        ) {
+          markers[`start-${routeId}`].remove();
+          delete markers[`start-${routeId}`];
+        }
+        if (
+          markers[`end-${routeId}`] &&
+          typeof markers[`end-${routeId}`].remove === 'function'
+        ) {
+          markers[`end-${routeId}`].remove();
+          delete markers[`end-${routeId}`];
+        }
+      }
+    },
+    [mapInstance],
+  );
+
+  const addRouteEndpoints = useCallback(
+    (routeId: string, coordinates: [number, number][]) => {
+      if (!mapInstance.current || coordinates.length < 2) return;
+
+      const startPoint = coordinates[0];
+      const endPoint = coordinates.at(-1)!;
+
+      // Punto de inicio - Marcador azul estándar
+      const startMarker = new maplibregl.Marker({
+        color: 'var(--color-secondary)', // #1E56A0
+        scale: 1.2,
+      })
+        .setLngLat(startPoint)
+        .addTo(mapInstance.current);
+
+      // Punto de fin - Marcador azul estándar
+      const endMarker = new maplibregl.Marker({
+        color: 'var(--color-secondary)', // #1E56A0
+        scale: 1.2,
+      })
+        .setLngLat(endPoint)
+        .addTo(mapInstance.current);
+
+      // Guardar referencias para limpieza posterior
+      routeSources.current.add(`marker-start-${routeId}`);
+      routeSources.current.add(`marker-end-${routeId}`);
+
+      // Almacenar referencias de marcadores para limpieza
+      const mapWithMarkers = mapInstance.current as MlMap & {
+        _routeMarkers?: Record<string, maplibregl.Marker>;
+      };
+      mapWithMarkers._routeMarkers = mapWithMarkers._routeMarkers || {};
+      mapWithMarkers._routeMarkers[`start-${routeId}`] = startMarker;
+      mapWithMarkers._routeMarkers[`end-${routeId}`] = endMarker;
+    },
+    [mapInstance],
+  );
+
   const addRouteToMap = useCallback(
     (
       routeId: string,
@@ -22,7 +114,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       if (!mapInstance.current) return;
 
       const {
-        color = '#1E56A0',
+        color = 'var(--color-secondary)', // #1E56A0
         width = 4,
         opacity = 0.9,
         outlineColor = '#ffffff',
@@ -131,95 +223,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       routeLayers.current.add(mainLayerId);
       routeLayers.current.add(glowLayerId);
     },
-    [mapInstance],
-  );
-
-  const addRouteEndpoints = useCallback(
-    (routeId: string, coordinates: [number, number][]) => {
-      if (!mapInstance.current || coordinates.length < 2) return;
-
-      const startPoint = coordinates[0];
-      const endPoint = coordinates.at(-1)!;
-
-      // Punto de inicio - Marcador azul estándar
-      const startMarker = new maplibregl.Marker({
-        color: '#1E56A0',
-        scale: 1.2,
-      })
-        .setLngLat(startPoint)
-        .addTo(mapInstance.current);
-
-      // Punto de fin - Marcador azul estándar
-      const endMarker = new maplibregl.Marker({
-        color: '#1E56A0',
-        scale: 1.2,
-      })
-        .setLngLat(endPoint)
-        .addTo(mapInstance.current);
-
-      // Guardar referencias para limpieza posterior
-      routeSources.current.add(`marker-start-${routeId}`);
-      routeSources.current.add(`marker-end-${routeId}`);
-
-      // Almacenar referencias de marcadores para limpieza
-      (mapInstance.current as any)._routeMarkers =
-        (mapInstance.current as any)._routeMarkers || {};
-      (mapInstance.current as any)._routeMarkers[`start-${routeId}`] =
-        startMarker;
-      (mapInstance.current as any)._routeMarkers[`end-${routeId}`] = endMarker;
-    },
-    [mapInstance],
-  );
-
-  const removeRouteFromMap = useCallback(
-    (routeId: string) => {
-      if (!mapInstance.current) return;
-
-      const layersToRemove = [
-        `route-shadow-${routeId}`,
-        `route-outline-${routeId}`,
-        `route-main-${routeId}`,
-        `route-glow-${routeId}`,
-      ];
-
-      const sourcesToRemove = [`route-${routeId}`];
-
-      // Remover capas
-      for (const layerId of layersToRemove) {
-        if (mapInstance.current!.getLayer(layerId)) {
-          mapInstance.current!.removeLayer(layerId);
-          routeLayers.current.delete(layerId);
-        }
-      }
-
-      // Remover fuentes
-      for (const sourceId of sourcesToRemove) {
-        if (mapInstance.current!.getSource(sourceId)) {
-          mapInstance.current!.removeSource(sourceId);
-          routeSources.current.delete(sourceId);
-        }
-      }
-
-      // Remover marcadores
-      const markers = (mapInstance.current as any)._routeMarkers;
-      if (markers) {
-        if (
-          markers[`start-${routeId}`] &&
-          typeof markers[`start-${routeId}`].remove === 'function'
-        ) {
-          markers[`start-${routeId}`].remove();
-          delete markers[`start-${routeId}`];
-        }
-        if (
-          markers[`end-${routeId}`] &&
-          typeof markers[`end-${routeId}`].remove === 'function'
-        ) {
-          markers[`end-${routeId}`].remove();
-          delete markers[`end-${routeId}`];
-        }
-      }
-    },
-    [mapInstance],
+    [mapInstance, addRouteEndpoints, removeRouteFromMap],
   );
 
   const clearAllRoutes = useCallback(() => {
@@ -243,7 +247,10 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
     }
 
     // Remover todos los marcadores de rutas
-    const markers = (mapInstance.current as any)._routeMarkers;
+    const mapWithMarkers = mapInstance.current as MlMap & {
+      _routeMarkers?: Record<string, maplibregl.Marker>;
+    };
+    const markers = mapWithMarkers._routeMarkers;
     if (markers) {
       for (const markerId in markers) {
         if (
@@ -253,7 +260,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           markers[markerId].remove();
         }
       }
-      (mapInstance.current as any)._routeMarkers = {};
+      mapWithMarkers._routeMarkers = {};
     }
 
     // Limpiar referencias
