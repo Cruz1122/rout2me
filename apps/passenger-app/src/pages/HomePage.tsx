@@ -16,6 +16,7 @@ import {
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import R2MSearchOverlay from '../components/R2MSearchOverlay';
 import R2MMapInfoCard from '../components/R2MMapInfoCard';
+import GlobalLoader from '../components/GlobalLoader';
 import { useMapResize } from '../hooks/useMapResize';
 import type { SearchItem } from '../types/search';
 
@@ -305,30 +306,7 @@ export default function HomePage() {
         />
 
         {/* Indicador de carga del mapa */}
-        {isMapLoading && (
-          <div
-            className="fixed inset-0 flex items-center justify-center backdrop-blur-sm z-50"
-            style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
-          >
-            <div className="text-center">
-              <div
-                className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 mx-auto mb-4"
-                style={{
-                  borderTopColor: 'rgb(var(--color-primary-rgb))',
-                }}
-              />
-              <p
-                className="text-lg font-medium"
-                style={{ color: 'rgb(var(--color-primary-rgb))' }}
-              >
-                Cargando mapa...
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Optimizado para tu conexión
-              </p>
-            </div>
-          </div>
-        )}
+        {isMapLoading && <GlobalLoader />}
 
         <div className="fixed top-4 left-4 right-4 z-50" slot="fixed">
           <R2MSearchOverlay

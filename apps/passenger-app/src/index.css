@@ -8,9 +8,21 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 16px; /* Tamaño base de fuente */
+  line-height: 1.5;
+  color: var(--color-text);
 }
 
-/* Reset headings - maintaining hierarchy but fully controllable with Tailwind */
+/* 
+  Typography Scale - Usar estos tamaños de fuente en toda la aplicación:
+  - 24px: Títulos principales (h1, títulos de página)
+  - 20px: Títulos de sección (h2)
+  - 18px: Subtítulos (h3)
+  - 16px: Texto normal, inputs, botones (h4)
+  - 14px: Texto secundario, labels, detalles (h5)
+  - 12px: Texto pequeño, hints (h6)
+*/
+
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
   padding: 0;

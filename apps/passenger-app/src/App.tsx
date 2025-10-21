@@ -8,7 +8,7 @@ import {
   IonTabs,
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { Route, Redirect } from 'react-router-dom';
+import { Route, Redirect, Switch } from 'react-router-dom';
 import AnimatedTabIcon from './components/AnimatedTabIcon';
 import GlobalLoader from './components/GlobalLoader';
 import { useActiveTab } from './hooks/useActiveTab';
@@ -18,6 +18,7 @@ const RoutesPage = lazy(() => import('./pages/RoutesPage'));
 const LivePage = lazy(() => import('./pages/LivePage'));
 const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 
 function TabsWithIcons() {
   const activeTab = useActiveTab();
@@ -68,7 +69,14 @@ export default function App() {
   return (
     <IonApp>
       <IonReactRouter>
-        <TabsWithIcons />
+        <IonRouterOutlet>
+          <Suspense fallback={<GlobalLoader />}>
+            <Switch>
+              <Route exact path="/login" component={LoginPage} />
+              <Route path="/" component={TabsWithIcons} />
+            </Switch>
+          </Suspense>
+        </IonRouterOutlet>
       </IonReactRouter>
     </IonApp>
   );

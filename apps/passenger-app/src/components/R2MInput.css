@@ -1,0 +1,139 @@
+.r2m-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 12px;
+  backdrop-blur: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 56px;
+}
+
+.r2m-input-container.focused {
+  transform: translateY(-1px);
+}
+
+.r2m-input-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.r2m-input-icon .icon-line,
+.r2m-input-icon .icon-fill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+.r2m-input-icon .icon-show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) rotate(0deg);
+}
+
+.r2m-input-icon .icon-hide {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8) rotate(-5deg);
+}
+
+/* Animación de "bounce" para el ícono fill cuando aparece */
+.r2m-input-icon .icon-fill.icon-show {
+  animation: iconBounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes iconBounce {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3) rotate(-15deg);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.1) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+}
+
+.r2m-input-field {
+  flex: 1;
+  margin-left: 12px;
+  font-size: 16px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  width: 100%;
+}
+
+.r2m-input-field::placeholder {
+  color: var(--color-terciary);
+  opacity: 1;
+}
+
+/* Quitar el layer azul de autofill/autocompletado */
+.r2m-input-field:-webkit-autofill,
+.r2m-input-field:-webkit-autofill:hover,
+.r2m-input-field:-webkit-autofill:focus,
+.r2m-input-field:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.95) inset !important;
+  -webkit-text-fill-color: var(--color-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.r2m-input-action {
+  position: absolute;
+  right: 16px;
+  padding: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.r2m-input-eye-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.r2m-input-eye-icon .icon-line,
+.r2m-input-eye-icon .icon-fill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+.r2m-input-eye-icon .icon-show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) rotate(0deg);
+}
+
+.r2m-input-eye-icon .icon-hide {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8) rotate(-5deg);
+}
+
+/* Animación de "bounce" para el ícono fill del eye cuando aparece */
+.r2m-input-eye-icon .icon-fill.icon-show {
+  animation: iconBounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
