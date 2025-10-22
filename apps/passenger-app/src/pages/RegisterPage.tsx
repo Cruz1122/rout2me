@@ -208,6 +208,71 @@ export default function RegisterPage() {
     }
   };
 
+  // Función para obtener el texto del botón
+  const getButtonText = () => {
+    if (currentPhase === 2 && accountPurpose === 'personal') {
+      return 'Finalizar';
+    } else if (currentPhase === 2) {
+      return 'Continuar';
+    } else {
+      return 'Finalizar';
+    }
+  };
+
+  // Renderizado de botones de navegación
+  const renderNavigationButtons = () => {
+    if (currentPhase === 1) {
+      // Solo botón continuar en fase 1
+      return (
+        <div className="flex justify-center">
+          <div className="w-32">
+            <R2MButton
+              type="button"
+              variant="primary"
+              size="large"
+              onClick={handleNextPhase}
+              loading={isLoading}
+              fullWidth
+            >
+              Continuar
+            </R2MButton>
+          </div>
+        </div>
+      );
+    } else {
+      // Botones atrás y continuar/finalizar en fases 2 y 3
+      return (
+        <div className="flex gap-3 justify-center">
+          <div className="w-32">
+            <R2MButton
+              type="button"
+              variant="outline"
+              size="large"
+              onClick={handlePreviousPhase}
+              fullWidth
+            >
+              Atrás
+            </R2MButton>
+          </div>
+
+          <div className="w-32">
+            <R2MButton
+              type="button"
+              variant="primary"
+              size="large"
+              onClick={handleNextPhase}
+              disabled={currentPhase === 2 && !accountPurpose}
+              loading={isLoading}
+              fullWidth
+            >
+              {getButtonText()}
+            </R2MButton>
+          </div>
+        </div>
+      );
+    }
+  };
+
   // Fase 1: Datos personales
   const renderPersonalDataPhase = () => (
     <div className="w-full max-w-md">
@@ -296,16 +361,6 @@ export default function RegisterPage() {
             showOptional
           />
         </div>
-
-        <R2MButton
-          type="submit"
-          variant="primary"
-          size="large"
-          fullWidth
-          loading={isLoading}
-        >
-          Continuar
-        </R2MButton>
       </form>
     </div>
   );
@@ -420,33 +475,6 @@ export default function RegisterPage() {
           </p>
         </div>
       )}
-
-      <div className="flex gap-3 justify-center">
-        <div className="w-32">
-          <R2MButton
-            type="button"
-            variant="outline"
-            size="large"
-            onClick={handlePreviousPhase}
-            fullWidth
-          >
-            Atrás
-          </R2MButton>
-        </div>
-
-        <div className="w-32">
-          <R2MButton
-            type="button"
-            variant="primary"
-            size="large"
-            onClick={handleNextPhase}
-            disabled={!accountPurpose}
-            fullWidth
-          >
-            Continuar
-          </R2MButton>
-        </div>
-      </div>
     </div>
   );
 
@@ -519,32 +547,6 @@ export default function RegisterPage() {
             </span>
           </div>
         </div>
-
-        <div className="flex gap-3 justify-center">
-          <div className="w-32">
-            <R2MButton
-              type="button"
-              variant="outline"
-              size="large"
-              onClick={handlePreviousPhase}
-              fullWidth
-            >
-              Atrás
-            </R2MButton>
-          </div>
-
-          <div className="w-32">
-            <R2MButton
-              type="submit"
-              variant="primary"
-              size="large"
-              loading={isLoading}
-              fullWidth
-            >
-              Finalizar
-            </R2MButton>
-          </div>
-        </div>
       </form>
     </div>
   );
@@ -552,26 +554,28 @@ export default function RegisterPage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
-        <div className="flex flex-col items-center justify-center min-h-full px-6 py-12">
-          {/* Logo placeholder */}
-          <div className="mb-8 text-center">
-            <div
-              className="w-24 h-24 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg"
-              style={{
-                backgroundColor: 'var(--color-primary)',
-              }}
-            >
-              <span
-                className="font-bold text-white"
-                style={{ fontSize: '32px' }}
+        <div className="flex flex-col min-h-full px-6">
+          {/* Header fijo con logo */}
+          <div className="flex-shrink-0 pt-8 pb-4">
+            <div className="text-center">
+              <div
+                className="w-24 h-24 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                }}
               >
-                R2M
-              </span>
+                <span
+                  className="font-bold text-white"
+                  style={{ fontSize: '32px' }}
+                >
+                  R2M
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Indicador de progreso */}
-          <div className="mb-8 w-full max-w-md">
+          {/* Indicador de progreso fijo */}
+          <div className="flex-shrink-0 mb-6 w-full max-w-md mx-auto">
             <div className="flex items-center justify-between mb-2">
               <span
                 className="text-sm font-medium"
@@ -601,21 +605,30 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Contenido de la fase actual */}
-          {renderCurrentPhase()}
+          {/* Contenido de la fase actual - área flexible */}
+          <div className="flex-1 flex items-center justify-center">
+            {renderCurrentPhase()}
+          </div>
 
-          {/* Link de login */}
-          <div className="text-center mt-8">
-            <span style={{ color: 'var(--color-terciary)', fontSize: '14px' }}>
-              ¿Ya tienes cuenta?{' '}
-            </span>
-            <R2MTextLink
-              variant="secondary"
-              size="small"
-              onClick={() => history.push('/login')}
-            >
-              Inicia sesión
-            </R2MTextLink>
+          {/* Botones de navegación fijos */}
+          <div className="flex-shrink-0 py-6">{renderNavigationButtons()}</div>
+
+          {/* Footer fijo con link de login */}
+          <div className="flex-shrink-0 pb-8">
+            <div className="text-center">
+              <span
+                style={{ color: 'var(--color-terciary)', fontSize: '14px' }}
+              >
+                ¿Ya tienes cuenta?{' '}
+              </span>
+              <R2MTextLink
+                variant="secondary"
+                size="small"
+                onClick={() => history.push('/login')}
+              >
+                Inicia sesión
+              </R2MTextLink>
+            </div>
           </div>
         </div>
       </IonContent>

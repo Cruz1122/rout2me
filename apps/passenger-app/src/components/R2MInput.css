@@ -134,6 +134,7 @@
   color: var(--color-text);
   font-family: inherit;
   width: 100%;
+  padding-right: 0;
 }
 
 .r2m-input-field::placeholder {
@@ -195,5 +196,10 @@
 /* Animación de "bounce" para el ícono fill del eye cuando aparece */
 .r2m-input-eye-icon .icon-fill.icon-show {
   animation: iconBounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Padding específico para campos de contraseña para evitar solapamiento */
+.r2m-input-container.password-field .r2m-input-field {
+  padding-right: 48px;
 }
 

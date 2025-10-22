@@ -203,7 +203,7 @@ export default function R2MInput({
       <FieldIndicators showOptional={showOptional} />
 
       <div
-        className={`r2m-input-container ${isFocused ? 'focused' : ''}`}
+        className={`r2m-input-container ${isFocused ? 'focused' : ''} ${type === 'password' ? 'password-field' : ''}`}
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           border: `1px solid ${isFocused ? 'rgba(var(--color-secondary-rgb), 0.5)' : 'rgba(var(--color-surface-rgb), 0.5)'}`,

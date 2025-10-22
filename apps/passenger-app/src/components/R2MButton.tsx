@@ -41,9 +41,8 @@ export default function R2MButton({
       className={getClassNames()}
     >
       {loading ? (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center">
           <RiLoaderLine className="animate-spin" size={20} />
-          <span>Cargando...</span>
         </div>
       ) : (
         children
