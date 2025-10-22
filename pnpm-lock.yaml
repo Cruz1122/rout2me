@@ -206,6 +206,9 @@ importers:
         specifier: ^2.75.1
         version: 2.75.1
     devDependencies:
+      '@types/node':
+        specifier: ^24.6.2
+        version: 24.6.2
       rimraf:
         specifier: ^6.0.0
         version: 6.0.1

@@ -45,19 +45,6 @@ export function useCache(options: UseCacheOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const [preloadProgress, setPreloadProgress] = useState(0);
 
-  // Cargar estadísticas iniciales
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
-
-  // Configurar precarga automática
-  useEffect(() => {
-    if (options.autoPreload && options.preloadConfig) {
-      assetPreloader.updateConfig(options.preloadConfig);
-      startPreload();
-    }
-  }, [options.autoPreload, options.preloadConfig, startPreload]);
-
   // Listener para progreso de precarga
   useEffect(() => {
     const handlePreloadProgress = (event: CustomEvent) => {
@@ -123,6 +110,19 @@ export function useCache(options: UseCacheOptions = {}) {
       setIsLoading(false);
     }
   }, []);
+
+  // Cargar estadísticas iniciales
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // Configurar precarga automática
+  useEffect(() => {
+    if (options.autoPreload && options.preloadConfig) {
+      assetPreloader.updateConfig(options.preloadConfig);
+      startPreload();
+    }
+  }, [options.autoPreload, options.preloadConfig, startPreload]);
 
   /**
    * Carga una imagen con caché
