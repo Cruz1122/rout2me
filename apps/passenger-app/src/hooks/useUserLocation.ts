@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { userLocationState } from '../data/userLocationMock';
-import type { BusLocation } from '../data/busesMock';
+import type { BusLocation } from '../services/busService';
 
 /**
  * Hook reactivo para obtener la ubicación del usuario

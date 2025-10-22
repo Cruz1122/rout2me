@@ -1,4 +1,4 @@
-import type { Bus, BusLocation } from '../data/busesMock';
+import type { Bus, BusLocation } from '../services/busService';
 import { getDistanceBetweenLocations } from './distanceUtils';
 
 /**

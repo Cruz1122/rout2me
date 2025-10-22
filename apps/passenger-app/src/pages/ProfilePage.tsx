@@ -6,7 +6,7 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { useState } from 'react';
-import { RiUser5Fill, RiDatabaseLine, RiSettingsLine } from 'react-icons/ri';
+import { RiUser5Fill, RiDatabaseLine } from 'react-icons/ri';
 import CacheManager from '../components/CacheManager';
 
 export default function ProfilePage() {

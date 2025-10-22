@@ -3,7 +3,7 @@
  * Proporciona una interfaz para ver estadísticas y controlar el caché
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useCache } from '../hooks/useCache';
 import {
   RiRefreshLine,

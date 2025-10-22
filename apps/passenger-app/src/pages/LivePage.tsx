@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
-import { RiBusLine } from 'react-icons/ri';
-import { mockBuses, type Bus } from '../data/busesMock';
+import {
+  RiBusLine,
+  RiBusFill,
+  RiRoadMapLine,
+  RiRoadMapFill,
+  RiGridLine,
+  RiGridFill,
+} from 'react-icons/ri';
+import {
+  type Bus,
+  fetchBuses,
+  type BusServiceError,
+} from '../services/busService';
 import FilterSwitcher, {
   type FilterOption,
 } from '../components/FilterSwitcher';
@@ -12,6 +23,7 @@ import {
 } from '../utils/distanceUtils';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { getNearbyBuses } from '../utils/busUtils';
+import GlobalLoader from '../components/GlobalLoader';
 
 type FilterTab = 'all' | 'active' | 'nearby';
 
@@ -19,20 +31,20 @@ const FILTER_OPTIONS: readonly FilterOption<FilterTab>[] = [
   {
     id: 'all',
     label: 'Todos',
-    iconOutline: RiBusLine,
-    iconFilled: RiBusLine,
+    iconOutline: RiGridLine,
+    iconFilled: RiGridFill,
   },
   {
     id: 'active',
     label: 'Activos',
     iconOutline: RiBusLine,
-    iconFilled: RiBusLine,
+    iconFilled: RiBusFill,
   },
   {
     id: 'nearby',
     label: 'Cercanos',
-    iconOutline: RiBusLine,
-    iconFilled: RiBusLine,
+    iconOutline: RiRoadMapLine,
+    iconFilled: RiRoadMapFill,
   },
 ] as const;
 
@@ -40,27 +52,49 @@ export default function LivePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [buses, setBuses] = useState<Bus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<BusServiceError | null>(null);
   const userLocation = useUserLocation();
+
+  // Cargar buses al montar el componente
+  useEffect(() => {
+    const loadBuses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedBuses = await fetchBuses();
+        setBuses(fetchedBuses);
+      } catch (err) {
+        console.error('Error loading buses:', err);
+        setError(err as BusServiceError);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBuses();
+  }, []);
 
   const handleFilterChange = (filter: FilterTab | null) => {
     setActiveFilter(filter);
   };
 
   const getFilteredBuses = (): Bus[] => {
-    let buses = mockBuses;
+    let filteredBuses = buses;
 
     // Aplicar filtro de categoría (no excluyentes)
     if (activeFilter === 'active') {
       // Activos solo muestra buses que no estén offline
-      buses = buses.filter((bus) => bus.status !== 'offline');
+      filteredBuses = filteredBuses.filter((bus) => bus.status !== 'offline');
     } else if (activeFilter === 'nearby') {
       // Cercanos calcula dinámicamente basado en la ubicación del usuario
-      buses = getNearbyBuses(buses, userLocation);
+      filteredBuses = getNearbyBuses(filteredBuses, userLocation);
     }
 
     // Aplicar filtro de búsqueda
     if (searchQuery.trim()) {
-      buses = buses.filter(
+      filteredBuses = filteredBuses.filter(
         (bus) =>
           bus.routeNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
           bus.routeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -68,10 +102,47 @@ export default function LivePage() {
       );
     }
 
-    return buses;
+    return filteredBuses;
   };
 
   const filteredBuses = getFilteredBuses();
+
+  const renderBusesContent = () => {
+    if (loading) {
+      return <GlobalLoader />;
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-12 text-red-500">
+          <p className="mb-2">Error al cargar los buses</p>
+          <p className="text-sm text-gray-500">{error.message}</p>
+          <button
+            onClick={() => globalThis.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+
+    if (filteredBuses.length === 0) {
+      return (
+        <div className="text-center py-12 text-gray-500">
+          <p>No se encontraron buses</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {filteredBuses.map((bus) => (
+          <BusCard key={bus.id} bus={bus} userLocation={userLocation} />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <IonPage>
@@ -145,19 +216,7 @@ export default function LivePage() {
         </div>
 
         {/* Lista de buses */}
-        <div className="px-4 py-2">
-          {filteredBuses.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <p>No se encontraron buses</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredBuses.map((bus) => (
-                <BusCard key={bus.id} bus={bus} userLocation={userLocation} />
-              ))}
-            </div>
-          )}
-        </div>
+        <div className="px-4 py-2">{renderBusesContent()}</div>
       </IonContent>
     </IonPage>
   );

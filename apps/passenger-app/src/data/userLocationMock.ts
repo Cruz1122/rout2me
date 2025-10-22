@@ -1,4 +1,4 @@
-import type { BusLocation } from './busesMock';
+import type { BusLocation } from '../services/busService';
 
 /**
  * Mock de ubicaciones del usuario en diferentes puntos de Manizales
@@ -61,7 +61,9 @@ export const userLocationState = {
   get: (): BusLocation => currentUserLocation,
   set: (newLocation: BusLocation) => {
     currentUserLocation = { ...newLocation };
-    listeners.forEach((listener) => listener());
+    for (const listener of listeners) {
+      listener();
+    }
   },
   subscribe: (listener: () => void) => {
     listeners.add(listener);

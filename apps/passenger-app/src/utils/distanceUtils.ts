@@ -1,4 +1,4 @@
-import type { BusLocation } from '../data/busesMock';
+import type { BusLocation } from '../services/busService';
 
 /**
  * Calcula la distancia entre dos coordenadas geográficas usando la fórmula de Haversine
