@@ -19,6 +19,7 @@ const LivePage = lazy(() => import('./pages/LivePage'));
 const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 
 function TabsWithIcons() {
   const activeTab = useActiveTab();
@@ -73,6 +74,7 @@ export default function App() {
           <Suspense fallback={<GlobalLoader />}>
             <Switch>
               <Route exact path="/login" component={LoginPage} />
+              <Route exact path="/register" component={RegisterPage} />
               <Route path="/" component={TabsWithIcons} />
             </Switch>
           </Suspense>

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
+import { useHistory } from 'react-router-dom';
 import R2MInput from '../components/R2MInput';
 import R2MButton from '../components/R2MButton';
 import R2MTextLink from '../components/R2MTextLink';
 
 export default function LoginPage() {
+  const history = useHistory();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -13,7 +15,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     console.log('Login attempt:', { email, password });
-    // TODO: Implementar lógica de autenticación
+    // Implementar lógica de autenticación
     setTimeout(() => setIsLoading(false), 2000);
   };
 
@@ -133,7 +135,7 @@ export default function LoginPage() {
               <R2MTextLink
                 variant="secondary"
                 size="small"
-                onClick={() => console.log('Register clicked')}
+                onClick={() => history.push('/register')}
               >
                 Regístrate
               </R2MTextLink>
