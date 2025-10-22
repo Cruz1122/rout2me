@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import './R2MTextLink.css';
 
 interface R2MTextLinkProps {
@@ -13,6 +14,41 @@ export default function R2MTextLink({
   variant = 'primary',
   size = 'medium',
 }: R2MTextLinkProps) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+
+    // Observar cambios en aria-hidden del ancestro
+    const observer = new MutationObserver(() => {
+      const page = button.closest('.ion-page');
+      if (page?.getAttribute('aria-hidden') === 'true') {
+        // Si la página se oculta y este botón tiene el focus, quitarlo
+        if (document.activeElement === button) {
+          button.blur();
+        }
+      }
+    });
+
+    // Observar cambios en el ancestro .ion-page
+    const page = button.closest('.ion-page');
+    if (page) {
+      observer.observe(page, {
+        attributes: true,
+        attributeFilter: ['aria-hidden'],
+      });
+    }
+
+    return () => {
+      observer.disconnect();
+      // Asegurar que el botón pierde el focus al desmontarse
+      if (document.activeElement === button) {
+        button.blur();
+      }
+    };
+  }, []);
+
   const getColorByVariant = () => {
     switch (variant) {
       case 'primary':
@@ -39,6 +75,7 @@ export default function R2MTextLink({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={onClick}
       className="r2m-text-link"

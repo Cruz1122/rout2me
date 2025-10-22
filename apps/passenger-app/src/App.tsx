@@ -8,7 +8,7 @@ import {
   IonTabs,
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { Route, Redirect, Switch } from 'react-router-dom';
+import { Route, Redirect } from 'react-router-dom';
 import AnimatedTabIcon from './components/AnimatedTabIcon';
 import GlobalLoader from './components/GlobalLoader';
 import { useActiveTab } from './hooks/useActiveTab';
@@ -28,14 +28,34 @@ function TabsWithIcons() {
   return (
     <IonTabs>
       <IonRouterOutlet>
-        <Suspense fallback={<GlobalLoader />}>
-          <Route exact path="/inicio" component={HomePage} />
-          <Route exact path="/rutas" component={RoutesPage} />
-          <Route exact path="/en-vivo" component={LivePage} />
-          <Route exact path="/alertas" component={AlertsPage} />
-          <Route exact path="/perfil" component={ProfilePage} />
-          <Route exact path="/" render={() => <Redirect to="/inicio" />} />
-        </Suspense>
+        <Route exact path="/inicio">
+          <Suspense fallback={<GlobalLoader />}>
+            <HomePage />
+          </Suspense>
+        </Route>
+        <Route exact path="/rutas">
+          <Suspense fallback={<GlobalLoader />}>
+            <RoutesPage />
+          </Suspense>
+        </Route>
+        <Route exact path="/en-vivo">
+          <Suspense fallback={<GlobalLoader />}>
+            <LivePage />
+          </Suspense>
+        </Route>
+        <Route exact path="/alertas">
+          <Suspense fallback={<GlobalLoader />}>
+            <AlertsPage />
+          </Suspense>
+        </Route>
+        <Route exact path="/perfil">
+          <Suspense fallback={<GlobalLoader />}>
+            <ProfilePage />
+          </Suspense>
+        </Route>
+        <Route exact path="/">
+          <Redirect to="/inicio" />
+        </Route>
       </IonRouterOutlet>
 
       <IonTabBar slot="bottom">
@@ -72,14 +92,24 @@ export default function App() {
     <IonApp>
       <IonReactRouter>
         <IonRouterOutlet>
-          <Suspense fallback={<GlobalLoader />}>
-            <Switch>
-              <Route exact path="/login" component={LoginPage} />
-              <Route exact path="/register" component={RegisterPage} />
-              <Route exact path="/2fa" component={TwoFAPage} />
-              <Route path="/" component={TabsWithIcons} />
-            </Switch>
-          </Suspense>
+          <Route exact path="/login">
+            <Suspense fallback={<GlobalLoader />}>
+              <LoginPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/register">
+            <Suspense fallback={<GlobalLoader />}>
+              <RegisterPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/2fa">
+            <Suspense fallback={<GlobalLoader />}>
+              <TwoFAPage />
+            </Suspense>
+          </Route>
+          <Route>
+            <TabsWithIcons />
+          </Route>
         </IonRouterOutlet>
       </IonReactRouter>
     </IonApp>

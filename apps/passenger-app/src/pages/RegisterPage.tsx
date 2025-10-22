@@ -6,10 +6,12 @@ import {
   RiUser5Fill,
   RiBriefcase4Line,
   RiBriefcase4Fill,
+  RiKey2Line,
 } from 'react-icons/ri';
 import R2MInput from '../components/R2MInput';
 import R2MButton from '../components/R2MButton';
 import R2MTextLink from '../components/R2MTextLink';
+import R2MCodeInput from '../components/R2MCodeInput';
 import '../components/R2MInput.css';
 
 // Tipos para el registro
@@ -22,8 +24,7 @@ interface PersonalData {
 }
 
 interface CompanyData {
-  name: string;
-  shortName: string;
+  organizationKey: string[];
 }
 
 type AccountPurpose = 'personal' | 'organization';
@@ -73,8 +74,7 @@ export default function RegisterPage() {
     null,
   );
   const [companyData, setCompanyData] = useState<CompanyData>({
-    name: '',
-    shortName: '',
+    organizationKey: ['', '', '', '', '', ''],
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -114,25 +114,11 @@ export default function RegisterPage() {
   };
 
   const validateCompanyData = () => {
-    const { name, shortName } = companyData;
+    const { organizationKey } = companyData;
+    const fullKey = organizationKey.join('');
 
-    if (!name.trim()) {
-      alert('El nombre de la empresa es requerido');
-      return false;
-    }
-
-    if (name.length > 20) {
-      alert('El nombre de la empresa no puede exceder 20 caracteres');
-      return false;
-    }
-
-    if (!shortName.trim()) {
-      alert('El nombre corto es requerido');
-      return false;
-    }
-
-    if (shortName.length > 4) {
-      alert('El nombre corto no puede exceder 4 caracteres');
+    if (fullKey.length !== 6) {
+      alert('La clave debe tener exactamente 6 caracteres');
       return false;
     }
 
@@ -178,9 +164,8 @@ export default function RegisterPage() {
       roles: accountPurpose === 'organization' ? ['ADMIN'] : ['USER'],
       ...(accountPurpose === 'organization' && {
         company: {
-          mode: 'create',
-          name: companyData.name,
-          short_name: companyData.shortName,
+          mode: 'join',
+          organization_key: companyData.organizationKey.join(''),
         },
       }),
     };
@@ -478,15 +463,18 @@ export default function RegisterPage() {
     </div>
   );
 
-  // Fase 3: Datos de la empresa
+  // Fase 3: Clave única de la organización
   const renderCompanyDataPhase = () => (
     <div className="w-full max-w-md">
-      <div className="mb-8 text-center">
+      <div className="mb-6 text-center">
+        <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+          <RiKey2Line size={48} style={{ color: 'var(--color-primary)' }} />
+        </div>
         <h1
           className="font-bold mb-2"
           style={{ color: 'var(--color-primary)', fontSize: '24px' }}
         >
-          Datos de la organización
+          Clave de la organización
         </h1>
         <p
           style={{
@@ -494,7 +482,7 @@ export default function RegisterPage() {
             fontSize: '14px',
           }}
         >
-          Información de tu organización
+          Ingresa la clave única proporcionada por tu organización
         </p>
       </div>
 
@@ -504,48 +492,23 @@ export default function RegisterPage() {
           handleNextPhase();
         }}
       >
-        {/* Nombre de la empresa */}
-        <div className="mb-4">
-          <R2MInput
-            type="company"
-            placeholder="Nombre de la organización"
-            value={companyData.name}
-            onValueChange={(value) => {
-              const limitedValue = value.slice(0, 20);
-              setCompanyData({ ...companyData, name: limitedValue });
-            }}
-            required
-          />
-          <div className="flex justify-between text-xs mt-1">
-            <span style={{ color: 'var(--color-terciary)' }}>
-              Máximo 20 caracteres
-            </span>
-            <span style={{ color: 'var(--color-terciary)' }}>
-              {companyData.name.length}/20
-            </span>
-          </div>
-        </div>
-
-        {/* Nombre corto */}
+        {/* Campo de clave única */}
         <div className="mb-6">
-          <R2MInput
-            type="shortName"
-            placeholder="Nombre corto"
-            value={companyData.shortName}
-            onValueChange={(value) => {
-              const limitedValue = value.slice(0, 4);
-              setCompanyData({ ...companyData, shortName: limitedValue });
-            }}
-            required
+          <R2MCodeInput
+            length={6}
+            value={companyData.organizationKey}
+            onChange={(newKey) =>
+              setCompanyData({ ...companyData, organizationKey: newKey })
+            }
+            type="alphanumeric"
+            autoFocus
           />
-          <div className="flex justify-between text-xs mt-1">
-            <span style={{ color: 'var(--color-terciary)' }}>
-              Máximo 4 caracteres
-            </span>
-            <span style={{ color: 'var(--color-terciary)' }}>
-              {companyData.shortName.length}/4
-            </span>
-          </div>
+          <p
+            className="text-center text-sm mt-4"
+            style={{ color: 'var(--color-terciary)' }}
+          >
+            Puedes copiar y pegar la clave completa
+          </p>
         </div>
       </form>
     </div>
@@ -555,24 +518,9 @@ export default function RegisterPage() {
     <IonPage>
       <IonContent fullscreen className="ion-padding">
         <div className="flex flex-col min-h-full px-6">
-          {/* Header fijo con logo */}
-          <div className="flex-shrink-0 pt-8 pb-4">
-            <div className="text-center">
-              <div
-                className="w-24 h-24 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg"
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                }}
-              >
-                <span
-                  className="font-bold text-white"
-                  style={{ fontSize: '32px' }}
-                >
-                  R2M
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* Indicador de progreso fijo */}
+          <div className="flex-shrink-0 pt-8"></div>
+          <div className="flex-shrink-0 pb-4"></div>
 
           {/* Indicador de progreso fijo */}
           <div className="flex-shrink-0 mb-6 w-full max-w-md mx-auto">

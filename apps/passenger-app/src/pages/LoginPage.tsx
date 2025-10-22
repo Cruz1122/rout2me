@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
+import {
+  RiGoogleLine,
+  RiGoogleFill,
+  RiMicrosoftLine,
+  RiMicrosoftFill,
+} from 'react-icons/ri';
 import R2MInput from '../components/R2MInput';
 import R2MButton from '../components/R2MButton';
 import R2MTextLink from '../components/R2MTextLink';
@@ -10,6 +16,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hoveredProvider, setHoveredProvider] = useState<
+    'google' | 'microsoft' | null
+  >(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,24 +28,28 @@ export default function LoginPage() {
     setTimeout(() => setIsLoading(false), 2000);
   };
 
+  const handleGoogleLogin = () => {
+    console.log('Google login clicked');
+    // Implementar lógica de autenticación con Google
+  };
+
+  const handleMicrosoftLogin = () => {
+    console.log('Microsoft login clicked');
+    // Implementar lógica de autenticación con Microsoft
+  };
+
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
         <div className="flex flex-col items-center justify-center min-h-full px-6 py-12">
           {/* Logo placeholder */}
           <div className="mb-12 text-center">
-            <div
-              className="w-24 h-24 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg"
-              style={{
-                backgroundColor: 'var(--color-primary)',
-              }}
-            >
-              <span
-                className="font-bold text-white"
-                style={{ fontSize: '32px' }}
-              >
-                R2M
-              </span>
+            <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+              <img
+                src="/icon.webp"
+                alt="Rout2Me Logo"
+                className="w-full h-full object-contain rounded-2xl"
+              />
             </div>
             <h1
               className="font-bold"
@@ -120,9 +133,113 @@ export default function LoginPage() {
                     fontSize: '14px',
                   }}
                 >
-                  o
+                  o continúa con
                 </span>
               </div>
+            </div>
+
+            {/* Botones de inicio de sesión social */}
+            <div className="flex gap-3 mb-6">
+              {/* Botón de Google */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                onMouseEnter={() => setHoveredProvider('google')}
+                onMouseLeave={() => setHoveredProvider(null)}
+                className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md"
+                style={{
+                  borderRadius: '12px',
+                  minHeight: '100px',
+                  backgroundColor:
+                    hoveredProvider === 'google' ? '#EA4335' : 'white',
+                  borderColor:
+                    hoveredProvider === 'google' ? '#EA4335' : '#e5e7eb',
+                }}
+              >
+                <div
+                  className="mb-2 flex items-center justify-center relative"
+                  style={{ width: '32px', height: '32px' }}
+                >
+                  <RiGoogleLine
+                    size={32}
+                    className={`absolute top-0 left-0 transition-all duration-300 ${
+                      hoveredProvider === 'google'
+                        ? 'opacity-0 scale-75'
+                        : 'opacity-100 scale-100'
+                    }`}
+                    style={{ color: 'var(--color-terciary)' }}
+                  />
+                  <RiGoogleFill
+                    size={32}
+                    className={`absolute top-0 left-0 transition-all duration-300 ${
+                      hoveredProvider === 'google'
+                        ? 'opacity-100 scale-100'
+                        : 'opacity-0 scale-75'
+                    }`}
+                    style={{ color: 'white' }}
+                  />
+                </div>
+                <h3
+                  className="font-semibold text-center transition-colors duration-300"
+                  style={{
+                    fontSize: '14px',
+                    color: hoveredProvider === 'google' ? 'white' : '#1f2937',
+                  }}
+                >
+                  Google
+                </h3>
+              </button>
+
+              {/* Botón de Microsoft */}
+              <button
+                type="button"
+                onClick={handleMicrosoftLogin}
+                onMouseEnter={() => setHoveredProvider('microsoft')}
+                onMouseLeave={() => setHoveredProvider(null)}
+                className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md"
+                style={{
+                  borderRadius: '12px',
+                  minHeight: '100px',
+                  backgroundColor:
+                    hoveredProvider === 'microsoft' ? '#00A4EF' : 'white',
+                  borderColor:
+                    hoveredProvider === 'microsoft' ? '#00A4EF' : '#e5e7eb',
+                }}
+              >
+                <div
+                  className="mb-2 flex items-center justify-center relative"
+                  style={{ width: '32px', height: '32px' }}
+                >
+                  <RiMicrosoftLine
+                    size={32}
+                    className={`absolute top-0 left-0 transition-all duration-300 ${
+                      hoveredProvider === 'microsoft'
+                        ? 'opacity-0 scale-75'
+                        : 'opacity-100 scale-100'
+                    }`}
+                    style={{ color: 'var(--color-terciary)' }}
+                  />
+                  <RiMicrosoftFill
+                    size={32}
+                    className={`absolute top-0 left-0 transition-all duration-300 ${
+                      hoveredProvider === 'microsoft'
+                        ? 'opacity-100 scale-100'
+                        : 'opacity-0 scale-75'
+                    }`}
+                    style={{ color: 'white' }}
+                  />
+                </div>
+                <h3
+                  className="font-semibold text-center transition-colors duration-300"
+                  style={{
+                    fontSize: '14px',
+                    color:
+                      hoveredProvider === 'microsoft' ? 'white' : '#1f2937',
+                  }}
+                >
+                  Microsoft
+                </h3>
+              </button>
             </div>
 
             {/* Link de registro */}

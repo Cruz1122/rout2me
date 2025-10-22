@@ -74,6 +74,7 @@ dist
 # Gatsby files
 .cache/
 public
+!apps/passenger-app/public/
 
 # Storybook build outputs
 .out

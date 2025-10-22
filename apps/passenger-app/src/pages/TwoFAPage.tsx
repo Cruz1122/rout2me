@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
+import { RiLock2Line } from 'react-icons/ri';
 import R2MButton from '../components/R2MButton';
 import R2MTextLink from '../components/R2MTextLink';
+import R2MCodeInput from '../components/R2MCodeInput';
 
 export default function TwoFAPage() {
   const history = useHistory();
@@ -10,7 +12,6 @@ export default function TwoFAPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [canResend, setCanResend] = useState(true);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Efecto para el cooldown
   useEffect(() => {
@@ -28,56 +29,6 @@ export default function TwoFAPage() {
     }
     return () => clearInterval(interval);
   }, [cooldown]);
-
-  // Función para manejar el cambio de código
-  const handleCodeChange = (index: number, value: string) => {
-    // Solo permitir números
-    const numericValue = value.replaceAll(/\D/g, '');
-
-    if (numericValue.length > 1) {
-      // Si se pega un código completo, distribuirlo
-      const pastedCode = numericValue.slice(0, 6).split('');
-      const newCode = [...code];
-      for (const [i, digit] of pastedCode.entries()) {
-        if (i < 6) {
-          newCode[i] = digit;
-        }
-      }
-      setCode(newCode);
-
-      // Enfocar el último input lleno o el siguiente vacío
-      const lastFilledIndex = newCode.findIndex((digit, i) => !digit && i > 0);
-      const nextIndex =
-        lastFilledIndex === -1
-          ? Math.min(5, pastedCode.length - 1)
-          : lastFilledIndex;
-      if (inputRefs.current[nextIndex]) {
-        inputRefs.current[nextIndex]?.focus();
-      }
-    } else {
-      // Cambio normal de un dígito
-      const newCode = [...code];
-      newCode[index] = numericValue;
-      setCode(newCode);
-
-      // Auto-avanzar al siguiente input si se ingresó un dígito
-      if (numericValue && index < 5) {
-        inputRefs.current[index + 1]?.focus();
-      }
-    }
-  };
-
-  // Función para manejar teclas especiales
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      // Si el input actual está vacío y se presiona backspace, ir al anterior
-      inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
 
   // Función para verificar el código
   const handleVerifyCode = (e: React.FormEvent) => {
@@ -102,7 +53,6 @@ export default function TwoFAPage() {
       } else {
         alert('Código incorrecto. Intenta nuevamente.');
         setCode(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
       }
     }, 2000);
   };
@@ -128,20 +78,13 @@ export default function TwoFAPage() {
     <IonPage>
       <IonContent fullscreen className="ion-padding">
         <div className="flex flex-col items-center justify-center min-h-full px-6 py-12">
-          {/* Logo */}
+          {/* Header */}
           <div className="mb-12 text-center">
-            <div
-              className="w-24 h-24 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg"
-              style={{
-                backgroundColor: 'var(--color-primary)',
-              }}
-            >
-              <span
-                className="font-bold text-white"
-                style={{ fontSize: '32px' }}
-              >
-                R2M
-              </span>
+            <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+              <RiLock2Line
+                size={48}
+                style={{ color: 'var(--color-primary)' }}
+              />
             </div>
             <h1
               className="font-bold"
@@ -164,36 +107,15 @@ export default function TwoFAPage() {
           <form onSubmit={handleVerifyCode} className="w-full max-w-md">
             {/* Inputs del código */}
             <div className="mb-8">
-              <div className="flex justify-center gap-3 mb-4">
-                {code.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(el) => {
-                      inputRefs.current[index] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    value={digit}
-                    onChange={(e) => handleCodeChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="w-12 h-12 text-center text-xl font-bold border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                    style={{
-                      borderColor: digit
-                        ? 'var(--color-primary)'
-                        : 'var(--color-surface)',
-                      backgroundColor: digit ? 'var(--color-bg)' : 'white',
-                      color: 'var(--color-text)',
-                    }}
-                    autoComplete="one-time-code"
-                  />
-                ))}
-              </div>
-
-              {/* Mensaje de ayuda */}
+              <R2MCodeInput
+                length={6}
+                value={code}
+                onChange={setCode}
+                type="numeric"
+                autoFocus
+              />
               <p
-                className="text-center text-sm"
+                className="text-center text-sm mt-4"
                 style={{ color: 'var(--color-terciary)' }}
               >
                 Puedes copiar y pegar el código completo
