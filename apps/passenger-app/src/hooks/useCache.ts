@@ -48,7 +48,7 @@ export function useCache(options: UseCacheOptions = {}) {
   // Cargar estadísticas iniciales
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [loadStats]);
 
   // Configurar precarga automática
   useEffect(() => {
@@ -56,7 +56,7 @@ export function useCache(options: UseCacheOptions = {}) {
       assetPreloader.updateConfig(options.preloadConfig);
       startPreload();
     }
-  }, [options.autoPreload, options.preloadConfig]);
+  }, [options.autoPreload, options.preloadConfig, startPreload]);
 
   // Listener para progreso de precarga
   useEffect(() => {

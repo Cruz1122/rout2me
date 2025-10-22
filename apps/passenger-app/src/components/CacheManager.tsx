@@ -37,7 +37,11 @@ export default function CacheManager({ isOpen, onClose }: CacheManagerProps) {
   const [activeTab, setActiveTab] = useState<'stats' | 'actions' | 'settings'>(
     'stats',
   );
-  const [swInfo, setSwInfo] = useState<any>(null);
+  const [swInfo, setSwInfo] = useState<{
+    isSupported: boolean;
+    isRegistered: boolean;
+    isActive: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -74,7 +78,9 @@ export default function CacheManager({ isOpen, onClose }: CacheManagerProps) {
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id as any)}
+              onClick={() =>
+                setActiveTab(id as 'stats' | 'actions' | 'settings')
+              }
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === id
                   ? 'border-blue-500 text-blue-600'

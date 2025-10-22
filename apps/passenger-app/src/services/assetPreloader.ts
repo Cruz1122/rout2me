@@ -226,8 +226,16 @@ export class AssetPreloader {
    * Obtiene estadísticas de precarga
    */
   async getPreloadStats(): Promise<{
-    imageStats: any;
-    tileStats: any;
+    imageStats: {
+      memoryCacheSize: number;
+      diskCacheSize: number;
+      diskCacheItems: number;
+    };
+    tileStats: {
+      totalTiles: number;
+      totalSize: number;
+      averageTileSize: number;
+    };
     isPreloading: boolean;
     progress: number;
   }> {
