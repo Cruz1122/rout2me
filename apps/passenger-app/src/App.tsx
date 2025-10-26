@@ -21,6 +21,10 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const TwoFAPage = lazy(() => import('./pages/TwoFAPage'));
+const LocationPermissionPage = lazy(
+  () => import('./pages/LocationPermissionPage'),
+);
+const WelcomePage = lazy(() => import('./pages/WelcomePage'));
 
 function TabsWithIcons() {
   const activeTab = useActiveTab();
@@ -92,6 +96,16 @@ export default function App() {
     <IonApp>
       <IonReactRouter>
         <IonRouterOutlet>
+          <Route exact path="/location-permission">
+            <Suspense fallback={<GlobalLoader />}>
+              <LocationPermissionPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/welcome">
+            <Suspense fallback={<GlobalLoader />}>
+              <WelcomePage />
+            </Suspense>
+          </Route>
           <Route exact path="/login">
             <Suspense fallback={<GlobalLoader />}>
               <LoginPage />
@@ -106,6 +120,9 @@ export default function App() {
             <Suspense fallback={<GlobalLoader />}>
               <TwoFAPage />
             </Suspense>
+          </Route>
+          <Route exact path="/">
+            <Redirect to="/location-permission" />
           </Route>
           <Route>
             <TabsWithIcons />

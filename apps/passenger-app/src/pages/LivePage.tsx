@@ -87,7 +87,7 @@ export default function LivePage() {
     if (activeFilter === 'active') {
       // Activos solo muestra buses que no estén offline
       filteredBuses = filteredBuses.filter((bus) => bus.status !== 'offline');
-    } else if (activeFilter === 'nearby') {
+    } else if (activeFilter === 'nearby' && userLocation) {
       // Cercanos calcula dinámicamente basado en la ubicación del usuario
       filteredBuses = getNearbyBuses(filteredBuses, userLocation);
     }
@@ -98,7 +98,7 @@ export default function LivePage() {
         (bus) =>
           bus.routeNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
           bus.routeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          bus.licensePlate?.toLowerCase().includes(searchQuery.toLowerCase()),
+          bus.plate?.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
@@ -224,13 +224,17 @@ export default function LivePage() {
 
 interface BusCardProps {
   readonly bus: Bus;
-  readonly userLocation: { latitude: number; longitude: number };
+  readonly userLocation: { latitude: number; longitude: number } | null;
 }
 
 function BusCard({ bus, userLocation }: BusCardProps) {
-  // Calcular distancia en tiempo real
-  const distance = getDistanceBetweenLocations(userLocation, bus.location);
-  const isNearby = bus.status !== 'offline' && distance <= 1.5; // 1.5 km threshold
+  // Calcular distancia en tiempo real (solo si el bus tiene ubicación Y el usuario también)
+  const canCalculateDistance = bus.location !== null && userLocation !== null;
+  const distance = canCalculateDistance
+    ? getDistanceBetweenLocations(userLocation!, bus.location!)
+    : Infinity;
+  const isNearby =
+    bus.status !== 'offline' && canCalculateDistance && distance <= 1.5; // 1.5 km threshold
 
   // Determinar estado dinámico basado en la distancia
   const getDynamicStatus = (): Bus['status'] => {
@@ -309,11 +313,11 @@ function BusCard({ bus, userLocation }: BusCardProps) {
                   color: dynamicStatus === 'offline' ? '#9CA3AF' : 'inherit',
                 }}
               >
-                Bus {bus.routeNumber} - {bus.routeName}
+                {bus.plate} - {bus.routeName}
               </h3>
-              {bus.licensePlate && (
+              {bus.routeNumber && bus.routeNumber !== 'N/A' && (
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Placa: {bus.licensePlate}
+                  Ruta: {bus.routeNumber}
                 </p>
               )}
             </div>
@@ -335,7 +339,11 @@ function BusCard({ bus, userLocation }: BusCardProps) {
           >
             {dynamicStatus === 'offline'
               ? 'Fuera de servicio'
-              : formatDistance(distance)}
+              : !userLocation
+                ? 'Permite acceso a ubicación'
+                : !bus.location
+                  ? 'Sin ubicación disponible'
+                  : formatDistance(distance)}
           </p>
 
           {/* Ocupación */}

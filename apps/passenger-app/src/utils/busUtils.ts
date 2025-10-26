@@ -24,6 +24,11 @@ export function getNearbyBuses(
       return false;
     }
 
+    // Solo considerar buses con ubicación válida
+    if (!bus.location) {
+      return false;
+    }
+
     // Calcular distancia
     const distance = getDistanceBetweenLocations(userLocation, bus.location);
 
@@ -45,6 +50,10 @@ export function isBusNearby(
   maxDistance: number = NEARBY_THRESHOLD_KM,
 ): boolean {
   if (bus.status === 'offline') {
+    return false;
+  }
+
+  if (!bus.location) {
     return false;
   }
 

@@ -1,13 +1,16 @@
-// Tipos para la API de buses
-export interface ApiBus {
-  id: string;
-  company_id: string;
+// Tipos para la API de buses con el nuevo endpoint
+export interface ApiBusLatestPosition {
+  bus_id: string;
   plate: string;
-  capacity: number;
+  company_id: string;
   status: 'AVAILABLE' | 'IN_SERVICE' | 'OUT_OF_SERVICE' | 'MAINTENANCE';
-  created_at: string;
-  last_maintenance: string | null;
-  passenger_count: number;
+  active_trip_id: string | null;
+  active_route_variant_id: string | null;
+  vp_id: string | null;
+  vp_at: string | null;
+  location_json: { lat: number; lng: number } | null;
+  speed_kph: number | null;
+  heading: number | null;
 }
 
 export interface BusLocation {
@@ -15,17 +18,27 @@ export interface BusLocation {
   longitude: number;
 }
 
+// Tipo para información de ruta
+export interface RouteInfo {
+  id: string;
+  code: string;
+  name: string;
+}
+
 // Tipo para el bus transformado para la UI
 export interface Bus {
   id: string;
+  plate: string;
   routeNumber: string;
   routeName: string;
   occupancy: 'low' | 'medium' | 'high';
   status: 'active' | 'nearby' | 'offline';
-  licensePlate?: string;
   currentCapacity: number;
   maxCapacity: number;
-  location: BusLocation;
+  location: BusLocation | null;
+  speed: number | null;
+  heading: number | null;
+  activeRouteVariantId: string | null;
 }
 
 const API_REST_URL = import.meta.env.VITE_BACKEND_REST_URL;
@@ -36,11 +49,74 @@ export interface BusServiceError {
 }
 
 /**
- * Obtiene todos los buses desde la API
+ * Obtiene la información de ruta asociada a una variante
+ */
+async function fetchRouteInfoForVariant(
+  variantId: string,
+): Promise<RouteInfo | null> {
+  try {
+    const response = await fetch(
+      `${API_REST_URL}/route_variants?id=eq.${variantId}&select=route_id`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const variants: { route_id: string }[] = await response.json();
+    if (variants.length === 0) {
+      return null;
+    }
+
+    // Obtener la información de la ruta
+    const routeResponse = await fetch(
+      `${API_REST_URL}/routes?id=eq.${variants[0].route_id}&select=id,code,name`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
+        },
+      },
+    );
+
+    if (!routeResponse.ok) {
+      return null;
+    }
+
+    const routes: { id: string; code: string; name: string }[] =
+      await routeResponse.json();
+
+    if (routes.length === 0) {
+      return null;
+    }
+
+    return {
+      id: routes[0].id,
+      code: routes[0].code,
+      name: routes[0].name,
+    };
+  } catch (error) {
+    console.error('Error al obtener información de ruta:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene todos los buses desde la API usando el nuevo endpoint
  */
 export async function fetchBuses(): Promise<Bus[]> {
   try {
-    const response = await fetch(`${API_REST_URL}/buses`, {
+    const response = await fetch(`${API_REST_URL}/v_bus_latest_positions`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -53,10 +129,16 @@ export async function fetchBuses(): Promise<Bus[]> {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
 
-    const apiBuses: ApiBus[] = await response.json();
+    const apiBuses: ApiBusLatestPosition[] = await response.json();
 
     // Transformar los datos de la API al formato esperado por la UI
-    return apiBuses.map(transformApiBusToBus);
+    const transformedBuses = await Promise.all(
+      apiBuses.map(async (apiBus) => {
+        return transformApiBusToBus(apiBus);
+      }),
+    );
+
+    return transformedBuses;
   } catch (error) {
     console.error('Error fetching buses:', error);
     const serviceError: BusServiceError = {
@@ -73,36 +155,60 @@ export async function fetchBuses(): Promise<Bus[]> {
 /**
  * Transforma un bus de la API al formato esperado por la UI
  */
-function transformApiBusToBus(apiBus: ApiBus): Bus {
+async function transformApiBusToBus(
+  apiBus: ApiBusLatestPosition,
+): Promise<Bus> {
   // Mapear el estado de la API al estado de la UI
   const status = mapApiStatusToBusStatus(apiBus.status);
 
-  // Calcular la ocupación basada en la capacidad actual vs máxima
-  const occupancy = calculateOccupancy(apiBus.passenger_count, apiBus.capacity);
+  // Obtener información de la ruta
+  let routeInfo: RouteInfo | null = null;
 
-  // Generar ubicación mock (en una implementación real, esto vendría de la API)
-  const location = generateMockLocation();
+  if (apiBus.active_route_variant_id) {
+    // Primero intentar buscar en el mapa de rutas usando la variante
+    routeInfo = await fetchRouteInfoForVariant(apiBus.active_route_variant_id);
+  }
 
-  // Generar información de ruta mock (en una implementación real, esto vendría de la API)
-  const routeInfo = generateMockRouteInfo(apiBus.id);
+  // Si no se encontró la ruta, usar valores por defecto
+  const routeNumber = routeInfo?.code || 'N/A';
+  const routeName = routeInfo?.name || 'Sin ruta asignada';
+
+  // Calcular ocupación (usar valores predeterminados ya que no están en la API)
+  const occupancy = 'medium';
+  const currentCapacity = 0; // No disponible en la API actual
+  const maxCapacity = 40; // Capacidad estándar
+
+  // Convertir location_json a BusLocation
+  let location: BusLocation | null = null;
+  if (apiBus.location_json) {
+    location = {
+      latitude: apiBus.location_json.lat,
+      longitude: apiBus.location_json.lng,
+    };
+  }
 
   return {
-    id: apiBus.id,
-    routeNumber: routeInfo.routeNumber,
-    routeName: routeInfo.routeName,
+    id: apiBus.bus_id,
+    plate: apiBus.plate,
+    routeNumber,
+    routeName,
     occupancy,
     status,
-    licensePlate: apiBus.plate,
-    currentCapacity: apiBus.passenger_count,
-    maxCapacity: apiBus.capacity,
+    currentCapacity,
+    maxCapacity,
     location,
+    speed: apiBus.speed_kph,
+    heading: apiBus.heading,
+    activeRouteVariantId: apiBus.active_route_variant_id,
   };
 }
 
 /**
  * Mapea el estado de la API al estado de la UI
  */
-function mapApiStatusToBusStatus(apiStatus: ApiBus['status']): Bus['status'] {
+function mapApiStatusToBusStatus(
+  apiStatus: ApiBusLatestPosition['status'],
+): Bus['status'] {
   switch (apiStatus) {
     case 'AVAILABLE':
       return 'active';
@@ -118,74 +224,16 @@ function mapApiStatusToBusStatus(apiStatus: ApiBus['status']): Bus['status'] {
 }
 
 /**
- * Calcula el nivel de ocupación basado en la capacidad actual vs máxima
+ * Obtiene los buses que pertenecen a una variante de ruta específica
  */
-function calculateOccupancy(current: number, max: number): Bus['occupancy'] {
-  const percentage = (current / max) * 100;
-
-  if (percentage < 33) return 'low';
-  if (percentage < 66) return 'medium';
-  return 'high';
-}
-
-/**
- * Genera una ubicación mock (en una implementación real, esto vendría de la API)
- */
-function generateMockLocation(): BusLocation {
-  // Puntos de referencia reales en Manizales para ubicaciones más variadas
-  const manizalesPoints = [
-    { lat: 5.0689, lng: -75.5174, name: 'Centro' }, // Centro de Manizales
-    { lat: 5.0856, lng: -75.5238, name: 'Norte' }, // Zona Norte
-    { lat: 5.0403, lng: -75.4938, name: 'Sur' }, // Zona Sur
-    { lat: 5.0925, lng: -75.5338, name: 'Este' }, // Zona Este
-    { lat: 5.0753, lng: -75.5188, name: 'Oeste' }, // Zona Oeste
-    { lat: 5.1103, lng: -75.5638, name: 'Norte-Este' }, // Zona Norte-Este
-    { lat: 5.0995, lng: -75.5438, name: 'Este-Sur' }, // Zona Este-Sur
-    { lat: 5.0556, lng: -75.5088, name: 'Sur-Oeste' }, // Zona Sur-Oeste
-  ];
-
-  // Seleccionar un punto base aleatorio
-  const basePoint =
-    manizalesPoints[Math.floor(Math.random() * manizalesPoints.length)];
-
-  // Agregar variación más pequeña para simular movimiento dentro de la zona
-  const latVariation = (Math.random() - 0.5) * 0.005; // ±0.0025 grados (≈280m)
-  const lngVariation = (Math.random() - 0.5) * 0.005; // ±0.0025 grados (≈280m)
-
-  return {
-    latitude: basePoint.lat + latVariation,
-    longitude: basePoint.lng + lngVariation,
-  };
-}
-
-/**
- * Genera información de ruta mock (en una implementación real, esto vendría de la API)
- */
-function generateMockRouteInfo(busId: string): {
-  routeNumber: string;
-  routeName: string;
-} {
-  // Usar el ID del bus para generar información consistente
-  const routeNumbers = ['501', '502', '503', '506', '204', '301'];
-  const routeNames = [
-    'Ruta Centro',
-    'Ruta Norte',
-    'Ruta Sur',
-    'Ruta Maipú',
-    'Ruta Ñuñoa',
-    'Ruta Florida',
-  ];
-
-  // Usar el hash del ID para seleccionar de manera consistente
-  const hash = busId.split('').reduce((a, b) => {
-    a = (a << 5) - a + (b.codePointAt(0) ?? 0);
-    return a & a;
-  }, 0);
-
-  const index = Math.abs(hash) % routeNumbers.length;
-
-  return {
-    routeNumber: routeNumbers[index],
-    routeName: routeNames[index],
-  };
+export function getBusesByRouteVariant(
+  buses: Bus[],
+  routeVariantId: string,
+): Bus[] {
+  return buses.filter(
+    (bus) =>
+      bus.activeRouteVariantId === routeVariantId &&
+      bus.status !== 'offline' &&
+      bus.location !== null,
+  );
 }

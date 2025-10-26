@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { IonContent, IonPage } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { IonContent, IonPage, useIonRouter } from '@ionic/react';
 import {
   RiUser5Line,
   RiUser5Fill,
   RiBriefcase4Line,
   RiBriefcase4Fill,
   RiKey2Line,
+  RiArrowLeftLine,
 } from 'react-icons/ri';
 import R2MInput from '../components/R2MInput';
 import R2MButton from '../components/R2MButton';
@@ -30,7 +30,7 @@ interface CompanyData {
 type AccountPurpose = 'personal' | 'organization';
 
 export default function RegisterPage() {
-  const history = useHistory();
+  const router = useIonRouter();
   // Estados para las fases
   const [currentPhase, setCurrentPhase] = useState(1);
   const [personalData, setPersonalData] = useState<PersonalData>({
@@ -195,7 +195,9 @@ export default function RegisterPage() {
 
   // Función para obtener el texto del botón
   const getButtonText = () => {
-    if (currentPhase === 2 && accountPurpose === 'personal') {
+    if (currentPhase === 1) {
+      return 'Continuar';
+    } else if (currentPhase === 2 && accountPurpose === 'personal') {
       return 'Finalizar';
     } else if (currentPhase === 2) {
       return 'Continuar';
@@ -206,56 +208,24 @@ export default function RegisterPage() {
 
   // Renderizado de botones de navegación
   const renderNavigationButtons = () => {
-    if (currentPhase === 1) {
-      // Solo botón continuar en fase 1
-      return (
-        <div className="flex justify-center">
-          <div className="w-32">
-            <R2MButton
-              type="button"
-              variant="primary"
-              size="large"
-              onClick={handleNextPhase}
-              loading={isLoading}
-              fullWidth
-            >
-              Continuar
-            </R2MButton>
-          </div>
+    // Botón continuar/finalizar (siempre visible)
+    return (
+      <div className="flex justify-center">
+        <div className="w-64">
+          <R2MButton
+            type="button"
+            variant="primary"
+            size="large"
+            onClick={handleNextPhase}
+            disabled={currentPhase === 2 && !accountPurpose}
+            loading={isLoading}
+            fullWidth
+          >
+            {getButtonText()}
+          </R2MButton>
         </div>
-      );
-    } else {
-      // Botones atrás y continuar/finalizar en fases 2 y 3
-      return (
-        <div className="flex gap-3 justify-center">
-          <div className="w-32">
-            <R2MButton
-              type="button"
-              variant="outline"
-              size="large"
-              onClick={handlePreviousPhase}
-              fullWidth
-            >
-              Atrás
-            </R2MButton>
-          </div>
-
-          <div className="w-32">
-            <R2MButton
-              type="button"
-              variant="primary"
-              size="large"
-              onClick={handleNextPhase}
-              disabled={currentPhase === 2 && !accountPurpose}
-              loading={isLoading}
-              fullWidth
-            >
-              {getButtonText()}
-            </R2MButton>
-          </div>
-        </div>
-      );
-    }
+      </div>
+    );
   };
 
   // Fase 1: Datos personales
@@ -517,6 +487,23 @@ export default function RegisterPage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
+        {/* Botón de retroceso - solo visible después de la fase 1 */}
+        {currentPhase > 1 && (
+          <button
+            onClick={handlePreviousPhase}
+            className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            }}
+            tabIndex={0}
+          >
+            <RiArrowLeftLine
+              size={24}
+              style={{ color: 'var(--color-primary)' }}
+            />
+          </button>
+        )}
+
         <div className="flex flex-col min-h-full px-6">
           {/* Indicador de progreso fijo */}
           <div className="flex-shrink-0 pt-8"></div>
@@ -572,7 +559,7 @@ export default function RegisterPage() {
               <R2MTextLink
                 variant="secondary"
                 size="small"
-                onClick={() => history.push('/login')}
+                onClick={() => router.push('/login', 'forward')}
               >
                 Inicia sesión
               </R2MTextLink>
