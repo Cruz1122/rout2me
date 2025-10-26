@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
+import type { Stop } from '../services/routeService';
 
 export interface RouteDrawingOptions {
   color?: string;
@@ -12,6 +13,29 @@ export interface RouteDrawingOptions {
 export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
   const routeSources = useRef<Set<string>>(new Set());
   const routeLayers = useRef<Set<string>>(new Set());
+  const stopMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
+
+  const removeStopsFromMap = useCallback(
+    (routeId: string) => {
+      if (!mapInstance.current) return;
+
+      // Buscar y remover marcadores de paradas para esta ruta
+      const markersToRemove: string[] = [];
+
+      for (const [markerId, marker] of stopMarkers.current) {
+        if (markerId.startsWith(`stop-${routeId}-`)) {
+          marker.remove();
+          markersToRemove.push(markerId);
+        }
+      }
+
+      // Limpiar referencias
+      for (const markerId of markersToRemove) {
+        stopMarkers.current.delete(markerId);
+      }
+    },
+    [mapInstance],
+  );
 
   const removeRouteFromMap = useCallback(
     (routeId: string) => {
@@ -42,7 +66,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         }
       }
 
-      // Remover marcadores
+      // Remover marcadores de inicio y fin
       const mapWithMarkers = mapInstance.current as MlMap & {
         _routeMarkers?: Record<string, maplibregl.Marker>;
       };
@@ -63,8 +87,11 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           delete markers[`end-${routeId}`];
         }
       }
+
+      // Remover paradas de la ruta
+      removeStopsFromMap(routeId);
     },
-    [mapInstance],
+    [mapInstance, removeStopsFromMap],
   );
 
   const addRouteEndpoints = useCallback(
@@ -105,11 +132,55 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
     [mapInstance],
   );
 
+  const addStopsToMap = useCallback(
+    (routeId: string, stops: Stop[]) => {
+      if (!mapInstance.current || !stops || stops.length === 0) return;
+
+      // Limpiar paradas existentes para esta ruta
+      removeStopsFromMap(routeId);
+
+      for (const [index, stop] of stops.entries()) {
+        const markerId = `stop-${routeId}-${stop.id}`;
+
+        // Crear marcador personalizado para parada
+        const marker = new maplibregl.Marker({
+          color: '#FF6B35', // Color naranja para paradas
+          scale: 0.8,
+        })
+          .setLngLat(stop.location)
+          .addTo(mapInstance.current);
+
+        // Agregar popup con información de la parada
+        const popup = new maplibregl.Popup({
+          offset: 25,
+          closeButton: false,
+          closeOnClick: false,
+        }).setHTML(`
+            <div style="padding: 8px; font-family: system-ui, -apple-system, sans-serif;">
+              <div style="font-weight: 600; color: #1F2937; margin-bottom: 4px;">
+                ${stop.name}
+              </div>
+              <div style="font-size: 12px; color: #6B7280;">
+                Parada ${index + 1}
+              </div>
+            </div>
+          `);
+
+        marker.setPopup(popup);
+
+        // Guardar referencia del marcador
+        stopMarkers.current.set(markerId, marker);
+      }
+    },
+    [mapInstance, removeStopsFromMap],
+  );
+
   const addRouteToMap = useCallback(
     (
       routeId: string,
       coordinates: [number, number][],
       options: RouteDrawingOptions = {},
+      stops?: Stop[],
     ) => {
       if (!mapInstance.current || !coordinates || coordinates.length === 0) {
         return;
@@ -213,13 +284,18 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       // Agregar puntos de inicio y fin
       addRouteEndpoints(routeId, coordinates);
 
+      // Agregar paradas si están disponibles
+      if (stops && stops.length > 0) {
+        addStopsToMap(routeId, stops);
+      }
+
       routeSources.current.add(sourceId);
       routeLayers.current.add(shadowLayerId);
       routeLayers.current.add(outlineLayerId);
       routeLayers.current.add(mainLayerId);
       routeLayers.current.add(glowLayerId);
     },
-    [mapInstance, addRouteEndpoints, removeRouteFromMap],
+    [mapInstance, addRouteEndpoints, removeRouteFromMap, addStopsToMap],
   );
 
   const clearAllRoutes = useCallback(() => {
@@ -258,6 +334,12 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       }
       mapWithMarkers._routeMarkers = {};
     }
+
+    // Remover todos los marcadores de paradas
+    for (const marker of stopMarkers.current.values()) {
+      marker.remove();
+    }
+    stopMarkers.current.clear();
 
     // Limpiar referencias
     routeSources.current.clear();
@@ -329,5 +411,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
     clearAllRoutes,
     fitBoundsToRoute,
     highlightRoute,
+    addStopsToMap,
+    removeStopsFromMap,
   };
 }

@@ -23,6 +23,8 @@ import { useRouteDrawing } from '../hooks/useRouteDrawing';
 import { processRouteWithCoordinates } from '../services/mapMatchingService';
 import { mapTileCacheService } from '../services/mapTileCacheService';
 import type { SearchItem } from '../types/search';
+import '../debug/paradasDebug'; // Importar script de debug
+import '../debug/apiTest'; // Importar script de prueba de API
 
 export default function HomePage() {
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -107,6 +109,13 @@ export default function HomePage() {
               outlineColor: '#ffffff',
               outlineWidth: 8,
             },
+            // Pasar las paradas si están disponibles
+            item.routeStops?.map((stop) => ({
+              id: stop.id,
+              name: stop.name,
+              created_at: new Date().toISOString(),
+              location: stop.location,
+            })),
           );
 
           // Ajustar vista para mostrar toda la ruta

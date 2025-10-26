@@ -13,7 +13,7 @@ import {
 } from 'react-icons/ri';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import {
-  fetchRoutes,
+  fetchRoutesWithStops,
   getFavoriteRoutes,
   getRecentRoutes,
   type Route,
@@ -62,7 +62,7 @@ export default function RoutesPage() {
       try {
         setLoading(true);
         setError(null);
-        const fetchedRoutes = await fetchRoutes();
+        const fetchedRoutes = await fetchRoutesWithStops();
         setRoutes(fetchedRoutes);
       } catch (err) {
         console.error('Error loading routes:', err);

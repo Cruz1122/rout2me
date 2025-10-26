@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import Fuse from 'fuse.js';
 import type { SearchItem, SearchFilters } from '../types/search';
 import { mockSearchData } from '../data/mocks';
-import { fetchRoutes } from '../services/routeService';
+import { fetchRoutesWithStops } from '../services/routeService';
 import { useDebounce } from './useDebounce';
 
 const fuseOptions = {
@@ -27,7 +27,7 @@ export function useSearch() {
   useEffect(() => {
     const loadRoutes = async () => {
       try {
-        const routes = await fetchRoutes();
+        const routes = await fetchRoutesWithStops();
         // Convertir rutas y sus variantes a formato SearchItem
         const routeSearchItems: SearchItem[] = [];
 
@@ -42,6 +42,12 @@ export function useSearch() {
             fare: route.fare,
             coordinates: route.path,
             color: route.color,
+            // Incluir paradas si están disponibles
+            routeStops: route.stops?.map((stop) => ({
+              id: stop.id,
+              name: stop.name,
+              location: stop.location,
+            })),
           });
         }
 
