@@ -449,11 +449,12 @@ export default function HomePage() {
 
   // Manejar ruta que viene desde RoutesPage
   useIonViewWillEnter(() => {
-    const routeData = (globalThis as any).routeData;
+    const routeData = (globalThis as { routeData?: RouteFromNavigation })
+      .routeData;
     if (routeData) {
       setRouteFromNavigation(routeData);
       // Limpiar la data después de usarla
-      delete (globalThis as any).routeData;
+      delete (globalThis as { routeData?: RouteFromNavigation }).routeData;
     }
   });
 

@@ -105,7 +105,7 @@ export default function RoutesPage() {
     };
 
     // Guardar en el estado global para que HomePage pueda acceder
-    (globalThis as any).routeData = routeData;
+    (globalThis as { routeData?: typeof routeData }).routeData = routeData;
 
     setShowRouteModal(false);
     setSelectedRoute(null);

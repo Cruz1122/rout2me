@@ -5,13 +5,9 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { useState } from 'react';
-import { RiUser5Fill, RiDatabaseLine } from 'react-icons/ri';
-import CacheManager from '../components/CacheManager';
+import { RiUser5Fill } from 'react-icons/ri';
 
 export default function ProfilePage() {
-  const [showCacheManager, setShowCacheManager] = useState(false);
-
   return (
     <IonPage>
       <IonHeader>
@@ -34,22 +30,7 @@ export default function ProfilePage() {
           <p className="text-lg text-gray-600 font-medium mb-8">
             Funcionalidad en desarrollo
           </p>
-
-          {/* Botón para abrir gestor de caché */}
-          <button
-            onClick={() => setShowCacheManager(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            <RiDatabaseLine size={20} />
-            Gestionar Caché
-          </button>
         </div>
-
-        {/* Gestor de caché */}
-        <CacheManager
-          isOpen={showCacheManager}
-          onClose={() => setShowCacheManager(false)}
-        />
       </IonContent>
     </IonPage>
   );
