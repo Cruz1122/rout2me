@@ -6,6 +6,7 @@ import {
   IonTitle,
   IonToolbar,
   useIonViewDidEnter,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import {
   RiFocus3Line,
@@ -34,6 +35,21 @@ export default function HomePage() {
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [shouldInitMap, setShouldInitMap] = useState(false);
+  interface RouteFromNavigation {
+    id: string;
+    code: string;
+    name: string;
+    path: [number, number][];
+    color?: string;
+    stops?: Array<{
+      id: string;
+      name: string;
+      location: [number, number];
+    }>;
+  }
+
+  const [routeFromNavigation, setRouteFromNavigation] =
+    useState<RouteFromNavigation | null>(null);
 
   const { triggerResize } = useMapResize(mapInstance);
   const { addRouteToMap, clearAllRoutes, fitBoundsToRoute, highlightRoute } =
@@ -430,6 +446,147 @@ export default function HomePage() {
       }
     };
   }, [shouldInitMap]);
+
+  // Manejar ruta que viene desde RoutesPage
+  useIonViewWillEnter(() => {
+    const routeData = (globalThis as any).routeData;
+    if (routeData) {
+      setRouteFromNavigation(routeData);
+      // Limpiar la data después de usarla
+      delete (globalThis as any).routeData;
+    }
+  });
+
+  // Procesar ruta cuando esté disponible y el mapa esté listo
+  useEffect(() => {
+    if (!routeFromNavigation || !mapInstance.current) return;
+
+    const processRouteFromNavigation = async () => {
+      try {
+        // Limpiar rutas anteriores
+        clearAllRoutes();
+        if (currentMarker.current) {
+          currentMarker.current.remove();
+          currentMarker.current = null;
+        }
+
+        // Mostrar loader mientras se procesa
+        setIsMapLoading(true);
+
+        // Obtener la API key desde las variables de entorno
+        const apiKey = import.meta.env.VITE_STADIA_API_KEY;
+        const shouldApplyMapMatching = Boolean(apiKey && apiKey.trim() !== '');
+
+        // Procesar la ruta con coordenadas
+        const processedRoute = await processRouteWithCoordinates(
+          routeFromNavigation.path,
+          apiKey,
+          shouldApplyMapMatching,
+        );
+
+        // Crear objeto SearchItem compatible
+        const searchItem: SearchItem = {
+          id: routeFromNavigation.id,
+          type: 'route',
+          name: routeFromNavigation.name,
+          code: routeFromNavigation.code,
+          tags: [],
+          coordinates: processedRoute.matchedGeometry.coordinates as [
+            number,
+            number,
+          ][],
+          color: routeFromNavigation.color || 'var(--color-secondary)',
+          routeStops: routeFromNavigation.stops?.map((stop) => ({
+            id: stop.id,
+            name: stop.name,
+            location: stop.location,
+          })),
+        };
+
+        // Dibujar la ruta en el mapa
+        addRouteToMap(
+          searchItem.id,
+          processedRoute.matchedGeometry.coordinates as [number, number][],
+          {
+            color: searchItem.color,
+            width: 4,
+            opacity: 0.9,
+            outlineColor: '#ffffff',
+            outlineWidth: 8,
+          },
+          searchItem.routeStops?.map((stop) => ({
+            id: stop.id,
+            name: stop.name,
+            created_at: new Date().toISOString(),
+            location: stop.location,
+          })),
+        );
+
+        // Ajustar vista para mostrar toda la ruta
+        fitBoundsToRoute(
+          processedRoute.matchedGeometry.coordinates as [number, number][],
+        );
+
+        // Resaltar la ruta
+        highlightRoute(searchItem.id, true);
+
+        // Precargar tiles
+        setTimeout(() => {
+          if (mapInstance.current) {
+            const center = mapInstance.current.getCenter();
+            const zoom = mapInstance.current.getZoom();
+            mapTileCacheService
+              .preloadTiles([center.lng, center.lat], zoom, 2)
+              .catch((error) =>
+                console.warn('Error precargando tiles:', error),
+              );
+          }
+        }, 2000);
+
+        setSelectedItem(searchItem);
+      } catch (error) {
+        console.error('Error processing route from navigation:', error);
+        // Fallback: usar coordenadas originales
+        const searchItem: SearchItem = {
+          id: routeFromNavigation.id,
+          type: 'route',
+          name: routeFromNavigation.name,
+          code: routeFromNavigation.code,
+          tags: [],
+          coordinates: routeFromNavigation.path,
+          color: routeFromNavigation.color || 'var(--color-secondary)',
+          routeStops: routeFromNavigation.stops?.map((stop) => ({
+            id: stop.id,
+            name: stop.name,
+            location: stop.location,
+          })),
+        };
+
+        addRouteToMap(searchItem.id, searchItem.coordinates!, {
+          color: searchItem.color,
+          width: 4,
+          opacity: 0.9,
+          outlineColor: '#ffffff',
+          outlineWidth: 8,
+        });
+        fitBoundsToRoute(searchItem.coordinates!);
+        highlightRoute(searchItem.id, true);
+        setSelectedItem(searchItem);
+      } finally {
+        setIsMapLoading(false);
+        setRouteFromNavigation(null); // Limpiar después de procesar
+      }
+    };
+
+    processRouteFromNavigation();
+  }, [
+    routeFromNavigation,
+    mapInstance,
+    addRouteToMap,
+    clearAllRoutes,
+    fitBoundsToRoute,
+    highlightRoute,
+  ]);
 
   useIonViewDidEnter(() => {
     if (mapInstance.current) {

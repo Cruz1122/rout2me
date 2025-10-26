@@ -10,6 +10,34 @@ export interface RouteDrawingOptions {
   outlineWidth?: number;
 }
 
+/**
+ * Crea un elemento HTML personalizado para marcadores de parada
+ */
+function createStopMarkerElement(): HTMLElement {
+  const element = document.createElement('div');
+  element.innerHTML = `
+    <div style="
+      background: #FF6B35;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">
+      <strong>P</strong>
+    </div>
+  `;
+  return element;
+}
+
 export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
   const routeSources = useRef<Set<string>>(new Set());
   const routeLayers = useRef<Set<string>>(new Set());
@@ -144,8 +172,8 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
         // Crear marcador personalizado para parada
         const marker = new maplibregl.Marker({
-          color: '#FF6B35', // Color naranja para paradas
-          scale: 0.8,
+          element: createStopMarkerElement(),
+          anchor: 'center',
         })
           .setLngLat(stop.location)
           .addTo(mapInstance.current);

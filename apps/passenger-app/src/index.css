@@ -91,3 +91,19 @@ h6 { font-size: 0.75rem; }   /* 12px - Pequeños */
   border: 1px solid rgba(var(--color-surface-rgb), 0.3);
   height: 48px;
 }
+
+/* Animación para el modal de información de ruta */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
