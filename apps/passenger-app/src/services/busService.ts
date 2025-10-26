@@ -44,7 +44,8 @@ export async function fetchBuses(): Promise<Bus[]> {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        apiKey: import.meta.env.VITE_PUBLISHABLE_KEY,
+        apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
       },
     });
 

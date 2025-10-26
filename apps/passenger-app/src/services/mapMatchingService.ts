@@ -219,6 +219,94 @@ function encodeValue(value: number): string {
 }
 
 /**
+ * Procesa una ruta que ya tiene coordenadas del backend
+ * Aplica map matching opcional para refinar la ruta si es necesario
+ */
+export async function processRouteWithCoordinates(
+  coordinates: [number, number][],
+  apiKey?: string,
+  applyMapMatching: boolean = false,
+): Promise<MapMatchingResponse> {
+  // Si no se debe aplicar map matching o no hay API key, devolver las coordenadas originales
+  if (!applyMapMatching || !apiKey) {
+    return {
+      matchedGeometry: {
+        type: 'LineString',
+        coordinates,
+      },
+      confidence: 1,
+      distance: calculateRouteDistance(coordinates),
+      duration: calculateRouteDuration(coordinates),
+    };
+  }
+
+  // Aplicar map matching para refinar la ruta
+  try {
+    return await matchRouteToRoads(coordinates, apiKey);
+  } catch (error) {
+    console.warn('Map matching failed, using original coordinates:', error);
+    return {
+      matchedGeometry: {
+        type: 'LineString',
+        coordinates,
+      },
+      confidence: 0.8, // Confianza media ya que no se pudo refinar
+      distance: calculateRouteDistance(coordinates),
+      duration: calculateRouteDuration(coordinates),
+    };
+  }
+}
+
+/**
+ * Calcula la distancia total de una ruta en metros
+ */
+function calculateRouteDistance(coordinates: [number, number][]): number {
+  if (coordinates.length < 2) return 0;
+
+  let totalDistance = 0;
+  for (let i = 1; i < coordinates.length; i++) {
+    const [lng1, lat1] = coordinates[i - 1];
+    const [lng2, lat2] = coordinates[i];
+    totalDistance += calculateDistanceBetweenPoints(lat1, lng1, lat2, lng2);
+  }
+
+  return totalDistance;
+}
+
+/**
+ * Calcula la duración estimada de una ruta en segundos
+ * Asume velocidad promedio de 25 km/h para transporte público
+ */
+function calculateRouteDuration(coordinates: [number, number][]): number {
+  const distance = calculateRouteDistance(coordinates);
+  const averageSpeedKmh = 25; // 25 km/h promedio para transporte público
+  const averageSpeedMs = averageSpeedKmh / 3.6; // Convertir a m/s
+  return Math.round(distance / averageSpeedMs);
+}
+
+/**
+ * Calcula la distancia entre dos puntos usando la fórmula de Haversine
+ */
+function calculateDistanceBetweenPoints(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6371000; // Radio de la Tierra en metros
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLng = (lng2 - lng1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
  * Simplifica una geometría para almacenamiento más eficiente
  * usando el algoritmo Douglas-Peucker
  */

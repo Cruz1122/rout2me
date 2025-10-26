@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import {
   RiStarFill,
   RiStarLine,
   RiBusLine,
-  RiArrowRightLine,
   RiGridLine,
   RiGridFill,
   RiTimeLine,
@@ -14,14 +13,15 @@ import {
 } from 'react-icons/ri';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import {
-  mockRoutes,
-  favoriteRoutes,
-  recentRoutes,
+  fetchRoutes,
+  getFavoriteRoutes,
+  getRecentRoutes,
   type Route,
-} from '../data/routesMock';
+} from '../services/routeService';
 import FilterSwitcher, {
   type FilterOption,
 } from '../components/FilterSwitcher';
+import GlobalLoader from '../components/GlobalLoader';
 
 type FilterTab = 'all' | 'favorites' | 'recent';
 
@@ -52,6 +52,30 @@ export default function RoutesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Cargar rutas al montar el componente
+  useEffect(() => {
+    const loadRoutes = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedRoutes = await fetchRoutes();
+        setRoutes(fetchedRoutes);
+      } catch (err) {
+        console.error('Error loading routes:', err);
+        setError(
+          err instanceof Error ? err.message : 'Error al cargar las rutas',
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRoutes();
+  }, []);
 
   const handleViewMore = (filter: FilterTab) => {
     setActiveFilter(filter);
@@ -66,34 +90,66 @@ export default function RoutesPage() {
   };
 
   const getFilteredRoutes = (): Route[] => {
-    let routes = mockRoutes;
+    // Las rutas ya son route variants con coordenadas
+    let filteredRoutes = routes;
 
     // Aplicar filtro de categoría
     if (activeFilter === 'favorites') {
-      routes = favoriteRoutes;
+      filteredRoutes = getFavoriteRoutes(routes);
     } else if (activeFilter === 'recent') {
-      routes = recentRoutes;
+      filteredRoutes = getRecentRoutes(routes);
     } else if (activeFilter === 'all') {
-      routes = mockRoutes;
+      filteredRoutes = routes;
     }
 
     // Aplicar filtro de búsqueda
     if (searchQuery.trim()) {
-      routes = routes.filter(
+      filteredRoutes = filteredRoutes.filter(
         (route) =>
           route.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
           route.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          route.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          route.destination.toLowerCase().includes(searchQuery.toLowerCase()),
+          route.code.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
-    return routes;
+    return filteredRoutes;
   };
 
   const filteredRoutes = getFilteredRoutes();
   // Mostrar vista agrupada solo cuando NO hay filtro activo Y NO hay búsqueda
   const showGroupedView = activeFilter === null && !searchQuery.trim();
+
+  // Mostrar estado de carga
+  if (loading) {
+    return (
+      <IonPage>
+        <IonContent>
+          <GlobalLoader />
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  // Mostrar estado de error
+  if (error) {
+    return (
+      <IonPage>
+        <IonContent>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={() => globalThis.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Reintentar
+              </button>
+            </div>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>
@@ -172,25 +228,35 @@ export default function RoutesPage() {
             {/* Rutas Favoritas */}
             <RouteSection
               title="Rutas Favoritas"
-              routes={favoriteRoutes.slice(0, PREVIEW_LIMIT)}
+              routes={getFavoriteRoutes(getFilteredRoutes()).slice(
+                0,
+                PREVIEW_LIMIT,
+              )}
               onViewMore={() => handleViewMore('favorites')}
-              showViewMore={favoriteRoutes.length > PREVIEW_LIMIT}
+              showViewMore={
+                getFavoriteRoutes(getFilteredRoutes()).length > PREVIEW_LIMIT
+              }
             />
 
             {/* Rutas Recientes */}
             <RouteSection
               title="Rutas Recientes"
-              routes={recentRoutes.slice(0, PREVIEW_LIMIT)}
+              routes={getRecentRoutes(getFilteredRoutes()).slice(
+                0,
+                PREVIEW_LIMIT,
+              )}
               onViewMore={() => handleViewMore('recent')}
-              showViewMore={recentRoutes.length > PREVIEW_LIMIT}
+              showViewMore={
+                getRecentRoutes(getFilteredRoutes()).length > PREVIEW_LIMIT
+              }
             />
 
             {/* Todas las Rutas */}
             <RouteSection
               title="Todas las Rutas"
-              routes={mockRoutes.slice(0, PREVIEW_LIMIT)}
+              routes={getFilteredRoutes().slice(0, PREVIEW_LIMIT)}
               onViewMore={() => handleViewMore('all')}
-              showViewMore={mockRoutes.length > PREVIEW_LIMIT}
+              showViewMore={getFilteredRoutes().length > PREVIEW_LIMIT}
             />
           </div>
         ) : (
@@ -373,8 +439,7 @@ function RouteCard({ route }: { readonly route: Route }) {
                 color: route.status === 'offline' ? '#9CA3AF' : 'inherit',
               }}
             >
-              {route.origin} <RiArrowRightLine className="inline" size={14} />{' '}
-              {route.destination}
+              {route.name}
             </h3>
             <button className="flex-shrink-0">
               {route.isFavorite ? (
@@ -388,23 +453,19 @@ function RouteCard({ route }: { readonly route: Route }) {
             </button>
           </div>
 
-          <p className="text-xs text-gray-500 mb-2">
-            Vía {route.via} • {route.duration} min promedio
-          </p>
-
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 text-xs">
               <span
                 className="flex items-center gap-1"
                 style={{
                   color:
-                    route.activeBuses > 0
+                    (route.activeBuses || 0) > 0
                       ? 'var(--color-secondary)'
                       : '#EF4444',
                 }}
               >
                 <RiBusLine size={14} />
-                {route.activeBuses} buses activos
+                {route.activeBuses || 0} buses activos
               </span>
             </div>
 

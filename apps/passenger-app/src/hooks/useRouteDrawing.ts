@@ -111,7 +111,9 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       coordinates: [number, number][],
       options: RouteDrawingOptions = {},
     ) => {
-      if (!mapInstance.current) return;
+      if (!mapInstance.current || !coordinates || coordinates.length === 0) {
+        return;
+      }
 
       const { color = '#1E56A0', width = 6, opacity = 0.9 } = options;
 
@@ -271,10 +273,21 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         bounds.extend(coord);
       }
 
+      // Configuración mejorada para evitar tiles faltantes
       mapInstance.current.fitBounds(bounds, {
         padding: 50,
-        duration: 1000,
+        duration: 1500, // Animación más lenta para evitar tiles faltantes
+        maxZoom: 18, // Limitar zoom máximo para evitar cargar tiles innecesarios
+        essential: true, // Marcar como esencial para evitar interrupciones
       });
+
+      // Precargar tiles después del cambio de vista
+      setTimeout(() => {
+        if (mapInstance.current) {
+          // Forzar recarga de tiles si es necesario
+          mapInstance.current.triggerRepaint();
+        }
+      }, 1600); // Después de que termine la animación
     },
     [mapInstance],
   );

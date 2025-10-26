@@ -20,7 +20,8 @@ import R2MMapInfoCard from '../components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
 import { useMapResize } from '../hooks/useMapResize';
 import { useRouteDrawing } from '../hooks/useRouteDrawing';
-import { matchRouteToRoads } from '../services/mapMatchingService';
+import { processRouteWithCoordinates } from '../services/mapMatchingService';
+import { mapTileCacheService } from '../services/mapTileCacheService';
 import type { SearchItem } from '../types/search';
 
 export default function HomePage() {
@@ -82,49 +83,61 @@ export default function HomePage() {
           // Obtener la API key desde las variables de entorno
           const apiKey = import.meta.env.VITE_STADIA_API_KEY;
 
-          if (apiKey) {
-            // Aplicar map matching para ajustar la ruta a las calles reales
-            const matchedRoute = await matchRouteToRoads(
-              item.coordinates,
-              apiKey,
-            );
+          // Determinar si aplicar map matching basado en la disponibilidad de API key
+          const shouldApplyMapMatching = Boolean(
+            apiKey && apiKey.trim() !== '',
+          );
 
-            // Usar las coordenadas ajustadas (matched) para dibujar la ruta
-            addRouteToMap(
-              item.id,
-              matchedRoute.matchedGeometry.coordinates as [number, number][],
-              {
-                color: 'var(--color-secondary)', // #1E56A0
-                width: 4,
-                opacity: 0.9,
-                outlineColor: '#ffffff',
-                outlineWidth: 8,
-              },
-            );
+          // Procesar la ruta con coordenadas del backend
+          // Aplicar map matching si hay API key disponible
+          const processedRoute = await processRouteWithCoordinates(
+            item.coordinates,
+            apiKey,
+            shouldApplyMapMatching, // Aplicar map matching si hay API key
+          );
 
-            // Ajustar vista para mostrar toda la ruta ajustada
-            fitBoundsToRoute(
-              matchedRoute.matchedGeometry.coordinates as [number, number][],
-            );
-          } else {
-            // Usar coordenadas originales si no hay API key
-            addRouteToMap(item.id, item.coordinates, {
-              color: 'var(--color-secondary)', // #1E56A0
+          // Usar las coordenadas procesadas para dibujar la ruta
+          addRouteToMap(
+            item.id,
+            processedRoute.matchedGeometry.coordinates as [number, number][],
+            {
+              color: item.color || 'var(--color-secondary)', // Usar color de la ruta si está disponible
               width: 4,
               opacity: 0.9,
               outlineColor: '#ffffff',
               outlineWidth: 8,
-            });
-          }
+            },
+          );
+
+          // Ajustar vista para mostrar toda la ruta
+          fitBoundsToRoute(
+            processedRoute.matchedGeometry.coordinates as [number, number][],
+          );
 
           // Resaltar la ruta seleccionada
           highlightRoute(item.id, true);
 
+          // Precargar tiles después de ajustar la vista
+          setTimeout(() => {
+            if (mapInstance.current) {
+              const center = mapInstance.current.getCenter();
+              const zoom = mapInstance.current.getZoom();
+
+              // Precargar tiles para evitar lag visual
+              mapTileCacheService
+                .preloadTiles([center.lng, center.lat], zoom, 2)
+                .catch((error) =>
+                  console.warn('Error precargando tiles:', error),
+                );
+            }
+          }, 2000);
+
           setSelectedItem(item);
-        } catch {
-          // Fallback: usar coordenadas originales si falla el map matching
+        } catch (error) {
+          console.error('Error processing route:', error);
+          // Fallback: usar coordenadas originales si falla el procesamiento
           addRouteToMap(item.id, item.coordinates, {
-            color: 'var(--color-secondary)', // #1E56A0
+            color: item.color || 'var(--color-secondary)', // Usar color de la ruta si está disponible
             width: 4,
             opacity: 0.9,
             outlineColor: '#ffffff',
@@ -132,6 +145,22 @@ export default function HomePage() {
           });
           fitBoundsToRoute(item.coordinates);
           highlightRoute(item.id, true);
+
+          // Precargar tiles después de ajustar la vista (fallback)
+          setTimeout(() => {
+            if (mapInstance.current) {
+              const center = mapInstance.current.getCenter();
+              const zoom = mapInstance.current.getZoom();
+
+              // Precargar tiles para evitar lag visual
+              mapTileCacheService
+                .preloadTiles([center.lng, center.lat], zoom, 2)
+                .catch((error) =>
+                  console.warn('Error precargando tiles (fallback):', error),
+                );
+            }
+          }, 2000);
+
           setSelectedItem(item);
         } finally {
           setIsMapLoading(false);
@@ -360,7 +389,9 @@ export default function HomePage() {
       crossSourceCollisions: false, // Mejor rendimiento en labels
       refreshExpiredTiles: false, // No refrescar tiles automáticamente
       // Caché de tiles optimizado
-      maxTileCacheSize: 100, // Aumentar caché para reusar tiles
+      maxTileCacheSize: 200, // Aumentar caché para reusar tiles
+      // Configuración adicional para evitar tiles faltantes
+      renderWorldCopies: false, // Evitar renderizar copias del mundo
     });
 
     map.on('load', () => {

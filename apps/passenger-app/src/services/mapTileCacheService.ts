@@ -89,17 +89,28 @@ export class MapTileCacheService {
     radius: number = 1,
   ): Promise<void> {
     const tiles = this.getTilesInBounds(center, zoom, radius);
-    const loadPromises = tiles.map((tileInfo) =>
-      this.getTile(tileInfo).catch((error) => {
-        console.warn(
-          `Error al precargar tile ${tileInfo.x},${tileInfo.y},${tileInfo.z}:`,
-          error,
-        );
-        return null;
-      }),
-    );
 
-    await Promise.all(loadPromises);
+    // Precargar tiles en lotes para evitar sobrecarga
+    const batchSize = 5;
+    for (let i = 0; i < tiles.length; i += batchSize) {
+      const batch = tiles.slice(i, i + batchSize);
+      const loadPromises = batch.map((tileInfo) =>
+        this.getTile(tileInfo).catch((error) => {
+          console.warn(
+            `Error al precargar tile ${tileInfo.x},${tileInfo.y},${tileInfo.z}:`,
+            error,
+          );
+          return null;
+        }),
+      );
+
+      await Promise.all(loadPromises);
+
+      // Pequeño delay entre lotes para evitar sobrecarga
+      if (i + batchSize < tiles.length) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    }
   }
 
   /**

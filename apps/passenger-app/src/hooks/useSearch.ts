@@ -1,7 +1,8 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import Fuse from 'fuse.js';
 import type { SearchItem, SearchFilters } from '../types/search';
 import { mockSearchData } from '../data/mocks';
+import { fetchRoutes } from '../services/routeService';
 import { useDebounce } from './useDebounce';
 
 const fuseOptions = {
@@ -20,9 +21,43 @@ export function useSearch() {
   });
   const [results, setResults] = useState<SearchItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchData, setSearchData] = useState<SearchItem[]>(mockSearchData);
+
+  // Cargar rutas reales al montar el componente
+  useEffect(() => {
+    const loadRoutes = async () => {
+      try {
+        const routes = await fetchRoutes();
+        // Convertir rutas y sus variantes a formato SearchItem
+        const routeSearchItems: SearchItem[] = [];
+
+        // Las rutas ya son route variants con coordenadas
+        for (const route of routes) {
+          routeSearchItems.push({
+            id: route.id,
+            name: route.name,
+            code: route.code,
+            tags: [route.code, route.name, 'ruta', 'ruta de bus', 'transporte'],
+            type: 'route' as const,
+            fare: route.fare,
+            coordinates: route.path,
+            color: route.color,
+          });
+        }
+
+        // Combinar con datos mock existentes (paraderos)
+        setSearchData([...mockSearchData, ...routeSearchItems]);
+      } catch (error) {
+        console.error('Error loading routes for search:', error);
+        // Mantener datos mock en caso de error
+      }
+    };
+
+    loadRoutes();
+  }, []);
 
   // Crear instancia de Fuse memoizada
-  const fuse = useMemo(() => new Fuse(mockSearchData, fuseOptions), []);
+  const fuse = useMemo(() => new Fuse(searchData, fuseOptions), [searchData]);
 
   // Función de búsqueda con filtros
   const performSearch = useCallback(
