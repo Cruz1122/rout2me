@@ -7,11 +7,16 @@ import {
   RiBriefcase4Fill,
   RiKey2Line,
   RiArrowLeftLine,
+  RiMailSendFill,
 } from 'react-icons/ri';
 import R2MInput from '../components/R2MInput';
 import R2MButton from '../components/R2MButton';
 import R2MTextLink from '../components/R2MTextLink';
 import R2MCodeInput from '../components/R2MCodeInput';
+import ErrorNotification, {
+  useErrorNotification,
+} from '../components/ErrorNotification';
+import { signupUser, validateAuthConfig } from '../services/authService';
 import '../components/R2MInput.css';
 
 // Tipos para el registro
@@ -31,6 +36,8 @@ type AccountPurpose = 'personal' | 'organization';
 
 export default function RegisterPage() {
   const router = useIonRouter();
+  const { error, handleError, clearError } = useErrorNotification();
+
   // Estados para las fases
   const [currentPhase, setCurrentPhase] = useState(1);
   const [personalData, setPersonalData] = useState<PersonalData>({
@@ -40,6 +47,16 @@ export default function RegisterPage() {
     confirmPassword: '',
     phone: '',
   });
+
+  // Estados para errores de campos específicos
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    phone?: string;
+    organizationKey?: string;
+  }>({});
 
   // Función para formatear el teléfono
   const formatPhoneNumber = (value: string) => {
@@ -64,11 +81,70 @@ export default function RegisterPage() {
     // Permitir borrar completamente
     if (value === '') {
       setPersonalData({ ...personalData, phone: '' });
+      setFieldErrors({ ...fieldErrors, phone: undefined });
       return;
     }
 
     const formatted = formatPhoneNumber(value);
     setPersonalData({ ...personalData, phone: formatted });
+
+    // Validar teléfono en tiempo real
+    const phoneNumbers = formatted.replaceAll(/\D/g, '');
+    if (phoneNumbers.length > 0 && phoneNumbers.length !== 10) {
+      setFieldErrors({
+        ...fieldErrors,
+        phone: 'El teléfono debe tener 10 dígitos',
+      });
+    } else {
+      setFieldErrors({ ...fieldErrors, phone: undefined });
+    }
+  };
+
+  // Funciones de validación en tiempo real
+  const validateName = (value: string) => {
+    if (value.trim()) {
+      setFieldErrors({ ...fieldErrors, name: undefined });
+    } else {
+      setFieldErrors({ ...fieldErrors, name: 'El nombre es requerido' });
+    }
+  };
+
+  const validateEmail = (value: string) => {
+    if (value.trim() && value.includes('@') && value.includes('.')) {
+      setFieldErrors({ ...fieldErrors, email: undefined });
+    } else if (value.trim()) {
+      setFieldErrors({
+        ...fieldErrors,
+        email: 'Ingresa un correo electrónico válido',
+      });
+    } else {
+      setFieldErrors({
+        ...fieldErrors,
+        email: 'El correo electrónico es requerido',
+      });
+    }
+  };
+
+  const validatePassword = (value: string) => {
+    if (value.length > 0 && value.length < 6) {
+      setFieldErrors({
+        ...fieldErrors,
+        password: 'La contraseña debe tener al menos 6 caracteres',
+      });
+    } else {
+      setFieldErrors({ ...fieldErrors, password: undefined });
+    }
+  };
+
+  const validateConfirmPassword = (value: string) => {
+    if (value === personalData.password) {
+      setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
+    } else {
+      setFieldErrors({
+        ...fieldErrors,
+        confirmPassword: 'Las contraseñas no coinciden',
+      });
+    }
   };
   const [accountPurpose, setAccountPurpose] = useState<AccountPurpose | null>(
     null,
@@ -77,56 +153,62 @@ export default function RegisterPage() {
     organizationKey: ['', '', '', '', '', ''],
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   // Validaciones básicas
   const validatePersonalData = () => {
     const { name, email, password, confirmPassword } = personalData;
+    const errors: typeof fieldErrors = {};
 
     if (!name.trim()) {
-      alert('El nombre es requerido');
-      return false;
+      errors.name = 'El nombre es requerido';
     }
 
     if (!email.trim() || !email.includes('@')) {
-      alert('Ingresa un correo electrónico válido');
-      return false;
+      errors.email = 'Ingresa un correo electrónico válido';
     }
 
     if (password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres');
-      return false;
+      errors.password = 'La contraseña debe tener al menos 6 caracteres';
     }
 
     if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden');
-      return false;
+      errors.confirmPassword = 'Las contraseñas no coinciden';
     }
 
     if (personalData.phone) {
       const phoneNumbers = personalData.phone.replaceAll(/\D/g, '');
       if (phoneNumbers.length !== 10) {
-        alert('El teléfono debe tener 10 dígitos');
-        return false;
+        errors.phone = 'El teléfono debe tener 10 dígitos';
       }
     }
 
-    return true;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const validateCompanyData = () => {
     const { organizationKey } = companyData;
     const fullKey = organizationKey.join('');
+    const errors: typeof fieldErrors = {};
 
     if (fullKey.length !== 6) {
-      alert('La clave debe tener exactamente 6 caracteres');
-      return false;
+      errors.organizationKey = 'La clave debe tener exactamente 6 caracteres';
     }
 
-    return true;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   // Navegación entre fases
   const handleNextPhase = () => {
+    if (showConfirmation) {
+      // Redirigir al login desde la vista de confirmación
+      router.push('/login', 'forward');
+      return;
+    }
+
     if (currentPhase === 1) {
       if (validatePersonalData()) {
         setCurrentPhase(2);
@@ -145,42 +227,136 @@ export default function RegisterPage() {
   };
 
   const handlePreviousPhase = () => {
+    if (showConfirmation) {
+      // Desde la vista de confirmación, ir al Welcome
+      router.push('/welcome', 'back');
+      return;
+    }
+
     if (currentPhase > 1) {
       setCurrentPhase(currentPhase - 1);
     }
   };
 
   // Envío final del formulario
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     setIsLoading(true);
 
-    // Construir el payload según el propósito de la cuenta
-    const phoneNumbers = personalData.phone.replaceAll(/\D/g, '');
-    const payload = {
-      email: personalData.email,
-      password: personalData.password,
-      name: personalData.name,
-      phone: personalData.phone ? `+57${phoneNumbers}` : undefined,
-      roles: accountPurpose === 'organization' ? ['ADMIN'] : ['USER'],
-      ...(accountPurpose === 'organization' && {
-        company: {
-          mode: 'join',
-          organization_key: companyData.organizationKey.join(''),
+    try {
+      // Validar configuración de autenticación
+      validateAuthConfig();
+
+      // Construir el payload según el formato de Supabase
+      const phoneNumbers = personalData.phone.replaceAll(/\D/g, '');
+      const signupData = {
+        email: personalData.email,
+        password: personalData.password,
+        data: {
+          name: personalData.name,
+          phone: personalData.phone ? `+57${phoneNumbers}` : '',
+          company_key:
+            accountPurpose === 'organization'
+              ? companyData.organizationKey.join('')
+              : '',
         },
-      }),
-    };
+      };
 
-    console.log('Register payload:', payload);
+      console.log('Register payload:', signupData);
 
-    // Implementar lógica de registro con el backend
-    setTimeout(() => {
+      // Realizar el registro con Supabase
+      const response = await signupUser(signupData);
+
+      console.log('Registro exitoso:', response);
+
+      // Mostrar vista de confirmación
+      setRegisteredEmail(response.email);
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('Error en el registro:', error);
+      handleError(error);
+    } finally {
       setIsLoading(false);
-      alert('Registro completado (simulado)');
-    }, 2000);
+    }
   };
+
+  // Vista de confirmación de registro
+  const renderConfirmationView = () => (
+    <div className="w-full max-w-md">
+      <div className="text-center">
+        {/* Icono principal con mejor jerarquía */}
+        <div className="w-28 h-28 mx-auto flex items-center justify-center">
+          <RiMailSendFill size={72} style={{ color: 'var(--color-primary)' }} />
+        </div>
+
+        {/* Título principal */}
+        <div className="mb-6">
+          <h1
+            className="font-bold mb-3"
+            style={{ color: 'var(--color-primary)', fontSize: '28px' }}
+          >
+            ¡Registro completado!
+          </h1>
+        </div>
+
+        {/* Mensaje principal */}
+        <div className="mb-8">
+          <p
+            className="mb-4"
+            style={{
+              color: 'var(--color-text)',
+              fontSize: '16px',
+              lineHeight: '1.4',
+            }}
+          >
+            Se ha enviado un correo de confirmación a:
+          </p>
+
+          {/* Email destacado */}
+          <div
+            className="inline-block px-6 py-3 rounded-lg border-2"
+            style={{
+              backgroundColor: 'rgba(var(--color-primary-rgb), 0.05)',
+              borderColor: 'rgba(var(--color-primary-rgb), 0.2)',
+            }}
+          >
+            <p
+              className="font-semibold"
+              style={{
+                color: 'var(--color-primary)',
+                fontSize: '16px',
+                wordBreak: 'break-all',
+                lineHeight: '1.3',
+              }}
+            >
+              {registeredEmail}
+            </p>
+          </div>
+        </div>
+
+        {/* Instrucciones */}
+        <div className="mb-6">
+          <p
+            className="text-center"
+            style={{
+              color: 'var(--color-terciary)',
+              fontSize: '15px',
+              lineHeight: '1.5',
+            }}
+          >
+            Revisa tu bandeja de entrada y sigue las instrucciones para activar
+            tu cuenta.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 
   // Renderizado de la fase actual
   const renderCurrentPhase = () => {
+    if (showConfirmation) {
+      return renderConfirmationView();
+    }
+
     switch (currentPhase) {
       case 1:
         return renderPersonalDataPhase();
@@ -195,6 +371,9 @@ export default function RegisterPage() {
 
   // Función para obtener el texto del botón
   const getButtonText = () => {
+    if (showConfirmation) {
+      return 'Iniciar sesión';
+    }
     if (currentPhase === 1) {
       return 'Continuar';
     } else if (currentPhase === 2 && accountPurpose === 'personal') {
@@ -217,7 +396,9 @@ export default function RegisterPage() {
             variant="primary"
             size="large"
             onClick={handleNextPhase}
-            disabled={currentPhase === 2 && !accountPurpose}
+            disabled={
+              currentPhase === 2 && !accountPurpose && !showConfirmation
+            }
             loading={isLoading}
             fullWidth
           >
@@ -260,10 +441,13 @@ export default function RegisterPage() {
             type="name"
             placeholder="Nombre completo"
             value={personalData.name}
-            onValueChange={(value) =>
-              setPersonalData({ ...personalData, name: value })
-            }
+            onValueChange={(value) => {
+              setPersonalData({ ...personalData, name: value });
+              validateName(value);
+            }}
             required
+            error={fieldErrors.name}
+            hasError={!!fieldErrors.name}
           />
         </div>
 
@@ -273,10 +457,13 @@ export default function RegisterPage() {
             type="email"
             placeholder="Correo electrónico"
             value={personalData.email}
-            onValueChange={(value) =>
-              setPersonalData({ ...personalData, email: value })
-            }
+            onValueChange={(value) => {
+              setPersonalData({ ...personalData, email: value });
+              validateEmail(value);
+            }}
             required
+            error={fieldErrors.email}
+            hasError={!!fieldErrors.email}
           />
         </div>
 
@@ -286,10 +473,17 @@ export default function RegisterPage() {
             type="password"
             placeholder="Contraseña"
             value={personalData.password}
-            onValueChange={(value) =>
-              setPersonalData({ ...personalData, password: value })
-            }
+            onValueChange={(value) => {
+              setPersonalData({ ...personalData, password: value });
+              validatePassword(value);
+              // También validar confirmPassword si ya tiene valor
+              if (personalData.confirmPassword) {
+                validateConfirmPassword(personalData.confirmPassword);
+              }
+            }}
             required
+            error={fieldErrors.password}
+            hasError={!!fieldErrors.password}
           />
         </div>
 
@@ -299,10 +493,13 @@ export default function RegisterPage() {
             type="password"
             placeholder="Confirmar contraseña"
             value={personalData.confirmPassword}
-            onValueChange={(value) =>
-              setPersonalData({ ...personalData, confirmPassword: value })
-            }
+            onValueChange={(value) => {
+              setPersonalData({ ...personalData, confirmPassword: value });
+              validateConfirmPassword(value);
+            }}
             required
+            error={fieldErrors.confirmPassword}
+            hasError={!!fieldErrors.confirmPassword}
           />
         </div>
 
@@ -314,6 +511,8 @@ export default function RegisterPage() {
             value={personalData.phone}
             onValueChange={handlePhoneChange}
             showOptional
+            error={fieldErrors.phone}
+            hasError={!!fieldErrors.phone}
           />
         </div>
       </form>
@@ -487,8 +686,10 @@ export default function RegisterPage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
-        {/* Botón de retroceso - solo visible después de la fase 1 */}
-        {currentPhase > 1 && (
+        {/* Notificación de error */}
+        <ErrorNotification error={error} onClose={clearError} />
+        {/* Botón de retroceso - visible después de la fase 1 y en confirmación */}
+        {(currentPhase > 1 || showConfirmation) && (
           <button
             onClick={handlePreviousPhase}
             className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
@@ -509,36 +710,38 @@ export default function RegisterPage() {
           <div className="flex-shrink-0 pt-8"></div>
           <div className="flex-shrink-0 pb-4"></div>
 
-          {/* Indicador de progreso fijo */}
-          <div className="flex-shrink-0 mb-6 w-full max-w-md mx-auto">
-            <div className="flex items-center justify-between mb-2">
-              <span
-                className="text-sm font-medium"
-                style={{ color: 'var(--color-terciary)' }}
-              >
-                Paso {currentPhase} de {accountPurpose === 'personal' ? 2 : 3}
-              </span>
-              <span
-                className="text-sm font-medium"
-                style={{ color: 'var(--color-primary)' }}
-              >
-                {Math.round(
-                  (currentPhase / (accountPurpose === 'personal' ? 2 : 3)) *
-                    100,
-                )}
-                %
-              </span>
+          {/* Indicador de progreso fijo - solo visible si no es confirmación */}
+          {!showConfirmation && (
+            <div className="flex-shrink-0 mb-6 w-full max-w-md mx-auto">
+              <div className="flex items-center justify-between mb-2">
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--color-terciary)' }}
+                >
+                  Paso {currentPhase} de {accountPurpose === 'personal' ? 2 : 3}
+                </span>
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--color-primary)' }}
+                >
+                  {Math.round(
+                    (currentPhase / (accountPurpose === 'personal' ? 2 : 3)) *
+                      100,
+                  )}
+                  %
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'var(--color-primary)',
+                    width: `${(currentPhase / (accountPurpose === 'personal' ? 2 : 3)) * 100}%`,
+                  }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="h-2 rounded-full transition-all duration-300"
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                  width: `${(currentPhase / (accountPurpose === 'personal' ? 2 : 3)) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
+          )}
 
           {/* Contenido de la fase actual - área flexible */}
           <div className="flex-1 flex items-center justify-center">
@@ -548,23 +751,25 @@ export default function RegisterPage() {
           {/* Botones de navegación fijos */}
           <div className="flex-shrink-0 py-6">{renderNavigationButtons()}</div>
 
-          {/* Footer fijo con link de login */}
-          <div className="flex-shrink-0 pb-8">
-            <div className="text-center">
-              <span
-                style={{ color: 'var(--color-terciary)', fontSize: '14px' }}
-              >
-                ¿Ya tienes cuenta?{' '}
-              </span>
-              <R2MTextLink
-                variant="secondary"
-                size="small"
-                onClick={() => router.push('/login', 'forward')}
-              >
-                Inicia sesión
-              </R2MTextLink>
+          {/* Footer fijo con link de login - solo visible si no es confirmación */}
+          {!showConfirmation && (
+            <div className="flex-shrink-0 pb-8">
+              <div className="text-center">
+                <span
+                  style={{ color: 'var(--color-terciary)', fontSize: '14px' }}
+                >
+                  ¿Ya tienes cuenta?{' '}
+                </span>
+                <R2MTextLink
+                  variant="secondary"
+                  size="small"
+                  onClick={() => router.push('/login', 'forward')}
+                >
+                  Inicia sesión
+                </R2MTextLink>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </IonContent>
     </IonPage>

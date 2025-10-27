@@ -11,6 +11,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
 import AnimatedTabIcon from './components/AnimatedTabIcon';
 import GlobalLoader from './components/GlobalLoader';
+import RouteGuard from './components/RouteGuard';
 import { useActiveTab } from './hooks/useActiveTab';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -30,64 +31,78 @@ function TabsWithIcons() {
   const activeTab = useActiveTab();
 
   return (
-    <IonTabs>
-      <IonRouterOutlet>
-        <Route exact path="/inicio">
-          <Suspense fallback={<GlobalLoader />}>
-            <HomePage />
-          </Suspense>
-        </Route>
-        <Route exact path="/rutas">
-          <Suspense fallback={<GlobalLoader />}>
-            <RoutesPage />
-          </Suspense>
-        </Route>
-        <Route exact path="/en-vivo">
-          <Suspense fallback={<GlobalLoader />}>
-            <LivePage />
-          </Suspense>
-        </Route>
-        <Route exact path="/alertas">
-          <Suspense fallback={<GlobalLoader />}>
-            <AlertsPage />
-          </Suspense>
-        </Route>
-        <Route exact path="/perfil">
-          <Suspense fallback={<GlobalLoader />}>
-            <ProfilePage />
-          </Suspense>
-        </Route>
-        <Route exact path="/">
-          <Redirect to="/inicio" />
-        </Route>
-      </IonRouterOutlet>
+    <RouteGuard>
+      <IonTabs>
+        <IonRouterOutlet>
+          <Route exact path="/inicio">
+            <Suspense fallback={<GlobalLoader />}>
+              <HomePage />
+            </Suspense>
+          </Route>
+          <Route exact path="/rutas">
+            <Suspense fallback={<GlobalLoader />}>
+              <RoutesPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/en-vivo">
+            <Suspense fallback={<GlobalLoader />}>
+              <LivePage />
+            </Suspense>
+          </Route>
+          <Route exact path="/alertas">
+            <Suspense fallback={<GlobalLoader />}>
+              <AlertsPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/perfil">
+            <Suspense fallback={<GlobalLoader />}>
+              <ProfilePage />
+            </Suspense>
+          </Route>
+          <Route exact path="/">
+            <Redirect to="/inicio" />
+          </Route>
+        </IonRouterOutlet>
 
-      <IonTabBar slot="bottom">
-        <IonTabButton tab="inicio" href="/inicio">
-          <AnimatedTabIcon iconName="home" isActive={activeTab === 'inicio'} />
-          <IonLabel>Inicio</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="rutas" href="/rutas">
-          <AnimatedTabIcon iconName="route" isActive={activeTab === 'rutas'} />
-          <IonLabel>Rutas</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="en-vivo" href="/en-vivo">
-          <AnimatedTabIcon iconName="bus" isActive={activeTab === 'en-vivo'} />
-          <IonLabel>En vivo</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="alertas" href="/alertas">
-          <AnimatedTabIcon
-            iconName="notification"
-            isActive={activeTab === 'alertas'}
-          />
-          <IonLabel>Alertas</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="perfil" href="/perfil">
-          <AnimatedTabIcon iconName="user" isActive={activeTab === 'perfil'} />
-          <IonLabel>Perfil</IonLabel>
-        </IonTabButton>
-      </IonTabBar>
-    </IonTabs>
+        <IonTabBar slot="bottom">
+          <IonTabButton tab="inicio" href="/inicio">
+            <AnimatedTabIcon
+              iconName="home"
+              isActive={activeTab === 'inicio'}
+            />
+            <IonLabel>Inicio</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="rutas" href="/rutas">
+            <AnimatedTabIcon
+              iconName="route"
+              isActive={activeTab === 'rutas'}
+            />
+            <IonLabel>Rutas</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="en-vivo" href="/en-vivo">
+            <AnimatedTabIcon
+              iconName="bus"
+              isActive={activeTab === 'en-vivo'}
+            />
+            <IonLabel>En vivo</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="alertas" href="/alertas">
+            <AnimatedTabIcon
+              iconName="notification"
+              isActive={activeTab === 'alertas'}
+            />
+            <IonLabel>Alertas</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="perfil" href="/perfil">
+            <AnimatedTabIcon
+              iconName="user"
+              isActive={activeTab === 'perfil'}
+            />
+            <IonLabel>Perfil</IonLabel>
+          </IonTabButton>
+        </IonTabBar>
+      </IonTabs>
+    </RouteGuard>
   );
 }
 

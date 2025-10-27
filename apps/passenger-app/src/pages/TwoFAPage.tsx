@@ -5,9 +5,13 @@ import { RiLock2Line } from 'react-icons/ri';
 import R2MButton from '../components/R2MButton';
 import R2MTextLink from '../components/R2MTextLink';
 import R2MCodeInput from '../components/R2MCodeInput';
+import ErrorNotification, {
+  useErrorNotification,
+} from '../components/ErrorNotification';
 
 export default function TwoFAPage() {
   const history = useHistory();
+  const { error, showError, clearError } = useErrorNotification();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -36,7 +40,7 @@ export default function TwoFAPage() {
     const fullCode = code.join('');
 
     if (fullCode.length !== 6) {
-      alert('Por favor ingresa el código completo de 6 dígitos');
+      showError('Por favor ingresa el código completo de 6 dígitos');
       return;
     }
 
@@ -48,10 +52,10 @@ export default function TwoFAPage() {
       setIsLoading(false);
       // Simular éxito/error
       if (fullCode === '123456') {
-        alert('Código verificado correctamente');
+        // Código correcto - redirigir sin mensaje
         history.push('/inicio');
       } else {
-        alert('Código incorrecto. Intenta nuevamente.');
+        showError('Código incorrecto. Intenta nuevamente.');
         setCode(['', '', '', '', '', '']);
       }
     }, 2000);
@@ -64,7 +68,7 @@ export default function TwoFAPage() {
     setCanResend(false);
     setCooldown(60);
     console.log('Resending 2FA code...');
-    alert('Código reenviado. Revisa tu correo electrónico.');
+    showError('Código reenviado. Revisa tu correo electrónico.');
   };
 
   // Función para formatear el tiempo del cooldown
@@ -77,6 +81,8 @@ export default function TwoFAPage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
+        {/* Notificación de error */}
+        <ErrorNotification error={error} onClose={clearError} />
         <div className="flex flex-col items-center justify-center min-h-full px-6 py-12">
           {/* Header */}
           <div className="mb-12 text-center">

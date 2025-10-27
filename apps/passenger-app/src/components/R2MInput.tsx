@@ -32,6 +32,8 @@ interface R2MInputProps {
   readonly onValueChange: (value: string) => void;
   readonly required?: boolean;
   readonly showOptional?: boolean;
+  readonly error?: string;
+  readonly hasError?: boolean;
 }
 
 const iconMap = {
@@ -71,6 +73,17 @@ const FieldIndicators = ({ showOptional }: { showOptional: boolean }) => {
   return (
     <div className="r2m-input-indicators">
       <span className="r2m-input-optional">Opcional</span>
+    </div>
+  );
+};
+
+// Componente para mostrar mensajes de error
+const ErrorMessage = ({ error }: { error?: string }) => {
+  if (!error) return null;
+
+  return (
+    <div className="r2m-input-error">
+      <span className="r2m-input-error-text">{error}</span>
     </div>
   );
 };
@@ -174,6 +187,8 @@ export default function R2MInput({
   onValueChange,
   required = false,
   showOptional = false,
+  error,
+  hasError = false,
 }: R2MInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -198,18 +213,28 @@ export default function R2MInput({
   const handleEyeMouseEnter = () => setIsEyeHovered(true);
   const handleEyeMouseLeave = () => setIsEyeHovered(false);
 
+  const getBorderColor = () => {
+    if (hasError) return '#ef4444';
+    if (isFocused) return 'rgba(var(--color-secondary-rgb), 0.5)';
+    return 'rgba(var(--color-surface-rgb), 0.5)';
+  };
+
+  const getBoxShadow = () => {
+    if (hasError) return '0 0 0 3px rgba(239, 68, 68, 0.1)';
+    if (isFocused) return '0 0 0 3px rgba(var(--color-secondary-rgb), 0.1)';
+    return '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+  };
+
   return (
     <div className="r2m-input-wrapper">
       <FieldIndicators showOptional={showOptional} />
 
       <div
-        className={`r2m-input-container ${isFocused ? 'focused' : ''} ${type === 'password' ? 'password-field' : ''}`}
+        className={`r2m-input-container ${isFocused ? 'focused' : ''} ${type === 'password' ? 'password-field' : ''} ${hasError ? 'error' : ''}`}
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          border: `1px solid ${isFocused ? 'rgba(var(--color-secondary-rgb), 0.5)' : 'rgba(var(--color-surface-rgb), 0.5)'}`,
-          boxShadow: isFocused
-            ? '0 0 0 3px rgba(var(--color-secondary-rgb), 0.1)'
-            : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: `1px solid ${getBorderColor()}`,
+          boxShadow: getBoxShadow(),
         }}
       >
         <InputIcon
@@ -241,6 +266,8 @@ export default function R2MInput({
           />
         )}
       </div>
+
+      <ErrorMessage error={error} />
     </div>
   );
 }

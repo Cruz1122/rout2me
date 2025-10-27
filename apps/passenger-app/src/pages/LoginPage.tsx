@@ -10,9 +10,16 @@ import {
 import R2MInput from '../components/R2MInput';
 import R2MButton from '../components/R2MButton';
 import R2MTextLink from '../components/R2MTextLink';
+import ErrorNotification, {
+  useErrorNotification,
+} from '../components/ErrorNotification';
+import { loginUser, validateAuthConfig } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
 
 export default function LoginPage() {
   const router = useIonRouter();
+  const { login } = useAuth();
+  const { error, handleError, clearError } = useErrorNotification();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -20,12 +27,37 @@ export default function LoginPage() {
     'google' | 'microsoft' | null
   >(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    console.log('Login attempt:', { email, password });
-    // Implementar lógica de autenticación
-    setTimeout(() => setIsLoading(false), 2000);
+
+    try {
+      // Validar configuración de autenticación
+      validateAuthConfig();
+
+      // Realizar el login con Supabase
+      const loginData = {
+        email: email.trim(),
+        password: password,
+      };
+
+      console.log('Login attempt:', loginData);
+
+      const response = await loginUser(loginData);
+
+      console.log('Login exitoso:', response);
+
+      // Guardar sesión en localStorage usando el hook
+      login(response);
+
+      // Redirigir directamente a /inicio
+      router.push('/inicio', 'forward');
+    } catch (error) {
+      console.error('Error en el login:', error);
+      handleError(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -41,9 +73,11 @@ export default function LoginPage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
+        {/* Notificación de error */}
+        <ErrorNotification error={error} onClose={clearError} />
         {/* Botón de retroceso */}
         <button
-          onClick={() => router.goBack()}
+          onClick={() => router.push('/welcome', 'back')}
           className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
