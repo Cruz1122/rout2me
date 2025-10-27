@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import {
   createVehicle as createVehicleApi,
   getVehicles,
+  getCompanies,
 } from '../api/vehicles_api';
-import type { Vehicle, VehicleStatus } from '../api/vehicles_api';
+import type { Vehicle, VehicleStatus, Company } from '../api/vehicles_api';
 import { Link } from 'react-router-dom';
 
 export default function VehiclesPage() {
@@ -19,7 +20,9 @@ export default function VehiclesPage() {
   }>({});
   const [loading, setLoading] = useState(false);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [toast, setToast] = useState<{
     type: 'success' | 'error';
@@ -51,6 +54,30 @@ export default function VehiclesPage() {
       setLoadingVehicles(false);
     }
   }
+
+  async function loadCompanies() {
+    try {
+      setLoadingCompanies(true);
+      const data = await getCompanies();
+      setCompanies(data);
+      // Seleccionar la primera compañía por defecto si hay compañías
+      if (data.length > 0 && !company) {
+        setCompany(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+      showToast('error', 'Error al cargar las compañías');
+    } finally {
+      setLoadingCompanies(false);
+    }
+  }
+
+  // Cargar compañías cuando se abre el modal
+  useEffect(() => {
+    if (isAddOpen) {
+      loadCompanies();
+    }
+  }, [isAddOpen]);
 
   function closeModal() {
     setIsAddOpen(false);
@@ -571,15 +598,26 @@ export default function VehiclesPage() {
                 <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                   <label className="flex flex-col min-w-40 flex-1">
                     <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                      ID de Compañía
+                      Compañía
                     </p>
-                    <input
+                    <select
                       value={company}
                       onChange={(e) => setCompany(e.target.value)}
                       onBlur={validateCompany}
-                      placeholder="c9d0a146-01b0-4580-8a46-01b57a1e1e21"
                       className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
-                    />
+                    >
+                      <option value="" disabled>
+                        {loadingCompanies
+                          ? 'Cargando...'
+                          : 'Seleccione una compañía'}
+                      </option>
+                      {companies.map((comp) => (
+                        <option key={comp.id} value={comp.id}>
+                          {comp.name}{' '}
+                          {comp.short_name ? `(${comp.short_name})` : ''}
+                        </option>
+                      ))}
+                    </select>
                     {errors.company && (
                       <p className="text-red-600 text-sm mt-2">
                         {errors.company}

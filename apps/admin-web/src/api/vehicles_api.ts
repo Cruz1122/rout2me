@@ -26,24 +26,59 @@ export type VehicleCreate = {
   status: VehicleStatus;
 };
 
+export type Company = {
+  id: string;
+  name: string;
+  short_name: string;
+  org_key: string;
+};
+
 // Helper para obtener el token del localStorage
 function getAuthToken(): string | null {
   return localStorage.getItem('access_token');
+}
+
+// Obtener todas las compañías
+export async function getCompanies(): Promise<Company[]> {
+  const token = getAuthToken();
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/companies?select=id,name,short_name,org_key&order=name.asc`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Get companies error:', errorText);
+    throw new Error(`Get companies failed: ${res.status} ${errorText}`);
+  }
+
+  return await res.json();
 }
 
 // Obtener todos los vehículos
 export async function getVehicles(): Promise<Vehicle[]> {
   const token = getAuthToken();
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/buses`, {
-    method: 'GET',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/buses?select=id,plate,capacity,status,created_at,last_maintenance,passenger_count,company:companies(id,name,short_name)&order=created_at.desc`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
     },
-  });
+  );
 
   if (!res.ok) {
     const errorText = await res.text();
