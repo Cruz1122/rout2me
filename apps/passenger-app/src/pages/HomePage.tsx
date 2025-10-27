@@ -21,8 +21,11 @@ import R2MMapInfoCard from '../components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
 import { useMapResize } from '../hooks/useMapResize';
 import { useRouteDrawing } from '../hooks/useRouteDrawing';
+import { useBusMapping } from '../hooks/useBusMapping';
 import { processRouteWithCoordinates } from '../services/mapMatchingService';
 import { mapTileCacheService } from '../services/mapTileCacheService';
+import { fetchBuses, getBusesByRouteVariant } from '../services/busService';
+import { fetchRoutesWithStops } from '../services/routeService';
 import type { SearchItem } from '../types/search';
 import '../debug/paradasDebug'; // Importar script de debug
 import '../debug/apiTest'; // Importar script de prueba de API
@@ -48,20 +51,55 @@ export default function HomePage() {
     }>;
   }
 
+  interface BusFromNavigation {
+    id: string;
+    code: string;
+    name: string;
+    busId: string;
+    busLocation: { latitude: number; longitude: number } | null;
+  }
+
   const [routeFromNavigation, setRouteFromNavigation] =
     useState<RouteFromNavigation | null>(null);
+  const [busFromNavigation, setBusFromNavigation] =
+    useState<BusFromNavigation | null>(null);
 
   const { triggerResize } = useMapResize(mapInstance);
   const { addRouteToMap, clearAllRoutes, fitBoundsToRoute, highlightRoute } =
     useRouteDrawing(mapInstance);
+  const { addBusesToMap, clearAllBuses } = useBusMapping(mapInstance);
+
+  // Función para cargar buses de una ruta específica
+  const loadBusesForRoute = useCallback(
+    async (routeVariantId: string, highlightedBusId?: string) => {
+      try {
+        // Cargar todos los buses
+        const allBuses = await fetchBuses();
+
+        // Filtrar buses que pertenecen a esta variante de ruta
+        const routeBuses = getBusesByRouteVariant(allBuses, routeVariantId);
+
+        // Mostrar buses en el mapa con el bus destacado si se especifica
+        addBusesToMap(routeBuses, highlightedBusId);
+
+        console.log(
+          `Cargados ${routeBuses.length} buses para la ruta ${routeVariantId}`,
+        );
+      } catch (error) {
+        console.error('Error cargando buses para la ruta:', error);
+      }
+    },
+    [addBusesToMap],
+  );
 
   const handleItemSelect = useCallback(
     async (item: SearchItem) => {
       if (!mapInstance.current) return;
 
       if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
-        // Limpiar rutas anteriores al seleccionar una parada
+        // Limpiar rutas y buses anteriores al seleccionar una parada
         clearAllRoutes();
+        clearAllBuses();
 
         if (currentMarker.current) {
           currentMarker.current.remove();
@@ -85,14 +123,15 @@ export default function HomePage() {
         'coordinates' in item &&
         item.coordinates
       ) {
-        // Limpiar marcadores de paradas
+        // Limpiar marcadores de paradas y buses
         if (currentMarker.current) {
           currentMarker.current.remove();
           currentMarker.current = null;
         }
 
-        // Limpiar todas las rutas anteriores antes de agregar la nueva
+        // Limpiar todas las rutas y buses anteriores antes de agregar la nueva
         clearAllRoutes();
+        clearAllBuses();
 
         // Mostrar loader mientras se procesa el map matching
         setIsMapLoading(true);
@@ -142,6 +181,9 @@ export default function HomePage() {
           // Resaltar la ruta seleccionada
           highlightRoute(item.id, true);
 
+          // Cargar buses para esta ruta
+          await loadBusesForRoute(item.id);
+
           // Precargar tiles después de ajustar la vista
           setTimeout(() => {
             if (mapInstance.current) {
@@ -171,6 +213,9 @@ export default function HomePage() {
           fitBoundsToRoute(item.coordinates);
           highlightRoute(item.id, true);
 
+          // Cargar buses para esta ruta (fallback)
+          await loadBusesForRoute(item.id);
+
           // Precargar tiles después de ajustar la vista (fallback)
           setTimeout(() => {
             if (mapInstance.current) {
@@ -196,8 +241,10 @@ export default function HomePage() {
       mapInstance,
       addRouteToMap,
       clearAllRoutes,
+      clearAllBuses,
       fitBoundsToRoute,
       highlightRoute,
+      loadBusesForRoute,
     ],
   );
 
@@ -245,8 +292,9 @@ export default function HomePage() {
 
     setIsClearingRoutes(true);
 
-    // Limpiar rutas y marcadores
+    // Limpiar rutas, buses y marcadores
     clearAllRoutes();
+    clearAllBuses();
     setSelectedItem(null);
     if (currentMarker.current) {
       currentMarker.current.remove();
@@ -262,7 +310,7 @@ export default function HomePage() {
     setTimeout(() => {
       setIsClearingRoutes(false);
     }, 300);
-  }, [clearAllRoutes, isClearingRoutes]);
+  }, [clearAllRoutes, clearAllBuses, isClearingRoutes]);
   const [dragStart, setDragStart] = useState<{
     x: number;
     y: number;
@@ -456,6 +504,14 @@ export default function HomePage() {
       // Limpiar la data después de usarla
       delete (globalThis as { routeData?: RouteFromNavigation }).routeData;
     }
+
+    // Manejar bus que viene desde LivePage
+    const busData = (globalThis as { busData?: BusFromNavigation }).busData;
+    if (busData) {
+      setBusFromNavigation(busData);
+      // Limpiar la data después de usarla
+      delete (globalThis as { busData?: BusFromNavigation }).busData;
+    }
   });
 
   // Procesar ruta cuando esté disponible y el mapa esté listo
@@ -531,6 +587,9 @@ export default function HomePage() {
         // Resaltar la ruta
         highlightRoute(searchItem.id, true);
 
+        // Cargar buses para esta ruta
+        await loadBusesForRoute(searchItem.id);
+
         // Precargar tiles
         setTimeout(() => {
           if (mapInstance.current) {
@@ -572,6 +631,10 @@ export default function HomePage() {
         });
         fitBoundsToRoute(searchItem.coordinates!);
         highlightRoute(searchItem.id, true);
+
+        // Cargar buses para esta ruta (fallback)
+        await loadBusesForRoute(searchItem.id);
+
         setSelectedItem(searchItem);
       } finally {
         setIsMapLoading(false);
@@ -585,6 +648,132 @@ export default function HomePage() {
     mapInstance,
     addRouteToMap,
     clearAllRoutes,
+    clearAllBuses,
+    fitBoundsToRoute,
+    highlightRoute,
+    loadBusesForRoute,
+  ]);
+
+  // Procesar bus cuando esté disponible y el mapa esté listo
+  useEffect(() => {
+    if (!busFromNavigation || !mapInstance.current) return;
+
+    const processBusFromNavigation = async () => {
+      try {
+        // Limpiar rutas y buses anteriores
+        clearAllRoutes();
+        clearAllBuses();
+        if (currentMarker.current) {
+          currentMarker.current.remove();
+          currentMarker.current = null;
+        }
+
+        // Mostrar loader mientras se procesa
+        setIsMapLoading(true);
+
+        // Cargar la ruta completa para mostrar su geometría
+        let routeVariantId = busFromNavigation.id;
+
+        try {
+          const routes = await fetchRoutesWithStops();
+
+          // Buscar la ruta que contiene la variante con el ID del bus
+          let route = null;
+          let variant = null;
+
+          // Primero intentar encontrar por ID directo de ruta
+          route = routes.find((r) => r.id === busFromNavigation.id);
+          if (route?.variants?.length) {
+            variant = route.variants[0];
+            routeVariantId = variant.id;
+          } else {
+            // Si no se encuentra, buscar por activeRouteVariantId en las variantes
+            for (const r of routes) {
+              if (r.variants) {
+                const foundVariant = r.variants.find(
+                  (v) => v.id === busFromNavigation.id,
+                );
+                if (foundVariant) {
+                  route = r;
+                  variant = foundVariant;
+                  routeVariantId = variant.id;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (route && variant && variant.path && variant.path.length > 0) {
+            // Crear SearchItem con coordenadas reales
+            const searchItem: SearchItem = {
+              id: variant.id, // Usar el ID de la variante
+              type: 'route',
+              name: busFromNavigation.name,
+              code: busFromNavigation.code,
+              tags: [],
+              coordinates: variant.path,
+              color: route.color || 'var(--color-secondary)',
+            };
+
+            // Agregar la ruta al mapa
+            addRouteToMap(searchItem.id, variant.path, {
+              color: searchItem.color,
+              width: 4,
+              opacity: 0.9,
+              outlineColor: '#ffffff',
+              outlineWidth: 8,
+            });
+
+            // Ajustar el mapa para mostrar toda la ruta
+            fitBoundsToRoute(variant.path);
+
+            // Resaltar la ruta
+            highlightRoute(searchItem.id, true);
+
+            setSelectedItem(searchItem);
+          } else {
+            console.warn(
+              'No se encontró la ruta o variante para el bus:',
+              busFromNavigation,
+            );
+          }
+        } catch (error) {
+          console.error('Error cargando ruta para el bus:', error);
+        }
+
+        // Mostrar loader mientras se cargan los buses
+        setIsMapLoading(true);
+
+        // Cargar buses para esta ruta usando el ID de la variante
+        await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
+
+        // Centrar la cámara en el bus específico
+        if (busFromNavigation.busLocation && mapInstance.current) {
+          mapInstance.current.flyTo({
+            center: [
+              busFromNavigation.busLocation.longitude,
+              busFromNavigation.busLocation.latitude,
+            ],
+            zoom: 16,
+            duration: 1500,
+          });
+        }
+      } catch (error) {
+        console.error('Error processing bus from navigation:', error);
+      } finally {
+        setIsMapLoading(false);
+        setBusFromNavigation(null); // Limpiar después de procesar
+      }
+    };
+
+    processBusFromNavigation();
+  }, [
+    busFromNavigation,
+    mapInstance,
+    clearAllRoutes,
+    clearAllBuses,
+    loadBusesForRoute,
+    addRouteToMap,
     fitBoundsToRoute,
     highlightRoute,
   ]);

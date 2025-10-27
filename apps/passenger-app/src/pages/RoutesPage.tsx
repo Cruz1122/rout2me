@@ -17,11 +17,13 @@ import {
   getRecentRoutes,
   type Route,
 } from '../services/routeService';
+import { fetchBuses, getBusesByRouteVariant } from '../services/busService';
 import FilterSwitcher, {
   type FilterOption,
 } from '../components/FilterSwitcher';
 import GlobalLoader from '../components/GlobalLoader';
 import R2MButton from '../components/R2MButton';
+import R2MModal from '../components/R2MModal';
 
 type FilterTab = 'all' | 'recent';
 
@@ -59,8 +61,23 @@ export default function RoutesPage() {
       try {
         setLoading(true);
         setError(null);
-        const fetchedRoutes = await fetchRoutesWithStops();
-        setRoutes(fetchedRoutes);
+
+        // Cargar rutas y buses en paralelo
+        const [fetchedRoutes, allBuses] = await Promise.all([
+          fetchRoutesWithStops(),
+          fetchBuses(),
+        ]);
+
+        // Calcular buses activos para cada ruta
+        const routesWithActiveBuses = fetchedRoutes.map((route) => {
+          const activeBuses = getBusesByRouteVariant(allBuses, route.id);
+          return {
+            ...route,
+            activeBuses: activeBuses.length,
+          };
+        });
+
+        setRoutes(routesWithActiveBuses);
       } catch (err) {
         console.error('Error loading routes:', err);
         setError(
@@ -554,153 +571,17 @@ function RouteDetailModal({
   onViewOnMap,
 }: RouteDetailModalProps) {
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
-      {/* Overlay para capturar clicks y reducir brillo del fondo */}
-      <button
-        className="absolute inset-0 backdrop-blur-[1px] z-40 bg-transparent border-none p-0 w-full h-full"
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose();
-        }}
-        aria-label="Cerrar modal"
-      />
-
-      {/* Modal Content */}
-      <div
-        className="relative w-full max-w-md mx-4 mb-4 bg-white rounded-t-2xl shadow-2xl animate-slide-up z-50"
-        style={{ maxHeight: '80vh' }}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white"
-              style={{
-                backgroundColor:
-                  route.status === 'active'
-                    ? 'var(--color-secondary)'
-                    : '#9CA3AF',
-              }}
-            >
-              {route.number}
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">{route.name}</h2>
-              <p className="text-sm text-gray-500">Ruta {route.code}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M15 5L5 15M5 5L15 15"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          {/* Status */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Estado</span>
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                route.status === 'active'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
-            >
-              {route.status === 'active' ? 'Activa' : 'Fuera de servicio'}
-            </span>
-          </div>
-
-          {/* Active Buses */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">
-              Buses activos
-            </span>
-            <div className="flex items-center gap-2">
-              <RiBusLine
-                size={16}
-                style={{
-                  color:
-                    (route.activeBuses || 0) > 0
-                      ? 'var(--color-secondary)'
-                      : '#EF4444',
-                }}
-              />
-              <span className="text-sm font-semibold">
-                {route.activeBuses || 0}
-              </span>
-            </div>
-          </div>
-
-          {/* Next Bus */}
-          {route.status === 'active' && route.nextBus !== undefined && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">
-                Próximo bus
-              </span>
-              <span className="text-sm font-semibold text-green-600">
-                {route.nextBus} min
-              </span>
-            </div>
-          )}
-
-          {/* Stops Count */}
-          {route.stops && route.stops.length > 0 && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Paradas</span>
-              <span className="text-sm font-semibold">
-                {route.stops.length} paradas
-              </span>
-            </div>
-          )}
-
-          {/* Route Info */}
-          <div className="pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">
-                Información
-              </span>
-            </div>
-            <div className="space-y-2 text-sm text-gray-600">
-              <p>
-                <strong>Origen:</strong> {route.origin || 'No especificado'}
-              </p>
-              <p>
-                <strong>Destino:</strong>{' '}
-                {route.destination || 'No especificado'}
-              </p>
-              {route.via && (
-                <p>
-                  <strong>Vía:</strong> {route.via}
-                </p>
-              )}
-              {route.duration && (
-                <p>
-                  <strong>Duración:</strong> {route.duration} min
-                </p>
-              )}
-              {route.fare && (
-                <p>
-                  <strong>Tarifa:</strong> ${route.fare.toLocaleString('es-CO')}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="p-6 pt-0 space-y-3">
+    <R2MModal
+      isOpen={true}
+      onClose={onClose}
+      title={route.name}
+      subtitle={`Ruta ${route.code}`}
+      icon={route.number}
+      iconColor={
+        route.status === 'active' ? 'var(--color-secondary)' : '#9CA3AF'
+      }
+      actions={
+        <div className="space-y-3">
           <R2MButton
             onClick={onViewOnMap}
             variant="primary"
@@ -717,7 +598,90 @@ function RouteDetailModal({
             Cerrar
           </R2MButton>
         </div>
+      }
+    >
+      {/* Status */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Estado</span>
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-medium ${
+            route.status === 'active'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {route.status === 'active' ? 'Activa' : 'Fuera de servicio'}
+        </span>
       </div>
-    </div>
+
+      {/* Active Buses */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Buses activos</span>
+        <div className="flex items-center gap-2">
+          <RiBusLine
+            size={16}
+            style={{
+              color:
+                (route.activeBuses || 0) > 0
+                  ? 'var(--color-secondary)'
+                  : '#EF4444',
+            }}
+          />
+          <span className="text-sm font-semibold">
+            {route.activeBuses || 0}
+          </span>
+        </div>
+      </div>
+
+      {/* Next Bus */}
+      {route.status === 'active' && route.nextBus !== undefined && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Próximo bus</span>
+          <span className="text-sm font-semibold text-green-600">
+            {route.nextBus} min
+          </span>
+        </div>
+      )}
+
+      {/* Stops Count */}
+      {route.stops && route.stops.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Paradas</span>
+          <span className="text-sm font-semibold">
+            {route.stops.length} paradas
+          </span>
+        </div>
+      )}
+
+      {/* Route Info */}
+      <div className="pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">Información</span>
+        </div>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>
+            <strong>Origen:</strong> {route.origin || 'No especificado'}
+          </p>
+          <p>
+            <strong>Destino:</strong> {route.destination || 'No especificado'}
+          </p>
+          {route.via && (
+            <p>
+              <strong>Vía:</strong> {route.via}
+            </p>
+          )}
+          {route.duration && (
+            <p>
+              <strong>Duración:</strong> {route.duration} min
+            </p>
+          )}
+          {route.fare && (
+            <p>
+              <strong>Tarifa:</strong> ${route.fare.toLocaleString('es-CO')}
+            </p>
+          )}
+        </div>
+      </div>
+    </R2MModal>
   );
 }
