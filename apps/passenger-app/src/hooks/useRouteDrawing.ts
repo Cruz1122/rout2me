@@ -1,7 +1,7 @@
 import { useRef, useCallback } from 'react';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import type { Stop } from '../services/routeService';
-import { createPopupHTML } from '../components/R2MPopup';
+import { createPopupHTML } from '../utils/popupUtils';
 
 export interface RouteDrawingOptions {
   color?: string;

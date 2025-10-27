@@ -3,7 +3,7 @@ import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import { createRoot } from 'react-dom/client';
 import { RiBus2Fill } from 'react-icons/ri';
 import type { Bus } from '../services/busService';
-import { createPopupHTML } from '../components/R2MPopup';
+import { createPopupHTML } from '../utils/popupUtils';
 
 // Funciones auxiliares para simplificar el código
 function getStatusColor(status: Bus['status']): string {
