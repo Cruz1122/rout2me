@@ -20,6 +20,12 @@ export interface Route {
   // Coordenadas de la ruta para dibujar en el mapa
   coordinates?: [number, number][]; // Array de [lng, lat]
   color?: string; // Color de la línea en el mapa
+  // Paradas completas para mostrar en el mapa
+  routeStops?: Array<{
+    id: string;
+    name: string;
+    location: [number, number]; // [lng, lat]
+  }>;
 }
 
 export type SearchItem = Stop | Route;

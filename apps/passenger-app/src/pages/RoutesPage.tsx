@@ -1,29 +1,31 @@
-import { useState } from 'react';
-import { IonContent, IonPage } from '@ionic/react';
+import { useState, useEffect } from 'react';
+import { IonContent, IonPage, useIonRouter } from '@ionic/react';
 import {
-  RiStarFill,
-  RiStarLine,
   RiBusLine,
-  RiArrowRightLine,
   RiGridLine,
   RiGridFill,
   RiTimeLine,
   RiTimeFill,
   RiArrowRightSLine,
   RiQuestionLine,
+  RiSearchLine,
+  RiMapPinLine,
 } from 'react-icons/ri';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import {
-  mockRoutes,
-  favoriteRoutes,
-  recentRoutes,
+  fetchAllRoutesData,
+  getRecentRoutes,
   type Route,
-} from '../data/routesMock';
+} from '../services/routeService';
+import { fetchBuses, getBusesByRouteVariant } from '../services/busService';
 import FilterSwitcher, {
   type FilterOption,
 } from '../components/FilterSwitcher';
+import GlobalLoader from '../components/GlobalLoader';
+import R2MButton from '../components/R2MButton';
+import R2MModal from '../components/R2MModal';
 
-type FilterTab = 'all' | 'favorites' | 'recent';
+type FilterTab = 'all' | 'recent';
 
 const FILTER_OPTIONS: readonly FilterOption<FilterTab>[] = [
   {
@@ -31,12 +33,6 @@ const FILTER_OPTIONS: readonly FilterOption<FilterTab>[] = [
     label: 'Todas',
     iconOutline: RiGridLine,
     iconFilled: RiGridFill,
-  },
-  {
-    id: 'favorites',
-    label: 'Favoritas',
-    iconOutline: RiStarLine,
-    iconFilled: RiStarFill,
   },
   {
     id: 'recent',
@@ -49,9 +45,51 @@ const FILTER_OPTIONS: readonly FilterOption<FilterTab>[] = [
 const PREVIEW_LIMIT = 5;
 
 export default function RoutesPage() {
+  const router = useIonRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [showRouteModal, setShowRouteModal] = useState(false);
+
+  // Cargar rutas al montar el componente
+  useEffect(() => {
+    const loadRoutes = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Cargar rutas y buses en paralelo
+        const [fetchedRoutes, allBuses] = await Promise.all([
+          fetchAllRoutesData(),
+          fetchBuses(),
+        ]);
+
+        // Calcular buses activos para cada ruta
+        const routesWithActiveBuses = fetchedRoutes.map((route) => {
+          const activeBuses = getBusesByRouteVariant(allBuses, route.id);
+          return {
+            ...route,
+            activeBuses: activeBuses.length,
+          };
+        });
+
+        setRoutes(routesWithActiveBuses);
+      } catch (err) {
+        console.error('Error loading routes:', err);
+        setError(
+          err instanceof Error ? err.message : 'Error al cargar las rutas',
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRoutes();
+  }, []);
 
   const handleViewMore = (filter: FilterTab) => {
     setActiveFilter(filter);
@@ -65,35 +103,91 @@ export default function RoutesPage() {
     setActiveFilter(filter);
   };
 
+  const handleViewRoute = (route: Route) => {
+    setSelectedRoute(route);
+    setShowRouteModal(true);
+  };
+
+  const handleViewOnMap = () => {
+    if (!selectedRoute) return;
+
+    // Navegar a HomePage con la ruta seleccionada
+    const routeData = {
+      id: selectedRoute.id,
+      code: selectedRoute.code,
+      name: selectedRoute.name,
+      path: selectedRoute.path || selectedRoute.variants?.[0]?.path,
+      color: selectedRoute.color,
+      stops: selectedRoute.stops,
+    };
+
+    // Guardar en el estado global para que HomePage pueda acceder
+    (globalThis as { routeData?: typeof routeData }).routeData = routeData;
+
+    setShowRouteModal(false);
+    setSelectedRoute(null);
+    router.push('/inicio', 'forward', 'push');
+  };
+
   const getFilteredRoutes = (): Route[] => {
-    let routes = mockRoutes;
+    // Las rutas ya son route variants con coordenadas
+    let filteredRoutes = routes;
 
     // Aplicar filtro de categoría
-    if (activeFilter === 'favorites') {
-      routes = favoriteRoutes;
-    } else if (activeFilter === 'recent') {
-      routes = recentRoutes;
+    if (activeFilter === 'recent') {
+      filteredRoutes = getRecentRoutes(routes);
     } else if (activeFilter === 'all') {
-      routes = mockRoutes;
+      filteredRoutes = routes;
     }
 
     // Aplicar filtro de búsqueda
     if (searchQuery.trim()) {
-      routes = routes.filter(
+      filteredRoutes = filteredRoutes.filter(
         (route) =>
           route.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
           route.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          route.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          route.destination.toLowerCase().includes(searchQuery.toLowerCase()),
+          route.code.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
-    return routes;
+    return filteredRoutes;
   };
 
   const filteredRoutes = getFilteredRoutes();
   // Mostrar vista agrupada solo cuando NO hay filtro activo Y NO hay búsqueda
   const showGroupedView = activeFilter === null && !searchQuery.trim();
+
+  // Mostrar estado de carga
+  if (loading) {
+    return (
+      <IonPage>
+        <IonContent>
+          <GlobalLoader />
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  // Mostrar estado de error
+  if (error) {
+    return (
+      <IonPage>
+        <IonContent>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={() => globalThis.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Reintentar
+              </button>
+            </div>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>
@@ -169,28 +263,27 @@ export default function RoutesPage() {
         {/* Vista agrupada (sin filtro) o vista filtrada */}
         {showGroupedView ? (
           <div className="px-4 py-2 space-y-4 animate-fade-in">
-            {/* Rutas Favoritas */}
-            <RouteSection
-              title="Rutas Favoritas"
-              routes={favoriteRoutes.slice(0, PREVIEW_LIMIT)}
-              onViewMore={() => handleViewMore('favorites')}
-              showViewMore={favoriteRoutes.length > PREVIEW_LIMIT}
-            />
-
             {/* Rutas Recientes */}
             <RouteSection
               title="Rutas Recientes"
-              routes={recentRoutes.slice(0, PREVIEW_LIMIT)}
+              routes={getRecentRoutes(getFilteredRoutes()).slice(
+                0,
+                PREVIEW_LIMIT,
+              )}
               onViewMore={() => handleViewMore('recent')}
-              showViewMore={recentRoutes.length > PREVIEW_LIMIT}
+              showViewMore={
+                getRecentRoutes(getFilteredRoutes()).length > PREVIEW_LIMIT
+              }
+              onViewRoute={handleViewRoute}
             />
 
             {/* Todas las Rutas */}
             <RouteSection
               title="Todas las Rutas"
-              routes={mockRoutes.slice(0, PREVIEW_LIMIT)}
+              routes={getFilteredRoutes().slice(0, PREVIEW_LIMIT)}
               onViewMore={() => handleViewMore('all')}
-              showViewMore={mockRoutes.length > PREVIEW_LIMIT}
+              showViewMore={getFilteredRoutes().length > PREVIEW_LIMIT}
+              onViewRoute={handleViewRoute}
             />
           </div>
         ) : (
@@ -202,7 +295,11 @@ export default function RoutesPage() {
             ) : (
               <div className="space-y-3">
                 {filteredRoutes.map((route) => (
-                  <RouteCard key={route.id} route={route} />
+                  <RouteCard
+                    key={route.id}
+                    route={route}
+                    onViewRoute={handleViewRoute}
+                  />
                 ))}
               </div>
             )}
@@ -210,6 +307,18 @@ export default function RoutesPage() {
         )}
 
         <FareInfoCard />
+
+        {/* Modal de información de ruta */}
+        {showRouteModal && selectedRoute && (
+          <RouteDetailModal
+            route={selectedRoute}
+            onClose={() => {
+              setShowRouteModal(false);
+              setSelectedRoute(null);
+            }}
+            onViewOnMap={handleViewOnMap}
+          />
+        )}
       </IonContent>
     </IonPage>
   );
@@ -307,6 +416,7 @@ interface RouteSectionProps {
   readonly routes: readonly Route[];
   readonly onViewMore: () => void;
   readonly showViewMore: boolean;
+  readonly onViewRoute: (route: Route) => void;
 }
 
 function RouteSection({
@@ -314,6 +424,7 @@ function RouteSection({
   routes,
   onViewMore,
   showViewMore,
+  onViewRoute,
 }: RouteSectionProps) {
   return (
     <div
@@ -338,21 +449,37 @@ function RouteSection({
       </div>
       <div className="space-y-3">
         {routes.map((route) => (
-          <RouteCard key={route.id} route={route} />
+          <RouteCard key={route.id} route={route} onViewRoute={onViewRoute} />
         ))}
       </div>
     </div>
   );
 }
 
-function RouteCard({ route }: { readonly route: Route }) {
+function RouteCard({
+  route,
+  onViewRoute,
+}: {
+  readonly route: Route;
+  readonly onViewRoute: (route: Route) => void;
+}) {
   return (
     <div
-      className="p-4 rounded-xl"
+      className="p-4 rounded-xl cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
       style={{
         backgroundColor: 'white',
         border: '1px solid var(--color-surface)',
       }}
+      onClick={() => onViewRoute(route)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onViewRoute(route);
+        }
+      }}
+      aria-label={`Ver información de la ruta ${route.name}`}
     >
       <div className="flex items-center gap-3">
         <div
@@ -373,24 +500,16 @@ function RouteCard({ route }: { readonly route: Route }) {
                 color: route.status === 'offline' ? '#9CA3AF' : 'inherit',
               }}
             >
-              {route.origin} <RiArrowRightLine className="inline" size={14} />{' '}
-              {route.destination}
+              {route.name}
             </h3>
-            <button className="flex-shrink-0">
-              {route.isFavorite ? (
-                <RiStarFill
-                  size={20}
-                  style={{ color: 'var(--color-primary)' }}
-                />
-              ) : (
-                <RiStarLine size={20} className="text-gray-400" />
-              )}
-            </button>
+            {/* Icono de lupa sutil */}
+            <div className="flex-shrink-0 opacity-60">
+              <RiSearchLine
+                size={16}
+                style={{ color: 'var(--color-primary)' }}
+              />
+            </div>
           </div>
-
-          <p className="text-xs text-gray-500 mb-2">
-            Vía {route.via} • {route.duration} min promedio
-          </p>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 text-xs">
@@ -398,42 +517,169 @@ function RouteCard({ route }: { readonly route: Route }) {
                 className="flex items-center gap-1"
                 style={{
                   color:
-                    route.activeBuses > 0
+                    (route.activeBuses || 0) > 0
                       ? 'var(--color-secondary)'
                       : '#EF4444',
                 }}
               >
                 <RiBusLine size={14} />
-                {route.activeBuses} buses activos
+                {route.activeBuses || 0} buses activos
               </span>
             </div>
 
-            {route.status === 'active' && route.nextBus !== undefined && (
-              <span
-                className="text-xs font-medium px-2 py-1 rounded"
-                style={{
-                  backgroundColor: 'rgba(var(--color-secondary-rgb), 0.1)',
-                  color: 'var(--color-secondary)',
-                }}
-              >
-                Próximo: {route.nextBus} min
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {route.status === 'active' && route.nextBus !== undefined && (
+                <span
+                  className="text-xs font-medium px-2 py-1 rounded"
+                  style={{
+                    backgroundColor: 'rgba(var(--color-secondary-rgb), 0.1)',
+                    color: 'var(--color-secondary)',
+                  }}
+                >
+                  Próximo: {route.nextBus} min
+                </span>
+              )}
 
-            {route.status === 'offline' && (
-              <span
-                className="text-xs font-medium px-2 py-1 rounded"
-                style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  color: '#EF4444',
-                }}
-              >
-                Fuera de servicio
-              </span>
-            )}
+              {route.status === 'offline' && (
+                <span
+                  className="text-xs font-medium px-2 py-1 rounded"
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: '#EF4444',
+                  }}
+                >
+                  Fuera de servicio
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+interface RouteDetailModalProps {
+  readonly route: Route;
+  readonly onClose: () => void;
+  readonly onViewOnMap: () => void;
+}
+
+function RouteDetailModal({
+  route,
+  onClose,
+  onViewOnMap,
+}: RouteDetailModalProps) {
+  return (
+    <R2MModal
+      isOpen={true}
+      onClose={onClose}
+      title={route.name}
+      subtitle={`Ruta ${route.code}`}
+      icon={route.number}
+      iconColor={
+        route.status === 'active' ? 'var(--color-secondary)' : '#9CA3AF'
+      }
+      actions={
+        <div className="space-y-3">
+          <R2MButton
+            onClick={onViewOnMap}
+            variant="primary"
+            size="large"
+            fullWidth
+          >
+            <div className="flex items-center justify-center gap-2">
+              <RiMapPinLine size={20} />
+              <span>Ver en el mapa</span>
+            </div>
+          </R2MButton>
+
+          <R2MButton onClick={onClose} variant="outline" size="large" fullWidth>
+            Cerrar
+          </R2MButton>
+        </div>
+      }
+    >
+      {/* Status */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Estado</span>
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-medium ${
+            route.status === 'active'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {route.status === 'active' ? 'Activa' : 'Fuera de servicio'}
+        </span>
+      </div>
+
+      {/* Active Buses */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Buses activos</span>
+        <div className="flex items-center gap-2">
+          <RiBusLine
+            size={16}
+            style={{
+              color:
+                (route.activeBuses || 0) > 0
+                  ? 'var(--color-secondary)'
+                  : '#EF4444',
+            }}
+          />
+          <span className="text-sm font-semibold">
+            {route.activeBuses || 0}
+          </span>
+        </div>
+      </div>
+
+      {/* Next Bus */}
+      {route.status === 'active' && route.nextBus !== undefined && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Próximo bus</span>
+          <span className="text-sm font-semibold text-green-600">
+            {route.nextBus} min
+          </span>
+        </div>
+      )}
+
+      {/* Stops Count */}
+      {route.stops && route.stops.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Paradas</span>
+          <span className="text-sm font-semibold">
+            {route.stops.length} paradas
+          </span>
+        </div>
+      )}
+
+      {/* Route Info */}
+      {(route.via || route.duration || route.fare) && (
+        <div className="pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">
+              Información
+            </span>
+          </div>
+          <div className="space-y-2 text-sm text-gray-600">
+            {route.via && (
+              <p>
+                <strong>Vía:</strong> {route.via}
+              </p>
+            )}
+            {route.duration && (
+              <p>
+                <strong>Duración:</strong> {route.duration} min
+              </p>
+            )}
+            {route.fare && (
+              <p>
+                <strong>Tarifa:</strong> ${route.fare.toLocaleString('es-CO')}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </R2MModal>
   );
 }

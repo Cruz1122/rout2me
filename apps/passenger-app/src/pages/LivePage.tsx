@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IonContent, IonPage } from '@ionic/react';
+import { IonContent, IonPage, useIonRouter } from '@ionic/react';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import {
   RiBusLine,
@@ -8,6 +8,7 @@ import {
   RiRoadMapFill,
   RiGridLine,
   RiGridFill,
+  RiMapPinLine,
 } from 'react-icons/ri';
 import {
   type Bus,
@@ -24,6 +25,8 @@ import {
 import { useUserLocation } from '../hooks/useUserLocation';
 import { getNearbyBuses } from '../utils/busUtils';
 import GlobalLoader from '../components/GlobalLoader';
+import R2MModal from '../components/R2MModal';
+import R2MButton from '../components/R2MButton';
 
 type FilterTab = 'all' | 'active' | 'nearby';
 
@@ -49,12 +52,15 @@ const FILTER_OPTIONS: readonly FilterOption<FilterTab>[] = [
 ] as const;
 
 export default function LivePage() {
+  const router = useIonRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<BusServiceError | null>(null);
+  const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
+  const [showBusModal, setShowBusModal] = useState(false);
   const userLocation = useUserLocation();
 
   // Cargar buses al montar el componente
@@ -80,6 +86,33 @@ export default function LivePage() {
     setActiveFilter(filter);
   };
 
+  const handleBusClick = (bus: Bus) => {
+    setSelectedBus(bus);
+    setShowBusModal(true);
+  };
+
+  const handleViewBusOnMap = () => {
+    if (!selectedBus) return;
+
+    // Navegar a HomePage con el bus seleccionado
+    const busData = {
+      id: selectedBus.activeRouteVariantId || selectedBus.routeNumber,
+      code: selectedBus.routeNumber,
+      name: selectedBus.routeName,
+      busId: selectedBus.id,
+      busLocation: selectedBus.location,
+    };
+
+    // Guardar en el estado global para que HomePage pueda acceder
+    (globalThis as { busData?: typeof busData }).busData = busData;
+
+    setShowBusModal(false);
+    setSelectedBus(null);
+
+    // Navegar a HomePage usando Ionic Router (sin recargar la página)
+    router.push('/inicio', 'forward', 'push');
+  };
+
   const getFilteredBuses = (): Bus[] => {
     let filteredBuses = buses;
 
@@ -87,7 +120,7 @@ export default function LivePage() {
     if (activeFilter === 'active') {
       // Activos solo muestra buses que no estén offline
       filteredBuses = filteredBuses.filter((bus) => bus.status !== 'offline');
-    } else if (activeFilter === 'nearby') {
+    } else if (activeFilter === 'nearby' && userLocation) {
       // Cercanos calcula dinámicamente basado en la ubicación del usuario
       filteredBuses = getNearbyBuses(filteredBuses, userLocation);
     }
@@ -98,7 +131,7 @@ export default function LivePage() {
         (bus) =>
           bus.routeNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
           bus.routeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          bus.licensePlate?.toLowerCase().includes(searchQuery.toLowerCase()),
+          bus.plate?.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
@@ -138,7 +171,12 @@ export default function LivePage() {
     return (
       <div className="space-y-3">
         {filteredBuses.map((bus) => (
-          <BusCard key={bus.id} bus={bus} userLocation={userLocation} />
+          <BusCard
+            key={bus.id}
+            bus={bus}
+            userLocation={userLocation}
+            onClick={() => handleBusClick(bus)}
+          />
         ))}
       </div>
     );
@@ -218,19 +256,37 @@ export default function LivePage() {
         {/* Lista de buses */}
         <div className="px-4 py-2">{renderBusesContent()}</div>
       </IonContent>
+
+      {/* Modal de detalles del bus */}
+      {showBusModal && selectedBus && (
+        <BusDetailModal
+          bus={selectedBus}
+          userLocation={userLocation}
+          onClose={() => {
+            setShowBusModal(false);
+            setSelectedBus(null);
+          }}
+          onViewOnMap={handleViewBusOnMap}
+        />
+      )}
     </IonPage>
   );
 }
 
 interface BusCardProps {
   readonly bus: Bus;
-  readonly userLocation: { latitude: number; longitude: number };
+  readonly userLocation: { latitude: number; longitude: number } | null;
+  readonly onClick: () => void;
 }
 
-function BusCard({ bus, userLocation }: BusCardProps) {
-  // Calcular distancia en tiempo real
-  const distance = getDistanceBetweenLocations(userLocation, bus.location);
-  const isNearby = bus.status !== 'offline' && distance <= 1.5; // 1.5 km threshold
+function BusCard({ bus, userLocation, onClick }: BusCardProps) {
+  // Calcular distancia en tiempo real (solo si el bus tiene ubicación Y el usuario también)
+  const canCalculateDistance = bus.location !== null && userLocation !== null;
+  const distance = canCalculateDistance
+    ? getDistanceBetweenLocations(userLocation!, bus.location!)
+    : Infinity;
+  const isNearby =
+    bus.status !== 'offline' && canCalculateDistance && distance <= 1.5; // 1.5 km threshold
 
   // Determinar estado dinámico basado en la distancia
   const getDynamicStatus = (): Bus['status'] => {
@@ -282,11 +338,12 @@ function BusCard({ bus, userLocation }: BusCardProps) {
 
   return (
     <div
-      className="p-4 rounded-xl"
+      className="p-4 rounded-xl cursor-pointer hover:shadow-md transition-shadow"
       style={{
         backgroundColor: 'white',
         border: '1px solid var(--color-surface)',
       }}
+      onClick={onClick}
     >
       <div className="flex items-center gap-3">
         {/* Badge del bus */}
@@ -309,11 +366,11 @@ function BusCard({ bus, userLocation }: BusCardProps) {
                   color: dynamicStatus === 'offline' ? '#9CA3AF' : 'inherit',
                 }}
               >
-                Bus {bus.routeNumber} - {bus.routeName}
+                {bus.plate} - {bus.routeName}
               </h3>
-              {bus.licensePlate && (
+              {bus.routeNumber && bus.routeNumber !== 'N/A' && (
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Placa: {bus.licensePlate}
+                  Ruta: {bus.routeNumber}
                 </p>
               )}
             </div>
@@ -335,7 +392,11 @@ function BusCard({ bus, userLocation }: BusCardProps) {
           >
             {dynamicStatus === 'offline'
               ? 'Fuera de servicio'
-              : formatDistance(distance)}
+              : !userLocation
+                ? 'Permite acceso a ubicación'
+                : !bus.location
+                  ? 'Sin ubicación disponible'
+                  : formatDistance(distance)}
           </p>
 
           {/* Ocupación */}
@@ -372,5 +433,139 @@ function BusCard({ bus, userLocation }: BusCardProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+interface BusDetailModalProps {
+  readonly bus: Bus;
+  readonly userLocation: { latitude: number; longitude: number } | null;
+  readonly onClose: () => void;
+  readonly onViewOnMap: () => void;
+}
+
+function BusDetailModal({
+  bus,
+  userLocation,
+  onClose,
+  onViewOnMap,
+}: BusDetailModalProps) {
+  const canCalculateDistance = bus.location !== null && userLocation !== null;
+  const distance = canCalculateDistance
+    ? getDistanceBetweenLocations(userLocation!, bus.location!)
+    : Infinity;
+
+  const getStatusColor = (status: Bus['status']) => {
+    switch (status) {
+      case 'active':
+        return 'var(--color-secondary)';
+      case 'nearby':
+        return '#10B981';
+      case 'offline':
+        return '#9CA3AF';
+      default:
+        return '#9CA3AF';
+    }
+  };
+
+  const getStatusLabel = (status: Bus['status']) => {
+    switch (status) {
+      case 'active':
+        return 'En línea';
+      case 'nearby':
+        return 'Cercano';
+      case 'offline':
+        return 'Inactivo';
+      default:
+        return 'Desconocido';
+    }
+  };
+
+  // Verificar si el bus puede ser visto en el mapa
+  const canViewOnMap =
+    bus.status === 'active' &&
+    bus.activeRouteVariantId !== null &&
+    bus.location !== null;
+
+  return (
+    <R2MModal
+      isOpen={true}
+      onClose={onClose}
+      title={bus.plate}
+      subtitle={`${bus.routeName} - Ruta ${bus.routeNumber}`}
+      icon={<RiBusLine size={24} />}
+      iconColor={getStatusColor(bus.status)}
+      actions={
+        <div className="space-y-3">
+          <R2MButton
+            onClick={onViewOnMap}
+            variant="primary"
+            size="large"
+            fullWidth
+            disabled={!canViewOnMap}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <RiMapPinLine size={20} />
+              <span>
+                {canViewOnMap ? 'Ver en el mapa' : 'No disponible en el mapa'}
+              </span>
+            </div>
+          </R2MButton>
+
+          <R2MButton onClick={onClose} variant="outline" size="large" fullWidth>
+            Cerrar
+          </R2MButton>
+        </div>
+      }
+    >
+      {/* Status */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Estado</span>
+        <span
+          className="px-3 py-1 rounded-full text-xs font-medium"
+          style={{
+            backgroundColor: `${getStatusColor(bus.status)}20`,
+            color: getStatusColor(bus.status),
+          }}
+        >
+          {getStatusLabel(bus.status)}
+        </span>
+      </div>
+
+      {/* Distance */}
+      {canCalculateDistance && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Distancia</span>
+          <span className="text-sm font-semibold">
+            {distance < 1
+              ? `${Math.round(distance * 1000)} m`
+              : `${distance.toFixed(1)} km`}
+          </span>
+        </div>
+      )}
+
+      {/* Capacity */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Ocupación</span>
+        <div className="flex items-center gap-2">
+          <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full transition-all duration-300"
+              style={{
+                width: `${(bus.currentCapacity / bus.maxCapacity) * 100}%`,
+                backgroundColor:
+                  bus.occupancy === 'low'
+                    ? '#10B981'
+                    : bus.occupancy === 'medium'
+                      ? '#F59E0B'
+                      : '#EF4444',
+              }}
+            />
+          </div>
+          <span className="text-sm font-semibold">
+            {Math.round((bus.currentCapacity / bus.maxCapacity) * 100)}%
+          </span>
+        </div>
+      </div>
+    </R2MModal>
   );
 }

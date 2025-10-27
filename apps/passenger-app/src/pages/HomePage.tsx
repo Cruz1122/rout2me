@@ -6,6 +6,7 @@ import {
   IonTitle,
   IonToolbar,
   useIonViewDidEnter,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import {
   RiFocus3Line,
@@ -20,29 +21,83 @@ import R2MMapInfoCard from '../components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
 import { useMapResize } from '../hooks/useMapResize';
 import { useRouteDrawing } from '../hooks/useRouteDrawing';
-import { matchRouteToRoads } from '../services/mapMatchingService';
+import { useBusMapping } from '../hooks/useBusMapping';
+import { processRouteWithCoordinates } from '../services/mapMatchingService';
+import { mapTileCacheService } from '../services/mapTileCacheService';
+import { fetchBuses, getBusesByRouteVariant } from '../services/busService';
+import { fetchAllRoutesData } from '../services/routeService';
 import type { SearchItem } from '../types/search';
+import '../debug/paradasDebug'; // Importar script de debug
+import '../debug/apiTest'; // Importar script de prueba de API
 
 export default function HomePage() {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<MlMap | null>(null);
   const currentMarker = useRef<maplibregl.Marker | null>(null);
+  const userLocationMarker = useRef<maplibregl.Marker | null>(null);
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
+  const watchIdRef = useRef<number | null>(null);
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [shouldInitMap, setShouldInitMap] = useState(false);
+  interface RouteFromNavigation {
+    id: string;
+    code: string;
+    name: string;
+    path: [number, number][];
+    color?: string;
+    stops?: Array<{
+      id: string;
+      name: string;
+      location: [number, number];
+    }>;
+  }
+
+  interface BusFromNavigation {
+    id: string;
+    code: string;
+    name: string;
+    busId: string;
+    busLocation: { latitude: number; longitude: number } | null;
+  }
+
+  const [routeFromNavigation, setRouteFromNavigation] =
+    useState<RouteFromNavigation | null>(null);
+  const [busFromNavigation, setBusFromNavigation] =
+    useState<BusFromNavigation | null>(null);
 
   const { triggerResize } = useMapResize(mapInstance);
   const { addRouteToMap, clearAllRoutes, fitBoundsToRoute, highlightRoute } =
     useRouteDrawing(mapInstance);
+  const { addBusesToMap, clearAllBuses } = useBusMapping(mapInstance);
+
+  // Función para cargar buses de una ruta específica
+  const loadBusesForRoute = useCallback(
+    async (routeVariantId: string, highlightedBusId?: string) => {
+      try {
+        // Cargar todos los buses
+        const allBuses = await fetchBuses();
+
+        // Filtrar buses que pertenecen a esta variante de ruta
+        const routeBuses = getBusesByRouteVariant(allBuses, routeVariantId);
+
+        // Mostrar buses en el mapa con el bus destacado si se especifica
+        addBusesToMap(routeBuses, highlightedBusId);
+      } catch {
+        // Error silencioso
+      }
+    },
+    [addBusesToMap],
+  );
 
   const handleItemSelect = useCallback(
     async (item: SearchItem) => {
       if (!mapInstance.current) return;
 
       if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
-        // Limpiar rutas anteriores al seleccionar una parada
+        // Limpiar rutas y buses anteriores al seleccionar una parada
         clearAllRoutes();
+        clearAllBuses();
 
         if (currentMarker.current) {
           currentMarker.current.remove();
@@ -66,14 +121,15 @@ export default function HomePage() {
         'coordinates' in item &&
         item.coordinates
       ) {
-        // Limpiar marcadores de paradas
+        // Limpiar marcadores de paradas y buses
         if (currentMarker.current) {
           currentMarker.current.remove();
           currentMarker.current = null;
         }
 
-        // Limpiar todas las rutas anteriores antes de agregar la nueva
+        // Limpiar todas las rutas y buses anteriores antes de agregar la nueva
         clearAllRoutes();
+        clearAllBuses();
 
         // Mostrar loader mientras se procesa el map matching
         setIsMapLoading(true);
@@ -82,49 +138,71 @@ export default function HomePage() {
           // Obtener la API key desde las variables de entorno
           const apiKey = import.meta.env.VITE_STADIA_API_KEY;
 
-          if (apiKey) {
-            // Aplicar map matching para ajustar la ruta a las calles reales
-            const matchedRoute = await matchRouteToRoads(
-              item.coordinates,
-              apiKey,
-            );
+          // Determinar si aplicar map matching basado en la disponibilidad de API key
+          const shouldApplyMapMatching = Boolean(
+            apiKey && apiKey.trim() !== '',
+          );
 
-            // Usar las coordenadas ajustadas (matched) para dibujar la ruta
-            addRouteToMap(
-              item.id,
-              matchedRoute.matchedGeometry.coordinates as [number, number][],
-              {
-                color: 'var(--color-secondary)', // #1E56A0
-                width: 4,
-                opacity: 0.9,
-                outlineColor: '#ffffff',
-                outlineWidth: 8,
-              },
-            );
+          // Procesar la ruta con coordenadas del backend
+          // Aplicar map matching si hay API key disponible
+          const processedRoute = await processRouteWithCoordinates(
+            item.coordinates,
+            apiKey,
+            shouldApplyMapMatching, // Aplicar map matching si hay API key
+          );
 
-            // Ajustar vista para mostrar toda la ruta ajustada
-            fitBoundsToRoute(
-              matchedRoute.matchedGeometry.coordinates as [number, number][],
-            );
-          } else {
-            // Usar coordenadas originales si no hay API key
-            addRouteToMap(item.id, item.coordinates, {
-              color: 'var(--color-secondary)', // #1E56A0
+          // Usar las coordenadas procesadas para dibujar la ruta
+          addRouteToMap(
+            item.id,
+            processedRoute.matchedGeometry.coordinates as [number, number][],
+            {
+              color: item.color || 'var(--color-secondary)', // Usar color de la ruta si está disponible
               width: 4,
               opacity: 0.9,
               outlineColor: '#ffffff',
               outlineWidth: 8,
-            });
-          }
+            },
+            // Pasar las paradas si están disponibles
+            item.routeStops?.map((stop) => ({
+              id: stop.id,
+              name: stop.name,
+              created_at: new Date().toISOString(),
+              location: stop.location,
+            })),
+          );
+
+          // Ajustar vista para mostrar toda la ruta
+          fitBoundsToRoute(
+            processedRoute.matchedGeometry.coordinates as [number, number][],
+          );
 
           // Resaltar la ruta seleccionada
           highlightRoute(item.id, true);
 
+          // Cargar buses para esta ruta
+          await loadBusesForRoute(item.id);
+
+          // Precargar tiles después de ajustar la vista
+          setTimeout(() => {
+            if (mapInstance.current) {
+              const center = mapInstance.current.getCenter();
+              const zoom = mapInstance.current.getZoom();
+
+              // Precargar tiles para evitar lag visual
+              mapTileCacheService
+                .preloadTiles([center.lng, center.lat], zoom, 2)
+                .catch(() => {
+                  // Error silencioso
+                });
+            }
+          }, 2000);
+
           setSelectedItem(item);
         } catch {
-          // Fallback: usar coordenadas originales si falla el map matching
+          // Error silencioso
+          // Fallback: usar coordenadas originales si falla el procesamiento
           addRouteToMap(item.id, item.coordinates, {
-            color: 'var(--color-secondary)', // #1E56A0
+            color: item.color || 'var(--color-secondary)', // Usar color de la ruta si está disponible
             width: 4,
             opacity: 0.9,
             outlineColor: '#ffffff',
@@ -132,6 +210,25 @@ export default function HomePage() {
           });
           fitBoundsToRoute(item.coordinates);
           highlightRoute(item.id, true);
+
+          // Cargar buses para esta ruta (fallback)
+          await loadBusesForRoute(item.id);
+
+          // Precargar tiles después de ajustar la vista (fallback)
+          setTimeout(() => {
+            if (mapInstance.current) {
+              const center = mapInstance.current.getCenter();
+              const zoom = mapInstance.current.getZoom();
+
+              // Precargar tiles para evitar lag visual
+              mapTileCacheService
+                .preloadTiles([center.lng, center.lat], zoom, 2)
+                .catch(() => {
+                  // Error silencioso
+                });
+            }
+          }, 2000);
+
           setSelectedItem(item);
         } finally {
           setIsMapLoading(false);
@@ -142,32 +239,109 @@ export default function HomePage() {
       mapInstance,
       addRouteToMap,
       clearAllRoutes,
+      clearAllBuses,
       fitBoundsToRoute,
       highlightRoute,
+      loadBusesForRoute,
     ],
   );
 
+  // Función para crear el marcador de ubicación con efecto de pulso
+  const createLocationMarkerElement = useCallback((): HTMLElement => {
+    const element = document.createElement('div');
+
+    const markerContainer = document.createElement('div');
+    markerContainer.style.cssText = `
+      background: #0EA5E9;
+      border: 4px solid #ffffff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      animation: locationPulse 2s infinite;
+    `;
+
+    // Crear keyframes para la animación pulse
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes locationPulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+    `;
+
+    // Crear el ícono de ubicación (punto blanco en el centro)
+    const icon = document.createElement('div');
+    icon.style.cssText = `
+      background: white;
+      border-radius: 50%;
+      width: 12px;
+      height: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    `;
+
+    markerContainer.appendChild(icon);
+    element.appendChild(style);
+    element.appendChild(markerContainer);
+
+    return element;
+  }, []);
+
+  // Cleanup del marcador de ubicación cuando se desmonte el componente
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (userLocationMarker.current) {
+        userLocationMarker.current.remove();
+        userLocationMarker.current = null;
+      }
+    };
+  }, []);
+
   const handleLocationRequest = useCallback(() => {
-    if (!mapInstance.current) return;
+    if (!mapInstance.current || !userLocationMarker.current) return;
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          mapInstance.current?.flyTo({
+
+          // Mover el mapa a la ubicación actual
+          mapInstance.current?.easeTo({
             center: [longitude, latitude],
             zoom: 16,
-            duration: 1500,
+            duration: 800,
           });
-
-          new maplibregl.Marker({
-            color: 'var(--color-accent)', // #1E56A0 (usando accent para diferenciar)
-          })
-            .setLngLat([longitude, latitude])
-            .addTo(mapInstance.current!);
         },
         (error) => {
-          console.error('Error obteniendo ubicación:', error);
+          if (error.code === 1) {
+            alert(
+              'Por favor, permite el acceso a tu ubicación para usar esta función.',
+            );
+          } else if (error.code === 2) {
+            alert(
+              'No se pudo obtener tu ubicación. Verifica que el GPS esté activado.',
+            );
+          } else if (error.code === 3) {
+            alert(
+              'El tiempo para obtener tu ubicación se agotó. Por favor, intenta nuevamente.',
+            );
+          }
+        },
+        {
+          enableHighAccuracy: false,
+          maximumAge: 60000,
         },
       );
     }
@@ -191,13 +365,15 @@ export default function HomePage() {
 
     setIsClearingRoutes(true);
 
-    // Limpiar rutas y marcadores
+    // Limpiar rutas, buses y marcadores (pero NO el marcador de ubicación del usuario)
     clearAllRoutes();
+    clearAllBuses();
     setSelectedItem(null);
     if (currentMarker.current) {
       currentMarker.current.remove();
       currentMarker.current = null;
     }
+    // Nota: NO eliminar userLocationMarker.current aquí
 
     // Feedback visual con vibración si está disponible
     if (navigator.vibrate) {
@@ -208,7 +384,7 @@ export default function HomePage() {
     setTimeout(() => {
       setIsClearingRoutes(false);
     }, 300);
-  }, [clearAllRoutes, isClearingRoutes]);
+  }, [clearAllRoutes, clearAllBuses, isClearingRoutes]);
   const [dragStart, setDragStart] = useState<{
     x: number;
     y: number;
@@ -360,20 +536,58 @@ export default function HomePage() {
       crossSourceCollisions: false, // Mejor rendimiento en labels
       refreshExpiredTiles: false, // No refrescar tiles automáticamente
       // Caché de tiles optimizado
-      maxTileCacheSize: 100, // Aumentar caché para reusar tiles
+      maxTileCacheSize: 200, // Aumentar caché para reusar tiles
+      // Configuración adicional para evitar tiles faltantes
+      renderWorldCopies: false, // Evitar renderizar copias del mundo
     });
 
     map.on('load', () => {
-      console.log('Mapa cargado correctamente');
       setIsMapLoading(false);
+
+      // Iniciar watch position para actualizaciones continuas
+      if (navigator.geolocation && !watchIdRef.current) {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+
+            // Crear el marcador solo cuando tengamos una ubicación válida
+            if (!userLocationMarker.current) {
+              const markerElement = createLocationMarkerElement();
+              userLocationMarker.current = new maplibregl.Marker({
+                element: markerElement,
+                anchor: 'center',
+              })
+                .setLngLat([longitude, latitude])
+                .addTo(map);
+
+              // Centrar el mapa en la ubicación del usuario
+              map.easeTo({
+                center: [longitude, latitude],
+                zoom: 16,
+                duration: 1000,
+              });
+            } else {
+              // Actualizar posición del marcador existente
+              userLocationMarker.current.setLngLat([longitude, latitude]);
+            }
+          },
+          () => {
+            // Error silencioso
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000,
+          },
+        );
+      }
     });
 
     map.on('idle', () => {
       setIsMapLoading(false);
     });
 
-    map.on('error', (e) => {
-      console.error('Error al cargar el mapa:', e);
+    map.on('error', () => {
       setIsMapLoading(false);
     });
 
@@ -389,7 +603,285 @@ export default function HomePage() {
         mapInstance.current = null;
       }
     };
-  }, [shouldInitMap]);
+  }, [shouldInitMap, createLocationMarkerElement]);
+
+  // Manejar ruta que viene desde RoutesPage
+  useIonViewWillEnter(() => {
+    const routeData = (globalThis as { routeData?: RouteFromNavigation })
+      .routeData;
+    if (routeData) {
+      setRouteFromNavigation(routeData);
+      // Limpiar la data después de usarla
+      delete (globalThis as { routeData?: RouteFromNavigation }).routeData;
+    }
+
+    // Manejar bus que viene desde LivePage
+    const busData = (globalThis as { busData?: BusFromNavigation }).busData;
+    if (busData) {
+      setBusFromNavigation(busData);
+      // Limpiar la data después de usarla
+      delete (globalThis as { busData?: BusFromNavigation }).busData;
+    }
+  });
+
+  // Procesar ruta cuando esté disponible y el mapa esté listo
+  useEffect(() => {
+    if (!routeFromNavigation || !mapInstance.current) return;
+
+    const processRouteFromNavigation = async () => {
+      try {
+        // Limpiar rutas anteriores
+        clearAllRoutes();
+        if (currentMarker.current) {
+          currentMarker.current.remove();
+          currentMarker.current = null;
+        }
+
+        // Mostrar loader mientras se procesa
+        setIsMapLoading(true);
+
+        // Obtener la API key desde las variables de entorno
+        const apiKey = import.meta.env.VITE_STADIA_API_KEY;
+        const shouldApplyMapMatching = Boolean(apiKey && apiKey.trim() !== '');
+
+        // Procesar la ruta con coordenadas
+        const processedRoute = await processRouteWithCoordinates(
+          routeFromNavigation.path,
+          apiKey,
+          shouldApplyMapMatching,
+        );
+
+        // Crear objeto SearchItem compatible
+        const searchItem: SearchItem = {
+          id: routeFromNavigation.id,
+          type: 'route',
+          name: routeFromNavigation.name,
+          code: routeFromNavigation.code,
+          tags: [],
+          coordinates: processedRoute.matchedGeometry.coordinates as [
+            number,
+            number,
+          ][],
+          color: routeFromNavigation.color || 'var(--color-secondary)',
+          routeStops: routeFromNavigation.stops?.map((stop) => ({
+            id: stop.id,
+            name: stop.name,
+            location: stop.location,
+          })),
+        };
+
+        // Dibujar la ruta en el mapa
+        addRouteToMap(
+          searchItem.id,
+          processedRoute.matchedGeometry.coordinates as [number, number][],
+          {
+            color: searchItem.color,
+            width: 4,
+            opacity: 0.9,
+            outlineColor: '#ffffff',
+            outlineWidth: 8,
+          },
+          searchItem.routeStops?.map((stop) => ({
+            id: stop.id,
+            name: stop.name,
+            created_at: new Date().toISOString(),
+            location: stop.location,
+          })),
+        );
+
+        // Ajustar vista para mostrar toda la ruta
+        fitBoundsToRoute(
+          processedRoute.matchedGeometry.coordinates as [number, number][],
+        );
+
+        // Resaltar la ruta
+        highlightRoute(searchItem.id, true);
+
+        // Cargar buses para esta ruta
+        await loadBusesForRoute(searchItem.id);
+
+        // Precargar tiles
+        setTimeout(() => {
+          if (mapInstance.current) {
+            const center = mapInstance.current.getCenter();
+            const zoom = mapInstance.current.getZoom();
+            mapTileCacheService
+              .preloadTiles([center.lng, center.lat], zoom, 2)
+              .catch(() => {
+                // Error silencioso
+              });
+          }
+        }, 2000);
+
+        setSelectedItem(searchItem);
+      } catch {
+        // Error silencioso
+        // Fallback: usar coordenadas originales
+        const searchItem: SearchItem = {
+          id: routeFromNavigation.id,
+          type: 'route',
+          name: routeFromNavigation.name,
+          code: routeFromNavigation.code,
+          tags: [],
+          coordinates: routeFromNavigation.path,
+          color: routeFromNavigation.color || 'var(--color-secondary)',
+          routeStops: routeFromNavigation.stops?.map((stop) => ({
+            id: stop.id,
+            name: stop.name,
+            location: stop.location,
+          })),
+        };
+
+        addRouteToMap(searchItem.id, searchItem.coordinates!, {
+          color: searchItem.color,
+          width: 4,
+          opacity: 0.9,
+          outlineColor: '#ffffff',
+          outlineWidth: 8,
+        });
+        fitBoundsToRoute(searchItem.coordinates!);
+        highlightRoute(searchItem.id, true);
+
+        // Cargar buses para esta ruta (fallback)
+        await loadBusesForRoute(searchItem.id);
+
+        setSelectedItem(searchItem);
+      } finally {
+        setIsMapLoading(false);
+        setRouteFromNavigation(null); // Limpiar después de procesar
+      }
+    };
+
+    processRouteFromNavigation();
+  }, [
+    routeFromNavigation,
+    mapInstance,
+    addRouteToMap,
+    clearAllRoutes,
+    clearAllBuses,
+    fitBoundsToRoute,
+    highlightRoute,
+    loadBusesForRoute,
+  ]);
+
+  // Procesar bus cuando esté disponible y el mapa esté listo
+  useEffect(() => {
+    if (!busFromNavigation || !mapInstance.current) return;
+
+    const processBusFromNavigation = async () => {
+      try {
+        // Limpiar rutas y buses anteriores
+        clearAllRoutes();
+        clearAllBuses();
+        if (currentMarker.current) {
+          currentMarker.current.remove();
+          currentMarker.current = null;
+        }
+
+        // Mostrar loader mientras se procesa
+        setIsMapLoading(true);
+
+        // Cargar la ruta completa para mostrar su geometría
+        let routeVariantId = busFromNavigation.id;
+
+        try {
+          const routes = await fetchAllRoutesData();
+
+          // Buscar la ruta que contiene la variante con el ID del bus
+          let route = null;
+          let variant = null;
+
+          // Primero intentar encontrar por ID directo de ruta
+          route = routes.find((r) => r.id === busFromNavigation.id);
+          if (route?.variants?.length) {
+            variant = route.variants[0];
+            routeVariantId = variant.id;
+          } else {
+            // Si no se encuentra, buscar por activeRouteVariantId en las variantes
+            for (const r of routes) {
+              if (r.variants) {
+                const foundVariant = r.variants.find(
+                  (v) => v.id === busFromNavigation.id,
+                );
+                if (foundVariant) {
+                  route = r;
+                  variant = foundVariant;
+                  routeVariantId = variant.id;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (route && variant && variant.path && variant.path.length > 0) {
+            // Crear SearchItem con coordenadas reales
+            const searchItem: SearchItem = {
+              id: variant.id, // Usar el ID de la variante
+              type: 'route',
+              name: busFromNavigation.name,
+              code: busFromNavigation.code,
+              tags: [],
+              coordinates: variant.path,
+              color: route.color || 'var(--color-secondary)',
+            };
+
+            // Agregar la ruta al mapa
+            addRouteToMap(searchItem.id, variant.path, {
+              color: searchItem.color,
+              width: 4,
+              opacity: 0.9,
+              outlineColor: '#ffffff',
+              outlineWidth: 8,
+            });
+
+            // Ajustar el mapa para mostrar toda la ruta
+            fitBoundsToRoute(variant.path);
+
+            // Resaltar la ruta
+            highlightRoute(searchItem.id, true);
+
+            setSelectedItem(searchItem);
+          }
+        } catch {
+          // Error silencioso
+        }
+
+        // Mostrar loader mientras se cargan los buses
+        setIsMapLoading(true);
+
+        // Cargar buses para esta ruta usando el ID de la variante
+        await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
+
+        // Centrar la cámara en el bus específico
+        if (busFromNavigation.busLocation && mapInstance.current) {
+          mapInstance.current.flyTo({
+            center: [
+              busFromNavigation.busLocation.longitude,
+              busFromNavigation.busLocation.latitude,
+            ],
+            zoom: 16,
+            duration: 1500,
+          });
+        }
+      } catch {
+        // Error silencioso
+      } finally {
+        setIsMapLoading(false);
+        setBusFromNavigation(null); // Limpiar después de procesar
+      }
+    };
+
+    processBusFromNavigation();
+  }, [
+    busFromNavigation,
+    mapInstance,
+    clearAllRoutes,
+    clearAllBuses,
+    loadBusesForRoute,
+    addRouteToMap,
+    fitBoundsToRoute,
+    highlightRoute,
+  ]);
 
   useIonViewDidEnter(() => {
     if (mapInstance.current) {

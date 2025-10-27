@@ -52,11 +52,17 @@ export function useMapCache(options: MapCacheOptions) {
       // Precargar después de un breve delay para evitar precargas excesivas
       preloadTimeoutRef.current = setTimeout(async () => {
         try {
-          await mapTileCacheService.preloadTiles(newCenter, newZoom, 1);
+          // Precargar tiles para múltiples niveles de zoom
+          const zoomLevels = [newZoom - 1, newZoom, newZoom + 1];
+          for (const zoom of zoomLevels) {
+            if (zoom >= 5 && zoom <= 19) {
+              await mapTileCacheService.preloadTiles(newCenter, zoom, 2);
+            }
+          }
         } catch (error) {
           console.warn('Error al precargar tiles en movimiento:', error);
         }
-      }, 1000);
+      }, 500); // Reducir delay para precarga más rápida
     },
     [],
   );
