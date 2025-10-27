@@ -3,6 +3,7 @@ import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import { createRoot } from 'react-dom/client';
 import { RiBus2Fill } from 'react-icons/ri';
 import type { Bus } from '../services/busService';
+import { createPopupHTML } from '../components/R2MPopup';
 
 // Funciones auxiliares para simplificar el código
 function getStatusColor(status: Bus['status']): string {
@@ -177,25 +178,20 @@ export function useBusMapping(mapInstance: React.RefObject<MlMap | null>) {
         offset: 25,
         closeButton: false,
         closeOnClick: true,
-      }).setHTML(`
-          <div style="padding: 12px; font-family: system-ui, -apple-system, sans-serif; min-width: 200px; border-radius: 12px;">
-            <div style="font-weight: 600; color: #1F2937; margin-bottom: 8px; font-size: 16px;">
-              Bus ${bus.routeNumber}
-            </div>
-            <div style="font-size: 14px; color: #374151; margin-bottom: 4px;">
-              <strong>Ruta:</strong> ${bus.routeName}
-            </div>
-            <div style="font-size: 14px; color: #374151; margin-bottom: 4px;">
-              <strong>Placa:</strong> ${bus.plate}
-            </div>
-            <div style="font-size: 14px; color: #374151; margin-bottom: 4px;">
-              <strong>Estado:</strong> 
-              <span style="color: ${getStatusColor(bus.status)}; font-weight: 600;">
-                ${getStatusLabel(bus.status)}
-              </span>
-            </div>
-          </div>
-        `);
+      }).setHTML(
+        createPopupHTML({
+          title: `Bus ${bus.routeNumber}`,
+          subtitle: bus.routeName,
+          items: [
+            { label: 'Placa', value: bus.plate },
+            {
+              label: 'Estado',
+              value: getStatusLabel(bus.status),
+              color: getStatusColor(bus.status),
+            },
+          ],
+        }),
+      );
 
       marker.setPopup(popup);
 
@@ -244,25 +240,20 @@ export function useBusMapping(mapInstance: React.RefObject<MlMap | null>) {
           offset: 25,
           closeButton: false,
           closeOnClick: true,
-        }).setHTML(`
-            <div style="padding: 12px; font-family: system-ui, -apple-system, sans-serif; min-width: 200px; border-radius: 12px;">
-              <div style="font-weight: 600; color: #1F2937; margin-bottom: 8px; font-size: 16px;">
-                Bus ${bus.routeNumber}
-              </div>
-              <div style="font-size: 14px; color: #374151; margin-bottom: 4px;">
-                <strong>Ruta:</strong> ${bus.routeName}
-              </div>
-              <div style="font-size: 14px; color: #374151; margin-bottom: 4px;">
-                <strong>Placa:</strong> ${bus.plate}
-              </div>
-              <div style="font-size: 14px; color: #374151; margin-bottom: 4px;">
-                <strong>Estado:</strong> 
-                <span style="color: ${getStatusColor(bus.status)}; font-weight: 600;">
-                  ${getStatusLabel(bus.status)}
-                </span>
-              </div>
-            </div>
-          `);
+        }).setHTML(
+          createPopupHTML({
+            title: `Bus ${bus.routeNumber}`,
+            subtitle: bus.routeName,
+            items: [
+              { label: 'Placa', value: bus.plate },
+              {
+                label: 'Estado',
+                value: getStatusLabel(bus.status),
+                color: getStatusColor(bus.status),
+              },
+            ],
+          }),
+        );
 
         existingMarker.setPopup(popup);
       } else {

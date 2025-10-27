@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import type { Stop } from '../services/routeService';
+import { createPopupHTML } from '../components/R2MPopup';
 
 export interface RouteDrawingOptions {
   color?: string;
@@ -182,17 +183,14 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         const popup = new maplibregl.Popup({
           offset: 25,
           closeButton: false,
-          closeOnClick: false,
-        }).setHTML(`
-            <div style="padding: 8px; font-family: system-ui, -apple-system, sans-serif;">
-              <div style="font-weight: 600; color: #1F2937; margin-bottom: 4px;">
-                ${stop.name}
-              </div>
-              <div style="font-size: 12px; color: #6B7280;">
-                Parada ${index + 1}
-              </div>
-            </div>
-          `);
+          closeOnClick: true,
+        }).setHTML(
+          createPopupHTML({
+            title: stop.name,
+            subtitle: `Parada ${index + 1}`,
+            items: [],
+          }),
+        );
 
         marker.setPopup(popup);
 
