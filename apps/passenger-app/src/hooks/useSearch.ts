@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import Fuse from 'fuse.js';
 import type { SearchItem, SearchFilters } from '../types/search';
 import { mockSearchData } from '../data/mocks';
-import { fetchRoutesWithStops } from '../services/routeService';
+import { fetchAllRoutesData } from '../services/routeService';
 import { useDebounce } from './useDebounce';
 
 const fuseOptions = {
@@ -27,7 +27,7 @@ export function useSearch() {
   useEffect(() => {
     const loadRoutes = async () => {
       try {
-        const routes = await fetchRoutesWithStops();
+        const routes = await fetchAllRoutesData();
         // Convertir rutas y sus variantes a formato SearchItem
         const routeSearchItems: SearchItem[] = [];
 

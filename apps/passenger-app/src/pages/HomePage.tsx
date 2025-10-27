@@ -25,7 +25,7 @@ import { useBusMapping } from '../hooks/useBusMapping';
 import { processRouteWithCoordinates } from '../services/mapMatchingService';
 import { mapTileCacheService } from '../services/mapTileCacheService';
 import { fetchBuses, getBusesByRouteVariant } from '../services/busService';
-import { fetchRoutesWithStops } from '../services/routeService';
+import { fetchAllRoutesData } from '../services/routeService';
 import type { SearchItem } from '../types/search';
 import '../debug/paradasDebug'; // Importar script de debug
 import '../debug/apiTest'; // Importar script de prueba de API
@@ -34,7 +34,9 @@ export default function HomePage() {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<MlMap | null>(null);
   const currentMarker = useRef<maplibregl.Marker | null>(null);
+  const userLocationMarker = useRef<maplibregl.Marker | null>(null);
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
+  const watchIdRef = useRef<number | null>(null);
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [shouldInitMap, setShouldInitMap] = useState(false);
@@ -81,12 +83,8 @@ export default function HomePage() {
 
         // Mostrar buses en el mapa con el bus destacado si se especifica
         addBusesToMap(routeBuses, highlightedBusId);
-
-        console.log(
-          `Cargados ${routeBuses.length} buses para la ruta ${routeVariantId}`,
-        );
       } catch (error) {
-        console.error('Error cargando buses para la ruta:', error);
+        // Error silencioso
       }
     },
     [addBusesToMap],
@@ -193,15 +191,15 @@ export default function HomePage() {
               // Precargar tiles para evitar lag visual
               mapTileCacheService
                 .preloadTiles([center.lng, center.lat], zoom, 2)
-                .catch((error) =>
-                  console.warn('Error precargando tiles:', error),
-                );
+                .catch(() => {
+                  // Error silencioso
+                });
             }
           }, 2000);
 
           setSelectedItem(item);
         } catch (error) {
-          console.error('Error processing route:', error);
+          // Error silencioso
           // Fallback: usar coordenadas originales si falla el procesamiento
           addRouteToMap(item.id, item.coordinates, {
             color: item.color || 'var(--color-secondary)', // Usar color de la ruta si está disponible
@@ -225,9 +223,9 @@ export default function HomePage() {
               // Precargar tiles para evitar lag visual
               mapTileCacheService
                 .preloadTiles([center.lng, center.lat], zoom, 2)
-                .catch((error) =>
-                  console.warn('Error precargando tiles (fallback):', error),
-                );
+                .catch(() => {
+                  // Error silencioso
+                });
             }
           }, 2000);
 
@@ -248,27 +246,102 @@ export default function HomePage() {
     ],
   );
 
+  // Función para crear el marcador de ubicación con efecto de pulso
+  const createLocationMarkerElement = useCallback((): HTMLElement => {
+    const element = document.createElement('div');
+
+    const markerContainer = document.createElement('div');
+    markerContainer.style.cssText = `
+      background: #0EA5E9;
+      border: 4px solid #ffffff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      animation: locationPulse 2s infinite;
+    `;
+
+    // Crear keyframes para la animación pulse
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes locationPulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+    `;
+
+    // Crear el ícono de ubicación (punto blanco en el centro)
+    const icon = document.createElement('div');
+    icon.style.cssText = `
+      background: white;
+      border-radius: 50%;
+      width: 12px;
+      height: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    `;
+
+    markerContainer.appendChild(icon);
+    element.appendChild(style);
+    element.appendChild(markerContainer);
+
+    return element;
+  }, []);
+
+  // Cleanup del marcador de ubicación cuando se desmonte el componente
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (userLocationMarker.current) {
+        userLocationMarker.current.remove();
+        userLocationMarker.current = null;
+      }
+    };
+  }, []);
+
   const handleLocationRequest = useCallback(() => {
-    if (!mapInstance.current) return;
+    if (!mapInstance.current || !userLocationMarker.current) return;
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          mapInstance.current?.flyTo({
+
+          // Mover el mapa a la ubicación actual
+          mapInstance.current?.easeTo({
             center: [longitude, latitude],
             zoom: 16,
-            duration: 1500,
+            duration: 800,
           });
-
-          new maplibregl.Marker({
-            color: 'var(--color-accent)', // #1E56A0 (usando accent para diferenciar)
-          })
-            .setLngLat([longitude, latitude])
-            .addTo(mapInstance.current!);
         },
         (error) => {
-          console.error('Error obteniendo ubicación:', error);
+          if (error.code === 1) {
+            alert(
+              'Por favor, permite el acceso a tu ubicación para usar esta función.',
+            );
+          } else if (error.code === 2) {
+            alert(
+              'No se pudo obtener tu ubicación. Verifica que el GPS esté activado.',
+            );
+          } else if (error.code === 3) {
+            alert(
+              'El tiempo para obtener tu ubicación se agotó. Por favor, intenta nuevamente.',
+            );
+          }
+        },
+        {
+          enableHighAccuracy: false,
+          maximumAge: 60000,
         },
       );
     }
@@ -292,7 +365,7 @@ export default function HomePage() {
 
     setIsClearingRoutes(true);
 
-    // Limpiar rutas, buses y marcadores
+    // Limpiar rutas, buses y marcadores (pero NO el marcador de ubicación del usuario)
     clearAllRoutes();
     clearAllBuses();
     setSelectedItem(null);
@@ -300,6 +373,7 @@ export default function HomePage() {
       currentMarker.current.remove();
       currentMarker.current = null;
     }
+    // Nota: NO eliminar userLocationMarker.current aquí
 
     // Feedback visual con vibración si está disponible
     if (navigator.vibrate) {
@@ -468,16 +542,52 @@ export default function HomePage() {
     });
 
     map.on('load', () => {
-      console.log('Mapa cargado correctamente');
       setIsMapLoading(false);
+
+      // Iniciar watch position para actualizaciones continuas
+      if (navigator.geolocation && !watchIdRef.current) {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+
+            // Crear el marcador solo cuando tengamos una ubicación válida
+            if (!userLocationMarker.current) {
+              const markerElement = createLocationMarkerElement();
+              userLocationMarker.current = new maplibregl.Marker({
+                element: markerElement,
+                anchor: 'center',
+              })
+                .setLngLat([longitude, latitude])
+                .addTo(map);
+
+              // Centrar el mapa en la ubicación del usuario
+              map.easeTo({
+                center: [longitude, latitude],
+                zoom: 16,
+                duration: 1000,
+              });
+            } else {
+              // Actualizar posición del marcador existente
+              userLocationMarker.current.setLngLat([longitude, latitude]);
+            }
+          },
+          (error) => {
+            // Error silencioso
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000,
+          },
+        );
+      }
     });
 
     map.on('idle', () => {
       setIsMapLoading(false);
     });
 
-    map.on('error', (e) => {
-      console.error('Error al cargar el mapa:', e);
+    map.on('error', () => {
       setIsMapLoading(false);
     });
 
@@ -597,15 +707,15 @@ export default function HomePage() {
             const zoom = mapInstance.current.getZoom();
             mapTileCacheService
               .preloadTiles([center.lng, center.lat], zoom, 2)
-              .catch((error) =>
-                console.warn('Error precargando tiles:', error),
-              );
+              .catch(() => {
+                // Error silencioso
+              });
           }
         }, 2000);
 
         setSelectedItem(searchItem);
       } catch (error) {
-        console.error('Error processing route from navigation:', error);
+        // Error silencioso
         // Fallback: usar coordenadas originales
         const searchItem: SearchItem = {
           id: routeFromNavigation.id,
@@ -675,7 +785,7 @@ export default function HomePage() {
         let routeVariantId = busFromNavigation.id;
 
         try {
-          const routes = await fetchRoutesWithStops();
+          const routes = await fetchAllRoutesData();
 
           // Buscar la ruta que contiene la variante con el ID del bus
           let route = null;
@@ -731,14 +841,9 @@ export default function HomePage() {
             highlightRoute(searchItem.id, true);
 
             setSelectedItem(searchItem);
-          } else {
-            console.warn(
-              'No se encontró la ruta o variante para el bus:',
-              busFromNavigation,
-            );
           }
         } catch (error) {
-          console.error('Error cargando ruta para el bus:', error);
+          // Error silencioso
         }
 
         // Mostrar loader mientras se cargan los buses
@@ -759,7 +864,7 @@ export default function HomePage() {
           });
         }
       } catch (error) {
-        console.error('Error processing bus from navigation:', error);
+        // Error silencioso
       } finally {
         setIsMapLoading(false);
         setBusFromNavigation(null); // Limpiar después de procesar

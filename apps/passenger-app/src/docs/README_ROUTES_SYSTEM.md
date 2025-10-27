@@ -4,6 +4,10 @@
 
 Este documento explica cómo funciona el sistema de graficado de rutas en la aplicación Rout2Me, la diferencia entre `routes` y `route_variants`, y cómo escalar el sistema.
 
+**🚀 OPTIMIZACIÓN RECIENTE**: El sistema ahora usa una única función `fetchAllRoutesData()` con caché inteligente que evita llamadas duplicadas y mejora significativamente el rendimiento.
+
+**🔄 CAMBIO IMPORTANTE**: Cada variante de ruta ahora se muestra como una ruta independiente, permitiendo ver todas las direcciones (ida/vuelta) de una misma ruta.
+
 ## Arquitectura del Sistema
 
 ### 1. Estructura de Datos
@@ -41,20 +45,62 @@ Route (1) -----> (N) Route Variants
 
 ### 2. Flujo de Datos
 
-#### 2.1 Obtención de Datos
+#### 2.1 Obtención de Datos Optimizada
+
+**🚀 NUEVO SISTEMA OPTIMIZADO**:
 
 ```typescript
-// 1. Se obtienen route_variants desde la API
-const apiVariants = await fetch(`${API_REST_URL}/route_variants`);
-
-// 2. Para cada variante, se obtiene la información de la ruta padre
-const routesWithVariants = await Promise.all(
-  apiVariants.map(async (variant) => {
-    const routeInfo = await fetchRouteInfo(variant.route_id);
-    return transformApiRouteVariantToRoute(variant, routeInfo);
-  })
-);
+// ✅ RECOMENDADO: Usar la función optimizada con caché
+const routes = await fetchAllRoutesData();
+// Ahora cada variante es una ruta independiente
+// Ejemplo: "Centro - Universidad" puede tener 2 rutas (ida y vuelta)
 ```
+
+**🔄 CAMBIO EN EL COMPORTAMIENTO**:
+
+**Antes**: Las variantes se agrupaban por `route_id`, solo se mostraba una ruta por código
+**Después**: Cada variante se muestra como una ruta independiente
+
+```typescript
+// Ejemplo de datos antes (agrupados):
+[
+  {
+    id: "route-1",
+    code: "R1", 
+    name: "Centro - Universidad",
+    variants: [
+      { id: "variant-1", direction: "INBOUND" },
+      { id: "variant-2", direction: "OUTBOUND" }
+    ]
+  }
+]
+
+// Ejemplo de datos después (independientes):
+[
+  {
+    id: "variant-1",
+    code: "R1",
+    name: "Centro - Universidad", 
+    path: [...], // Coordenadas de ida
+    stops: [...] // Paradas de ida
+  },
+  {
+    id: "variant-2", 
+    code: "R1",
+    name: "Centro - Universidad",
+    path: [...], // Coordenadas de vuelta
+    stops: [...] // Paradas de vuelta
+  }
+]
+```
+
+**Beneficios del nuevo sistema**:
+- ✅ **Una sola petición** a `v_route_variants_agg`
+- ✅ **Caché inteligente** de 5 minutos
+- ✅ **Evita llamadas duplicadas** automáticamente
+- ✅ **Mejor rendimiento** y experiencia de usuario
+- ✅ **Todas las variantes visibles** (ida/vuelta)
+- ✅ **Selección específica** de dirección
 
 #### 2.2 Headers de Autenticación
 
@@ -266,7 +312,25 @@ const interpolatedCoord: [number, number] = [
 
 ### 5. Sistema de Caché
 
-#### 5.1 Caché de Tiles
+#### 5.1 Caché de Rutas (NUEVO)
+
+**Ubicación**: `src/services/routeService.ts`
+
+**Funcionalidades**:
+- Caché inteligente de rutas con duración de 5 minutos
+- Evita llamadas duplicadas automáticamente
+- Gestión de promesas concurrentes
+- Función para limpiar caché cuando sea necesario
+
+```typescript
+// Usar la función optimizada
+const routes = await fetchAllRoutesData();
+
+// Limpiar caché si es necesario
+clearRoutesCache();
+```
+
+#### 5.2 Caché de Tiles
 
 **Ubicación**: `src/hooks/useMapCache.ts`
 
@@ -426,7 +490,84 @@ FOR VALUES IN ('region_1');
 
 ### 11. Guía de Implementación
 
-#### 11.1 Agregar Nueva Ruta con Paradas
+#### 11.1 Mejores Prácticas (ACTUALIZADO)
+
+**✅ RECOMENDADO - Usar las funciones optimizadas con caché**:
+
+```typescript
+// En cualquier componente o hook
+import { 
+  fetchAllRoutesData, 
+  getRouteInfoFromCache, 
+  getRouteVariantsFromCache, 
+  getVariantInfoFromCache 
+} from '../services/routeService';
+
+const MyComponent = () => {
+  useEffect(() => {
+    const loadRoutes = async () => {
+      try {
+        // Una sola llamada que carga todo
+        const routes = await fetchAllRoutesData();
+        setRoutes(routes);
+        
+        // Usar datos en caché para operaciones específicas (SIN peticiones adicionales)
+        const routeInfo = await getRouteInfoFromCache(routes[0].id);
+        const variants = await getRouteVariantsFromCache(routes[0].id);
+        const variantInfo = await getVariantInfoFromCache(variants[0].id);
+        
+        console.log('Todas las operaciones usaron caché - 0 peticiones adicionales');
+      } catch (error) {
+        console.error('Error loading routes:', error);
+      }
+    };
+    
+    loadRoutes();
+  }, []);
+  
+  // ... resto del componente
+};
+```
+
+**❌ EVITAR - Funciones que hacen peticiones individuales**:
+
+```typescript
+// ❌ NO usar estas funciones (hacen peticiones individuales)
+import { fetchRouteInfo, fetchRouteVariants } from '../services/routeService';
+
+// Estas funciones están deprecadas y muestran warnings
+const routeInfo = await fetchRouteInfo(routeId); // ❌ Petición individual
+const variants = await fetchRouteVariants(routeId); // ❌ Petición individual
+```
+
+**🔄 Para forzar actualización**:
+
+```typescript
+import { fetchAllRoutesData, clearRoutesCache } from '../services/routeService';
+
+const refreshRoutes = async () => {
+  clearRoutesCache(); // Limpiar caché
+  const routes = await fetchAllRoutesData(); // Nueva petición
+  return routes;
+};
+```
+
+**🚀 Funciones Optimizadas Disponibles**:
+
+```typescript
+// ✅ Función principal - carga todo una sola vez
+const routes = await fetchAllRoutesData();
+
+// ✅ Funciones de caché - NO hacen peticiones adicionales
+const routeInfo = await getRouteInfoFromCache(routeId);
+const variants = await getRouteVariantsFromCache(routeId);
+const variantInfo = await getVariantInfoFromCache(variantId);
+
+// ✅ Limpiar caché cuando sea necesario
+clearRoutesCache();
+```
+
+#### 11.2 Agregar Nueva Ruta con Paradas
 
 ```typescript
 // 1. Crear ruta en la base de datos

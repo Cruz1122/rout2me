@@ -13,7 +13,7 @@ import {
 } from 'react-icons/ri';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import {
-  fetchRoutesWithStops,
+  fetchAllRoutesData,
   getRecentRoutes,
   type Route,
 } from '../services/routeService';
@@ -64,7 +64,7 @@ export default function RoutesPage() {
 
         // Cargar rutas y buses en paralelo
         const [fetchedRoutes, allBuses] = await Promise.all([
-          fetchRoutesWithStops(),
+          fetchAllRoutesData(),
           fetchBuses(),
         ]);
 
@@ -654,34 +654,32 @@ function RouteDetailModal({
       )}
 
       {/* Route Info */}
-      <div className="pt-4 border-t border-gray-200">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Información</span>
+      {(route.via || route.duration || route.fare) && (
+        <div className="pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">
+              Información
+            </span>
+          </div>
+          <div className="space-y-2 text-sm text-gray-600">
+            {route.via && (
+              <p>
+                <strong>Vía:</strong> {route.via}
+              </p>
+            )}
+            {route.duration && (
+              <p>
+                <strong>Duración:</strong> {route.duration} min
+              </p>
+            )}
+            {route.fare && (
+              <p>
+                <strong>Tarifa:</strong> ${route.fare.toLocaleString('es-CO')}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>
-            <strong>Origen:</strong> {route.origin || 'No especificado'}
-          </p>
-          <p>
-            <strong>Destino:</strong> {route.destination || 'No especificado'}
-          </p>
-          {route.via && (
-            <p>
-              <strong>Vía:</strong> {route.via}
-            </p>
-          )}
-          {route.duration && (
-            <p>
-              <strong>Duración:</strong> {route.duration} min
-            </p>
-          )}
-          {route.fare && (
-            <p>
-              <strong>Tarifa:</strong> ${route.fare.toLocaleString('es-CO')}
-            </p>
-          )}
-        </div>
-      </div>
+      )}
     </R2MModal>
   );
 }

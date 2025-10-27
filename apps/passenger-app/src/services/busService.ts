@@ -1,4 +1,4 @@
-// Tipos para la API de buses con el nuevo endpoint
+import { getVariantInfoFromCache } from './routeService';
 export interface ApiBusLatestPosition {
   bus_id: string;
   plate: string;
@@ -49,61 +49,23 @@ export interface BusServiceError {
 }
 
 /**
- * Obtiene la información de ruta asociada a una variante
+ * Obtiene la información de ruta asociada a una variante usando datos en caché
+ * Esta función NO hace peticiones a la API, usa los datos ya cargados
  */
 async function fetchRouteInfoForVariant(
   variantId: string,
 ): Promise<RouteInfo | null> {
   try {
-    const response = await fetch(
-      `${API_REST_URL}/route_variants?id=eq.${variantId}&select=route_id`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
-        },
-      },
-    );
+    const variantInfo = await getVariantInfoFromCache(variantId);
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const variants: { route_id: string }[] = await response.json();
-    if (variants.length === 0) {
-      return null;
-    }
-
-    // Obtener la información de la ruta
-    const routeResponse = await fetch(
-      `${API_REST_URL}/routes?id=eq.${variants[0].route_id}&select=id,code,name`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
-        },
-      },
-    );
-
-    if (!routeResponse.ok) {
-      return null;
-    }
-
-    const routes: { id: string; code: string; name: string }[] =
-      await routeResponse.json();
-
-    if (routes.length === 0) {
+    if (!variantInfo) {
       return null;
     }
 
     return {
-      id: routes[0].id,
-      code: routes[0].code,
-      name: routes[0].name,
+      id: variantInfo.route_id,
+      code: variantInfo.route_code,
+      name: variantInfo.route_name,
     };
   } catch (error) {
     console.error('Error al obtener información de ruta:', error);

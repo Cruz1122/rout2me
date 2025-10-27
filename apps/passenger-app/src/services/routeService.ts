@@ -17,6 +17,22 @@ export interface ApiRouteVariant {
   length_m_json: number;
 }
 
+// Nuevo tipo para el endpoint agregado
+export interface ApiRouteVariantAggregated {
+  route_id: string;
+  route_code: string;
+  route_name: string;
+  route_active: boolean;
+  variant_id: string;
+  path: { lat: number; lng: number }[];
+  length_m_json: number;
+  stops: {
+    id: string;
+    name: string;
+    location: { lat: number; lng: number };
+  }[];
+}
+
 // Tipos para paradas
 export interface ApiStop {
   id: string;
@@ -83,38 +99,64 @@ export interface RouteServiceError {
   status?: number;
 }
 
+// Caché global para evitar llamadas duplicadas
+let routesCache: Route[] | null = null;
+let routesCachePromise: Promise<Route[]> | null = null;
+let routesCacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 /**
- * Obtiene todas las route variants desde la API
+ * Función principal optimizada que obtiene todas las rutas con paradas usando caché
+ * Esta es la única función que debe usarse en toda la aplicación
  */
-export async function fetchRoutes(): Promise<Route[]> {
+export async function fetchAllRoutesData(): Promise<Route[]> {
+  const now = Date.now();
+
+  // Verificar si el caché es válido
+  if (routesCache && now - routesCacheTimestamp < CACHE_DURATION) {
+    return routesCache;
+  }
+
+  // Si ya hay una petición en curso, esperar a que termine
+  if (routesCachePromise) {
+    return routesCachePromise;
+  }
+
+  // Crear nueva petición
+  routesCachePromise = fetchRoutesFromAPI();
+
   try {
-    const response = await fetch(
-      `${API_REST_URL}/route_variants?select=id,route_id,path,length_m_json`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
-        },
+    const result = await routesCachePromise;
+    routesCache = result;
+    routesCacheTimestamp = now;
+    return result;
+  } finally {
+    routesCachePromise = null;
+  }
+}
+
+/**
+ * Función interna que hace la petición real a la API
+ */
+async function fetchRoutesFromAPI(): Promise<Route[]> {
+  try {
+    const response = await fetch(`${API_REST_URL}/v_route_variants_agg`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
       },
-    );
+    });
 
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
 
-    const apiVariants: ApiRouteVariant[] = await response.json();
+    const apiVariants: ApiRouteVariantAggregated[] = await response.json();
 
-    // Obtener información de rutas para cada variante
-    const routesWithVariants = await Promise.all(
-      apiVariants.map(async (variant) => {
-        const routeInfo = await fetchRouteInfo(variant.route_id);
-        return transformApiRouteVariantToRoute(variant, routeInfo);
-      }),
-    );
-
-    return routesWithVariants;
+    // Transformar los datos agregados a rutas
+    return transformAggregatedVariantsToRoutes(apiVariants);
   } catch (error) {
     console.error('Error fetching routes:', error);
     const serviceError: RouteServiceError = {
@@ -129,62 +171,126 @@ export async function fetchRoutes(): Promise<Route[]> {
 }
 
 /**
- * Obtiene todas las route variants con sus paradas desde la API
+ * @deprecated Usar fetchAllRoutesData() en su lugar
+ * Obtiene todas las route variants desde la API usando el endpoint optimizado
+ */
+export async function fetchRoutes(): Promise<Route[]> {
+  return fetchAllRoutesData();
+}
+
+/**
+ * @deprecated Usar fetchAllRoutesData() en su lugar
+ * Obtiene todas las route variants con sus paradas desde la API usando el endpoint optimizado
  */
 export async function fetchRoutesWithStops(): Promise<Route[]> {
-  try {
-    const response = await fetch(
-      `${API_REST_URL}/route_variants?select=id,route_id,path,length_m_json`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
-        },
-      },
-    );
+  return fetchAllRoutesData();
+}
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+/**
+ * Limpia el caché de rutas (útil para forzar una nueva petición)
+ */
+export function clearRoutesCache(): void {
+  routesCache = null;
+  routesCachePromise = null;
+  routesCacheTimestamp = 0;
+}
+
+/**
+ * Obtiene información de una ruta específica usando datos en caché
+ * Esta función NO hace peticiones a la API, usa los datos ya cargados
+ */
+export async function getRouteInfoFromCache(
+  routeId: string,
+): Promise<ApiRoute | null> {
+  try {
+    const routes = await fetchAllRoutesData();
+    const route = routes.find((r) => r.id === routeId);
+
+    if (!route) {
+      return null;
     }
 
-    const apiVariants: ApiRouteVariant[] = await response.json();
-
-    // Obtener información de rutas y paradas para cada variante
-    const routesWithVariants = await Promise.all(
-      apiVariants.map(async (variant) => {
-        const [routeInfo, stops] = await Promise.all([
-          fetchRouteInfo(variant.route_id),
-          fetchStopsForVariant(variant.id),
-        ]);
-
-        const route = transformApiRouteVariantToRoute(variant, routeInfo);
-
-        // Agregar paradas a la ruta
-        if (stops.length > 0) {
-          route.stops = stops;
-        }
-
-        return route;
-      }),
-    );
-
-    return routesWithVariants;
-  } catch (error) {
-    console.error('Error fetching routes with stops:', error);
-    const serviceError: RouteServiceError = {
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Error desconocido al obtener rutas con paradas',
-      status: error instanceof Response ? error.status : undefined,
+    return {
+      idx: 0,
+      id: route.id,
+      code: route.code,
+      name: route.name,
+      active: route.active,
+      created_at: route.created_at,
     };
-    throw serviceError;
+  } catch (error) {
+    console.error('Error getting route info from cache:', error);
+    return null;
   }
 }
 
 /**
+ * Obtiene las variantes de una ruta específica usando datos en caché
+ * Esta función NO hace peticiones a la API, usa los datos ya cargados
+ * Nota: Ahora cada variante es una ruta independiente, por lo que esta función
+ * busca todas las rutas que comparten el mismo código de ruta
+ */
+export async function getRouteVariantsFromCache(
+  routeId: string,
+): Promise<RouteVariant[]> {
+  try {
+    const routes = await fetchAllRoutesData();
+
+    // Buscar todas las rutas que comparten el mismo código de ruta
+    const routesWithSameCode = routes.filter((r) => r.code === routeId);
+
+    // Convertir a formato RouteVariant
+    const variants: RouteVariant[] = routesWithSameCode.map((route) => ({
+      id: route.id,
+      route_id: routeId,
+      path: route.path || [],
+      length_m: 0, // No disponible en el formato actual
+      stops: route.stops || [],
+    }));
+
+    return variants;
+  } catch (error) {
+    console.error('Error getting route variants from cache:', error);
+    return [];
+  }
+}
+
+/**
+ * Obtiene información de una variante específica usando datos en caché
+ * Esta función NO hace peticiones a la API, usa los datos ya cargados
+ * Nota: Ahora cada variante es una ruta independiente, por lo que esta función
+ * busca directamente por el ID de la variante
+ */
+export async function getVariantInfoFromCache(
+  variantId: string,
+): Promise<{
+  route_id: string;
+  route_code: string;
+  route_name: string;
+} | null> {
+  try {
+    const routes = await fetchAllRoutesData();
+
+    // Buscar la ruta que tiene el ID de la variante
+    const route = routes.find((r) => r.id === variantId);
+
+    if (!route) {
+      return null;
+    }
+
+    return {
+      route_id: route.id, // Ahora el ID de la ruta es el mismo que el de la variante
+      route_code: route.code,
+      route_name: route.name,
+    };
+  } catch (error) {
+    console.error('Error getting variant info from cache:', error);
+    return null;
+  }
+}
+
+/**
+ * @deprecated Usar getRouteInfoFromCache() en su lugar
  * Obtiene información de una ruta específica
  */
 export async function fetchRouteInfo(routeId: string): Promise<ApiRoute> {
@@ -214,14 +320,15 @@ export async function fetchRouteInfo(routeId: string): Promise<ApiRoute> {
 }
 
 /**
- * Obtiene las variantes de una ruta específica
+ * @deprecated Usar getRouteVariantsFromCache() en su lugar
+ * Obtiene las variantes de una ruta específica usando el endpoint optimizado
  */
 export async function fetchRouteVariants(
   routeId: string,
 ): Promise<RouteVariant[]> {
   try {
     const response = await fetch(
-      `${API_REST_URL}/route_variants?select=id,route_id,direction,path,length_m_json&route_id=eq.${routeId}`,
+      `${API_REST_URL}/v_route_variants_agg?route_id=eq.${routeId}`,
       {
         method: 'GET',
         headers: {
@@ -236,10 +343,30 @@ export async function fetchRouteVariants(
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
 
-    const apiVariants: ApiRouteVariant[] = await response.json();
+    const apiVariants: ApiRouteVariantAggregated[] = await response.json();
 
-    // Transformar las variantes
-    return apiVariants.map(transformApiRouteVariantToRouteVariant);
+    // Transformar las variantes agregadas
+    return apiVariants.map((variant) => {
+      const path: [number, number][] = variant.path.map((point) => [
+        point.lng,
+        point.lat,
+      ]);
+
+      const stops: Stop[] = variant.stops.map((stop) => ({
+        id: stop.id,
+        name: stop.name,
+        created_at: '',
+        location: [stop.location.lng, stop.location.lat],
+      }));
+
+      return {
+        id: variant.variant_id,
+        route_id: variant.route_id,
+        path,
+        length_m: variant.length_m_json,
+        stops,
+      };
+    });
   } catch (error) {
     console.error('Error fetching route variants:', error);
     return [];
@@ -247,58 +374,50 @@ export async function fetchRouteVariants(
 }
 
 /**
- * Transforma una route variant de la API al formato esperado por la UI
+ * Transforma los datos agregados del nuevo endpoint a rutas
+ * Cada variante se convierte en una ruta independiente
  */
-function transformApiRouteVariantToRoute(
-  variant: ApiRouteVariant,
-  routeInfo: ApiRoute,
-): Route {
-  // El path ya viene como array parseado, convertir a [lng, lat]
-  const path: [number, number][] = Array.isArray(variant.path)
-    ? variant.path.map((point: { lat: number; lng: number }) => [
-        point.lng,
-        point.lat,
-      ])
-    : [];
+function transformAggregatedVariantsToRoutes(
+  apiVariants: ApiRouteVariantAggregated[],
+): Route[] {
+  const routes: Route[] = [];
 
-  return {
-    id: variant.id,
-    code: routeInfo.code,
-    name: routeInfo.name,
-    active: routeInfo.active,
-    created_at: routeInfo.created_at,
-    variants: [], // No necesitamos variantes aquí
-    // Campos de compatibilidad - solo datos reales
-    number: routeInfo.code,
-    status: routeInfo.active ? 'active' : 'offline',
-    isFavorite: false,
-    // La ruta YA tiene las coordenadas del path
-    path: path,
-    color: generateRouteColor(routeInfo.code),
-  };
-}
+  for (const variant of apiVariants) {
+    // Convertir path a formato [lng, lat]
+    const path: [number, number][] = variant.path.map((point) => [
+      point.lng,
+      point.lat,
+    ]);
 
-/**
- * Transforma una variante de ruta de la API al formato esperado por la UI
- */
-function transformApiRouteVariantToRouteVariant(
-  apiVariant: ApiRouteVariant,
-): RouteVariant {
-  // El path ya viene como array parseado, convertir a [lng, lat]
-  const path: [number, number][] = Array.isArray(apiVariant.path)
-    ? apiVariant.path.map((point: { lat: number; lng: number }) => [
-        point.lng,
-        point.lat,
-      ])
-    : [];
+    // Convertir paradas al formato esperado
+    const stops: Stop[] = variant.stops.map((stop) => ({
+      id: stop.id,
+      name: stop.name,
+      created_at: '', // No viene en el endpoint agregado
+      location: [stop.location.lng, stop.location.lat],
+    }));
 
-  return {
-    id: apiVariant.id,
-    route_id: apiVariant.route_id,
-    direction: apiVariant.direction, // Puede ser undefined
-    path,
-    length_m: apiVariant.length_m_json,
-  };
+    // Crear una ruta independiente para cada variante
+    const route: Route = {
+      id: variant.variant_id, // Usar variant_id como ID único
+      code: variant.route_code,
+      name: variant.route_name,
+      active: variant.route_active,
+      created_at: '', // No viene en el endpoint agregado
+      variants: [], // No necesitamos variantes aquí ya que cada ruta es una variante
+      // Campos de compatibilidad
+      number: variant.route_code,
+      status: variant.route_active ? 'active' : 'offline',
+      isFavorite: false,
+      path: path,
+      color: generateRouteColor(variant.route_code),
+      stops: stops,
+    };
+
+    routes.push(route);
+  }
+
+  return routes;
 }
 
 /**
