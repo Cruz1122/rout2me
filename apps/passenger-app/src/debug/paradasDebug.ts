@@ -82,6 +82,16 @@ export function testMapIntegration() {
 
 // Hacer disponible globalmente para debug
 if (typeof window !== 'undefined') {
-  (window as any).debugParadas = debugParadas;
-  (window as any).testMapIntegration = testMapIntegration;
+  (
+    window as typeof window & {
+      debugParadas: typeof debugParadas;
+      testMapIntegration: typeof testMapIntegration;
+    }
+  ).debugParadas = debugParadas;
+  (
+    window as typeof window & {
+      debugParadas: typeof debugParadas;
+      testMapIntegration: typeof testMapIntegration;
+    }
+  ).testMapIntegration = testMapIntegration;
 }

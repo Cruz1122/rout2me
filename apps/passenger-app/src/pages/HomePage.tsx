@@ -83,7 +83,7 @@ export default function HomePage() {
 
         // Mostrar buses en el mapa con el bus destacado si se especifica
         addBusesToMap(routeBuses, highlightedBusId);
-      } catch (error) {
+      } catch {
         // Error silencioso
       }
     },
@@ -198,7 +198,7 @@ export default function HomePage() {
           }, 2000);
 
           setSelectedItem(item);
-        } catch (error) {
+        } catch {
           // Error silencioso
           // Fallback: usar coordenadas originales si falla el procesamiento
           addRouteToMap(item.id, item.coordinates, {
@@ -603,7 +603,7 @@ export default function HomePage() {
         mapInstance.current = null;
       }
     };
-  }, [shouldInitMap]);
+  }, [shouldInitMap, createLocationMarkerElement]);
 
   // Manejar ruta que viene desde RoutesPage
   useIonViewWillEnter(() => {
@@ -714,7 +714,7 @@ export default function HomePage() {
         }, 2000);
 
         setSelectedItem(searchItem);
-      } catch (error) {
+      } catch {
         // Error silencioso
         // Fallback: usar coordenadas originales
         const searchItem: SearchItem = {
@@ -842,7 +842,7 @@ export default function HomePage() {
 
             setSelectedItem(searchItem);
           }
-        } catch (error) {
+        } catch {
           // Error silencioso
         }
 
@@ -863,7 +863,7 @@ export default function HomePage() {
             duration: 1500,
           });
         }
-      } catch (error) {
+      } catch {
         // Error silencioso
       } finally {
         setIsMapLoading(false);

@@ -42,5 +42,5 @@ export async function testAPI() {
 
 // Hacer disponible globalmente
 if (typeof window !== 'undefined') {
-  (window as any).testAPI = testAPI;
+  (window as typeof window & { testAPI: typeof testAPI }).testAPI = testAPI;
 }
