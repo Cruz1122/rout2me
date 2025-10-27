@@ -103,9 +103,9 @@ export function UserLocationDebug() {
           </div>
 
           <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">
-            <strong>Lat:</strong> {userLocation.latitude.toFixed(4)}
+            <strong>Lat:</strong> {userLocation?.latitude.toFixed(4) || 'N/A'}
             <br />
-            <strong>Lng:</strong> {userLocation.longitude.toFixed(4)}
+            <strong>Lng:</strong> {userLocation?.longitude.toFixed(4) || 'N/A'}
           </div>
 
           <p className="mt-2 text-xs text-gray-400 italic">

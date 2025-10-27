@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { RiCloseLine } from 'react-icons/ri';
 
 interface R2MModalProps {

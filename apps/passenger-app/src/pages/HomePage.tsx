@@ -571,7 +571,7 @@ export default function HomePage() {
               userLocationMarker.current.setLngLat([longitude, latitude]);
             }
           },
-          (error) => {
+          () => {
             // Error silencioso
           },
           {
