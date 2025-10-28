@@ -2,7 +2,7 @@
  * Script de debug para verificar que las paradas se cargan correctamente
  */
 
-import { fetchRoutesWithStops } from '../services/routeService';
+import { fetchRoutesWithStops } from '../features/routes/services/routeService';
 
 export async function debugParadas() {
   try {

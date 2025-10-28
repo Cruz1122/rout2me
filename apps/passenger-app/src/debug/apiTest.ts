@@ -2,7 +2,7 @@
  * Script de prueba para verificar que la API funciona correctamente
  */
 
-import { fetchRoutesWithStops } from '../services/routeService';
+import { fetchRoutesWithStops } from '../features/routes/services/routeService';
 
 export async function testAPI() {
   try {

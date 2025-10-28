@@ -52,32 +52,40 @@ Una aplicación web moderna de transporte público desarrollada para Manizales, 
 
 ```
 src/
-├── components/          # Componentes UI reutilizables
-│   ├── R2MSearchBar.tsx        # Barra de búsqueda principal con filtros integrados
-│   ├── R2MSearchOverlay.tsx    # Contenedor de overlay de búsqueda
-│   ├── R2MResultsList.tsx      # Visualización de resultados de búsqueda
-│   ├── R2MMapInfoCard.tsx      # Tarjeta de info del mapa con acciones de deslizar
-│   ├── R2MLoader.tsx           # Loader personalizado con branding
-│   ├── GlobalLoader.tsx        # Wrapper de loader para Suspense
-│   └── AnimatedTabIcon.tsx     # Iconos de navegación animados
-├── pages/               # Páginas principales de la aplicación
-│   ├── HomePage.tsx            # Interfaz de mapa y búsqueda (FUNCIONAL)
-│   ├── RoutesPage.tsx          # Rutas (SOLO PLACEHOLDER)
-│   ├── LivePage.tsx            # Seguimiento en vivo (SOLO PLACEHOLDER)
-│   ├── AlertsPage.tsx          # Alertas (SOLO PLACEHOLDER)
-│   └── ProfilePage.tsx         # Perfil de usuario (SOLO PLACEHOLDER)
-├── hooks/               # Custom React hooks
-│   ├── useSearch.ts            # Lógica de búsqueda con Fuse.js
-│   ├── useDebounce.ts          # Hook utilitario de debounce
-│   └── useMapResize.ts         # Manejador de resize del mapa
-├── types/               # Definiciones de tipos TypeScript
-│   └── search.ts               # Interfaces relacionadas con búsqueda
-├── data/                # Datos mock y constantes
-│   └── mocks.ts                # Datos de ejemplo para Manizales
-└── theme/               # Sistema de estilos y diseño
-    ├── variables.css           # Propiedades CSS personalizadas
-    ├── tabs.css               # Estilos de navegación por pestañas
-    └── search.css             # Estilos de componentes de búsqueda
+├── app/                      # Composición de la app
+│   └── providers/            # Providers/contextos globales
+├── features/
+│   ├── auth/                 # Dominio: autenticación
+│   │   ├── hooks/            # p.ej. useAuth
+│   │   ├── pages/            # LoginPage, RegisterPage, TwoFAPage
+│   │   └── services/         # authService y adaptadores
+│   ├── routes/               # Dominio: rutas y mapa
+│   │   ├── components/       # R2MSearchBar, R2MResultsList, MapInfoCard, etc.
+│   │   ├── hooks/            # useRouteDrawing, useSearch, useBusMapping
+│   │   ├── pages/            # RoutesPage, LivePage
+│   │   └── services/         # routeService, busService, mapMatchingService, mapTileCacheService
+│   ├── system/               # Dominio: sistema/infra UI
+│   │   ├── components/       # ErrorNotification, GlobalLoader, etc.
+│   │   ├── hooks/            # useUserLocation, useLocationPermission, etc.
+│   │   ├── pages/            # HomePage, AlertsPage, WelcomePage, LocationPermissionPage
+│   │   └── services/         # assetPreloader, serviceWorkerService
+│   └── user/                 # Dominio: perfil/usuario
+│       └── pages/            # ProfilePage
+├── shared/                   # Reutilizable y agnóstico de dominio
+│   ├── components/           # R2MButton, R2MInput, R2MLoader, etc.
+│   ├── hooks/                # useDebounce, useMapResize, useCache, etc.
+│   ├── services/             # cacheService, imageCacheService, etc.
+│   ├── types/                # search.ts, etc.
+│   └── utils/                # distanceUtils, etc.
+├── components/               # (Temporal) otros que no encajen aún
+│   └── RouteGuard.tsx
+├── data/                     # Datos mock y constantes
+│   └── mocks.ts
+├── theme/                    # Sistema de estilos y diseño
+│   ├── variables.css
+│   ├── tabs.css
+│   └── search.css
+└── docs/                     # Documentación interna
 ```
 
 ## Instalación y Configuración
@@ -149,7 +157,7 @@ El proyecto incluye **Map Matching** para ajustar las rutas dibujadas a las call
 - Si el map matching está activo, verás que las rutas se ajustan automáticamente a las calles
 - Sin API key, las rutas se dibujan como líneas rectas entre puntos
 
-**Parámetros de Map Matching (en `src/services/mapMatchingService.ts`):**
+**Parámetros de Map Matching (en `src/features/routes/services/mapMatchingService.ts`):**
 ```typescript
 costing: 'bus'                // Modo de transporte (bus/auto/pedestrian)
 shape_match: 'map_snap'       // Algoritmo de ajuste a calles
