@@ -11,10 +11,10 @@ import './theme/search.css';
 import './index.css';
 
 import App from './App';
-import { cacheService } from './services/cacheService';
-import { cacheCleanupService } from './services/cacheCleanupService';
-import { serviceWorkerService } from './services/serviceWorkerService';
-import { assetPreloader } from './services/assetPreloader';
+import { cacheService } from './shared/services/cacheService';
+import { cacheCleanupService } from './shared/services/cacheCleanupService';
+import { serviceWorkerService } from './features/system/services/serviceWorkerService';
+import { assetPreloader } from './features/system/services/assetPreloader';
 import {
   shouldDisableServiceWorker,
   shouldDisableCache,

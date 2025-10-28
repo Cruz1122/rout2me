@@ -9,23 +9,23 @@ import {
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
-import AnimatedTabIcon from './components/AnimatedTabIcon';
-import GlobalLoader from './components/GlobalLoader';
+import AnimatedTabIcon from './shared/components/AnimatedTabIcon';
+import GlobalLoader from './features/system/components/GlobalLoader';
 import RouteGuard from './components/RouteGuard';
-import { useActiveTab } from './hooks/useActiveTab';
+import { useActiveTab } from './features/system/hooks/useActiveTab';
 
-const HomePage = lazy(() => import('./pages/HomePage'));
-const RoutesPage = lazy(() => import('./pages/RoutesPage'));
-const LivePage = lazy(() => import('./pages/LivePage'));
-const AlertsPage = lazy(() => import('./pages/AlertsPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const TwoFAPage = lazy(() => import('./pages/TwoFAPage'));
+const HomePage = lazy(() => import('./features/system/pages/HomePage'));
+const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
+const LivePage = lazy(() => import('./features/routes/pages/LivePage'));
+const AlertsPage = lazy(() => import('./features/system/pages/AlertsPage'));
+const ProfilePage = lazy(() => import('./features/user/pages/ProfilePage'));
+const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
+const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
+const TwoFAPage = lazy(() => import('./features/auth/pages/TwoFAPage'));
 const LocationPermissionPage = lazy(
-  () => import('./pages/LocationPermissionPage'),
+  () => import('./features/system/pages/LocationPermissionPage'),
 );
-const WelcomePage = lazy(() => import('./pages/WelcomePage'));
+const WelcomePage = lazy(() => import('./features/system/pages/WelcomePage'));
 
 function TabsWithIcons() {
   const activeTab = useActiveTab();
