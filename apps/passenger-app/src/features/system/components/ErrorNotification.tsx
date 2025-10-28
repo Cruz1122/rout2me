@@ -106,31 +106,3 @@ export default function ErrorNotification({
     </div>
   );
 }
-
-/**
- * Hook para manejar errores en componentes
- */
-export function useErrorNotification() {
-  const [error, setError] = useState<string | null>(null);
-
-  const showError = (errorMessage: string) => {
-    setError(errorMessage);
-  };
-
-  const clearError = () => {
-    setError(null);
-  };
-
-  const handleError = (error: unknown) => {
-    const message =
-      error instanceof Error ? error.message : 'Error desconocido';
-    showError(message);
-  };
-
-  return {
-    error,
-    showError,
-    clearError,
-    handleError,
-  };
-}
