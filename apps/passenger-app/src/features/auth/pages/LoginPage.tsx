@@ -10,9 +10,8 @@ import {
 import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
-import ErrorNotification, {
-  useErrorNotification,
-} from '../../../features/system/components/ErrorNotification';
+import ErrorNotification from '../../../features/system/components/ErrorNotification';
+import useErrorNotification from '../../system/hooks/useErrorNotification';
 import { loginUser, validateAuthConfig } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 

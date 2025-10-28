@@ -5,9 +5,8 @@ import { RiLock2Line } from 'react-icons/ri';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
 import R2MCodeInput from '../../../shared/components/R2MCodeInput';
-import ErrorNotification, {
-  useErrorNotification,
-} from '../../../features/system/components/ErrorNotification';
+import ErrorNotification from '../../../features/system/components/ErrorNotification';
+import useErrorNotification from '../../system/hooks/useErrorNotification';
 
 export default function TwoFAPage() {
   const history = useHistory();

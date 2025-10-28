@@ -13,11 +13,10 @@ import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
 import R2MCodeInput from '../../../shared/components/R2MCodeInput';
-import ErrorNotification, {
-  useErrorNotification,
-} from '../../../features/system/components/ErrorNotification';
+import ErrorNotification from '../../../features/system/components/ErrorNotification';
+import useErrorNotification from '../../system/hooks/useErrorNotification';
 import { signupUser, validateAuthConfig } from '../services/authService';
-import '../components/R2MInput.css';
+import '../../../shared/components/R2MInput.css';
 
 // Tipos para el registro
 interface PersonalData {
