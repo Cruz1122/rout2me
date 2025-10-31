@@ -2,7 +2,7 @@
 
 Una aplicación web moderna de transporte público desarrollada para Manizales, Colombia. Esta aplicación web móvil ayuda a los usuarios a encontrar rutas de autobús, paradas y información de transporte en tiempo real.
 
-**Backend futuro:** El backend será BaaS con Supabase (Postgres, Auth, Storage, Realtime, Functions). Actualmente solo hay datos mock, pero la arquitectura y scripts ya están preparados para integración con Supabase.
+**Backend:** El proyecto utiliza Supabase como BaaS (Backend as a Service) con Postgres, Auth, Storage y REST API. La aplicación está completamente integrada con endpoints REST para obtener rutas, paradas y posiciones de buses en tiempo real.
 
 ## Stack Tecnológico
 
@@ -11,7 +11,7 @@ Una aplicación web moderna de transporte público desarrollada para Manizales, 
 - **Framework Móvil**: Ionic Framework 8
 - **Herramienta de Build**: Vite 6
 - **Estilos**: Tailwind CSS 3
-- **Mapas**: MapLibre GL JS con tiles de OpenStreetMap
+- **Mapas**: MapLibre GL JS con tiles de CARTO (basado en OpenStreetMap)
 - **Motor de Búsqueda**: Fuse.js para búsqueda difusa
 - **Iconos**: Remix Icons (react-icons/ri)
 - **Gestor de Paquetes**: pnpm
@@ -24,6 +24,9 @@ Una aplicación web moderna de transporte público desarrollada para Manizales, 
   - Brújula interactiva con funcionalidad de arrastrar para rotar
   - Botón de mi ubicación con geolocalización
   - Diseño glassmorphism personalizado
+  - Visualización de rutas con map matching (Stadia Maps)
+  - Marcadores de paradas y buses en tiempo real
+  - Caché optimizado de tiles para mejor rendimiento
 - **Sistema de Búsqueda Avanzado**: Búsqueda completa con filtros
   - Búsqueda difusa en tiempo real usando Fuse.js
   - Búsqueda con debounce (300ms)
@@ -34,19 +37,41 @@ Una aplicación web moderna de transporte público desarrollada para Manizales, 
   - Iconos y colores específicos por tipo
   - Tarjetas de información deslizables para cerrar
   - Soporte para interacción táctil y mouse
+- **Gestión de Rutas**: Visualización completa de rutas
+  - Listado de todas las rutas disponibles
+  - Visualización en mapa con coordenadas del backend
+  - Filtros por rutas recientes
+  - Información detallada de cada ruta
+- **Seguimiento en Vivo**: Seguimiento de buses en tiempo real
+  - Listado de todos los buses activos
+  - Filtros por estado (todos, activos, cercanos)
+  - Información de ubicación y estado de cada bus
+  - Distancia desde la ubicación del usuario
+- **Autenticación de Usuarios**: Sistema completo de autenticación
+  - Registro de nuevos usuarios
+  - Login con email y contraseña
+  - Validación en tiempo real
+  - Persistencia de sesión con localStorage
+  - Gestión de perfil de usuario
+  - Cambio de contraseña
 - **Navegación**: Navegación basada en pestañas con iconos animados
 - **Diseño Responsivo**: Mobile-first con UI glassmorphism
 
-### Páginas con Solo Placeholder (No Funcionales)
-- **Gestión de Rutas**: Solo muestra "Funcionalidad en desarrollo"
-- **Seguimiento en Vivo**: Solo muestra "Funcionalidad en desarrollo"  
-- **Alertas y Notificaciones**: Solo muestra "Funcionalidad en desarrollo"
-- **Perfil de Usuario**: Solo muestra "Funcionalidad en desarrollo"
+### Integración con Backend
+- **API REST**: Integración completa con Supabase REST API
+  - Endpoint `v_route_variants_agg`: Obtiene rutas con coordenadas y paradas
+  - Endpoint `v_bus_latest_positions`: Obtiene posiciones actuales de buses
+  - Transformación automática de coordenadas para MapLibre GL
+- **Autenticación**: Integración con Supabase Auth
+  - Registro y login de usuarios
+  - Gestión de sesiones
+  - Validación de tokens
 
 ### Datos Actuales
-- **Fuente de Datos**: Datos mock estáticos (no hay backend real, pero la integración con Supabase está planificada)
-- **Ubicación**: Centrado en Manizales con ~10 paradas ficticias y 6 buses con coordenadas reales
-- **Rutas**: Datos de ejemplo, no conectado a sistema real de transporte
+- **Fuente de Datos**: Backend Supabase con datos reales
+- **Ubicación**: Centrado en Manizales, Colombia
+- **Rutas**: Datos obtenidos desde la base de datos mediante endpoints REST
+- **Buses**: Posiciones en tiempo real desde el backend
 
 ## Estructura del Proyecto
 
@@ -120,11 +145,32 @@ pnpm lint         # Ejecutar ESLint
 
 ### Variables de Entorno
 
-#### Map Matching (Opcional pero Recomendado)
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+
+#### Variables Requeridas (Backend)
+
+```env
+# Configuración de Supabase Auth
+VITE_BACKEND_AUTH_URL=https://your-project.supabase.co/auth/v1
+VITE_SERVICE_ROLE_KEY=your-service-role-key-here
+
+# Configuración de API REST
+VITE_BACKEND_REST_URL=https://your-project.supabase.co/rest/v1
+```
+
+**Cómo obtener las credenciales:**
+1. Ve a tu proyecto de Supabase
+2. En el dashboard, ve a Settings > API
+3. Copia la URL de Auth (formato: `https://[project-id].supabase.co/auth/v1`)
+4. Copia la URL de REST API (formato: `https://[project-id].supabase.co/rest/v1`)
+5. Copia la "service_role" key (NO la "anon" key)
+   - ⚠️ **IMPORTANTE**: Esta clave debe mantenerse segura y nunca exponerse en el frontend en producción
+
+#### Variables Opcionales (Map Matching)
 
 El proyecto incluye **Map Matching** para ajustar las rutas dibujadas a las calles reales usando **Stadia Maps API**:
 
-**Sin API Key (Modo Actual):**
+**Sin API Key:**
 - ✅ El mapa funciona normalmente
 - ⚠️ Las rutas se muestran como líneas directas entre puntos
 - ⚠️ **NO se ajustan a las calles reales**
@@ -134,28 +180,15 @@ El proyecto incluye **Map Matching** para ajustar las rutas dibujadas a las call
 - ✅ Respeta sentidos de vías y geometría vial
 - ✅ Proporciona distancias y duraciones precisas
 
-**Configuración:**
+```env
+# Map Matching con Stadia Maps (Opcional)
+VITE_STADIA_API_KEY=50519f36-7eba-4cce-8e2d-62189257f2d4
+```
 
-1. **Obtener API Key gratuita:**
-   - Ve a: https://client.stadiamaps.com/signup/
-   - Crea una cuenta (plan gratuito disponible)
-   - Copia tu API key
-
-2. **Crear archivo `.env` en la raíz del proyecto:**
-   ```bash
-   # .env
-   VITE_STADIA_API_KEY=tu_api_key_aquí
-   ```
-
-3. **Reiniciar el servidor de desarrollo:**
-   ```bash
-   pnpm dev
-   ```
-
-**Verificación:**
-- Selecciona una ruta en el mapa
-- Si el map matching está activo, verás que las rutas se ajustan automáticamente a las calles
-- Sin API key, las rutas se dibujan como líneas rectas entre puntos
+**Obtener API Key gratuita:**
+- Ve a: https://client.stadiamaps.com/signup/
+- Crea una cuenta (plan gratuito disponible)
+- Copia tu API key
 
 **Parámetros de Map Matching (en `src/features/routes/services/mapMatchingService.ts`):**
 ```typescript
@@ -166,14 +199,6 @@ costing_options: {
     use_bus_routes: 1         // Preferir rutas de bus
   }
 }
-```
-
-#### Otras Variables (Futuras)
-
-Para futuros proveedores de mapas que requieran autenticación:
-```env
-VITE_MAP_STYLE_URL=<url-del-estilo-del-mapa>
-VITE_MAP_ACCESS_TOKEN=<token-de-acceso>
 ```
 
 ### Variables Globales CSS (REALES Y EN USO)
@@ -205,39 +230,55 @@ VITE_MAP_ACCESS_TOKEN=<token-de-acceso>
 ### Configuración del Mapa
 - **Centro por Defecto**: Manizales, Colombia (-75.5138, 5.0703)
 - **Zoom por Defecto**: 15
-- **Fuente de Tiles**: OpenStreetMap (gratuito, sin API key)
+- **Fuente de Tiles**: CARTO Light (basado en OpenStreetMap, gratuito, sin API key)
 - **Controles de Navegación**: Botones personalizados (posicionados abajo-izquierda)
+- **Caché de Tiles**: Sistema optimizado de caché para mejor rendimiento
 
-## Estructura de Datos (Mock - No Real)
+## Estructura de Datos y Endpoints REST
 
-**IMPORTANTE: Todos los datos son ficticios y están hardcodeados en `src/data/mocks.ts`**
+**IMPORTANTE: Los datos se obtienen desde el backend Supabase mediante endpoints REST**
 
-### Interfaz Stop (Parada)
+### Endpoints Utilizados
+
+#### 1. `v_route_variants_agg` - Obtener Rutas y Coordenadas
+Este endpoint devuelve todas las variantes de rutas con sus coordenadas y paradas agregadas.
+
+**Estructura de respuesta:**
 ```typescript
-interface Stop {
-  id: string;          // Ejemplo: 'stop-1'
-  name: string;        // Ejemplo: 'Universidad de Caldas'
-  code: string;        // Ejemplo: 'UC001'
-  tags: string[];      // Ejemplo: ['universidad', 'caldas', 'educación']
-  type: 'stop';
-  lat: number;         // Ejemplo: 5.0556 (Universidad de Caldas real)
-  lng: number;         // Ejemplo: -75.4934 (Universidad de Caldas real)
-  routes: string[];    // Ejemplo: ['R102', 'R401'] - RUTAS FICTICIAS
+interface ApiRouteVariantAggregated {
+  route_id: string;
+  route_code: string;
+  route_name: string;
+  route_active: boolean;
+  variant_id: string;
+  path: { lat: number; lng: number }[];  // Array de coordenadas
+  length_m_json: number;
+  stops: {
+    id: string;
+    name: string;
+    location: { lat: number; lng: number };
+  }[];
 }
 ```
 
-### Interfaz Route (Ruta)
+#### 2. `v_bus_latest_positions` - Obtener Posiciones de Buses
+Este endpoint devuelve las últimas posiciones conocidas de todos los buses.
+
+**Estructura de respuesta:**
 ```typescript
-interface Route {
-  id: string;          // Ejemplo: 'route-1' 
-  name: string;        // Ejemplo: 'Ruta Centro-Universidad'
-  code: string;        // Ejemplo: 'R101'
-  tags: string[];      // Ejemplo: ['centro', 'universidad']
-  type: 'route';
-  stops: string[];     // IDs de paradas - CONEXIONES FICTICIAS
-  fare: number;        // Ejemplo: 2500 (pesos colombianos)
+interface ApiBusLatestPosition {
+  bus_id: string;
+  plate: string;
+  company_id: string;
+  status: 'AVAILABLE' | 'IN_SERVICE' | 'OUT_OF_SERVICE' | 'MAINTENANCE';
+  active_route_variant_id: string | null;
+  location_json: { lat: number; lng: number } | null;
+  speed_kph: number | null;
+  heading: number | null;
 }
 ```
+
+**Más información:** Ver [README-MAP.md](./README-MAP.md#obtención-de-coordenadas-desde-endpoints-rest) para detalles completos sobre cómo obtener y transformar coordenadas desde estos endpoints.
 
 ## Configuración de Búsqueda
 
@@ -261,10 +302,11 @@ interface Route {
 - **Navegación por Teclado**: Flechas + Enter para seleccionar
 - **Funcionalidad de Limpieza**: Botón X y tecla Escape
 
-### Datos Mock Actuales
-- **Paradas**: ~9 ubicaciones en Manizales (Universidad de Caldas, Hospital, Centro Comercial, etc.)
-- **Rutas**: ~6 rutas ficticias con tarifas entre $2500-$3500
-- **Ubicaciones Reales**: Solo las coordenadas de lugares son reales, las conexiones son inventadas
+### Transformación de Coordenadas
+
+⚠️ **IMPORTANTE**: El backend devuelve coordenadas en formato `{lat, lng}`, pero MapLibre GL requiere `[lng, lat]`. El sistema realiza esta conversión automáticamente.
+
+**Más información:** Ver [README-MAP.md](./README-MAP.md#resumen-de-conversiones-de-coordenadas) para detalles sobre las conversiones de coordenadas.
 
 ## Diseño UI/UX
 
@@ -308,7 +350,9 @@ interface Route {
 - **React.memo**: Para componentes costosos de re-renderizar
 - **useCallback**: Para referencias estables de funciones
 - **useMemo**: Para cálculos costosos
-- **Búsqueda con debounce**: Para reducir búsquedas excesivas (no hay API real, pero está implementado)
+- **Búsqueda con debounce**: Para reducir búsquedas excesivas
+- **Caché de rutas**: Sistema de caché para evitar peticiones repetidas a la API
+- **Caché de tiles**: Precarga y caché inteligente de tiles del mapa
 - **Carga perezosa**: NO implementada aún
 
 ## Testing
@@ -388,29 +432,31 @@ test: adición/actualización de tests
 ## Limitaciones Actuales
 
 ### Funcionalidades NO Implementadas
-- Backend real o API (planificado: Supabase BaaS)
-- Base de datos (planificado: Supabase Postgres)
-- Autenticación de usuarios (planificado: Supabase Auth)
-- Datos reales de transporte público
-- Seguimiento en tiempo real
 - Notificaciones push
 - Tests automatizados
 - CI/CD pipeline
+- Optimización completa para PWA (Progressive Web App)
+- Actualización en tiempo real con WebSockets (actualmente usa polling)
 
 ### Próximos Pasos Sugeridos
-1. Implementar backend con API REST
-2. Conectar con datos reales de transporte
-3. Agregar suite de testing completa
-4. Configurar deployment automático
-5. Implementar funcionalidades de las páginas placeholder
-6. Optimizar para PWA (Progressive Web App)
+1. Implementar actualización en tiempo real con Supabase Realtime
+2. Agregar suite de testing completa
+3. Configurar deployment automático
+4. Optimizar para PWA (Progressive Web App)
+5. Implementar notificaciones push
+6. Mejorar sistema de caché con Service Workers
 
 ## Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT - ver el archivo LICENSE para detalles.
 
+## Documentación Adicional
+
+- **[README-MAP.md](./README-MAP.md)**: Guía completa sobre el sistema de mapas, caché, tiles, map matching, rutas, paradas y buses
+- **[src/docs/README_AUTH.md](./src/docs/README_AUTH.md)**: Documentación del sistema de autenticación
+- **[src/docs/README_ROUTES_SYSTEM.md](./src/docs/README_ROUTES_SYSTEM.md)**: Documentación del sistema de rutas y paradas
+
 ## Contacto
 
 Para preguntas o soporte, por favor contacta al equipo de desarrollo o crea un issue en el repositorio:
 - **Repositorio**: https://github.com/Cruz1122/rout2me
-- **Rama Actual**: feat/passenger-app-init
