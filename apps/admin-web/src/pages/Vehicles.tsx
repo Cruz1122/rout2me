@@ -24,6 +24,9 @@ export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -220,6 +223,13 @@ export default function VehiclesPage() {
         return copy;
       });
   }
+
+  // Filter vehicles based on search query (only by plate)
+  const filteredVehicles = vehicles.filter((vehicle) => {
+    const query = searchQuery.toLowerCase();
+    return vehicle.plate.toLowerCase().includes(query);
+  });
+
   return (
     <>
       {/* Toast */}
@@ -686,18 +696,14 @@ export default function VehiclesPage() {
                 <input
                   placeholder="Buscar vehículos"
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border-none bg-[#f0f2f4] focus:border-none h-full placeholder:text-[#646f87] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
-                  defaultValue=""
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1); // Reset to first page when searching
+                  }}
                 />
               </div>
             </label>
-          </div>
-
-          <div className="flex gap-3 p-3 flex-wrap pr-4">
-            <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#f0f2f4] pl-4 pr-4">
-              <p className="text-[#111317] text-sm font-medium leading-normal">
-                Estado
-              </p>
-            </div>
           </div>
 
           {/* Vehicles table */}
@@ -746,77 +752,163 @@ export default function VehiclesPage() {
                         No hay vehículos disponibles
                       </td>
                     </tr>
+                  ) : filteredVehicles.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
+                      >
+                        No se encontraron vehículos
+                      </td>
+                    </tr>
                   ) : (
-                    vehicles.map((vehicle) => {
-                      const occupancyPercentage =
-                        vehicle.capacity > 0
-                          ? Math.round(
-                              (vehicle.passenger_count / vehicle.capacity) *
-                                100,
-                            )
-                          : 0;
-                      const statusText =
-                        vehicle.status === 'AVAILABLE'
-                          ? 'Disponible'
-                          : vehicle.status === 'IN_SERVICE'
-                            ? 'En Servicio'
-                            : vehicle.status === 'MAINTENANCE'
-                              ? 'Mantenimiento'
-                              : 'Fuera de Servicio';
+                    filteredVehicles
+                      .slice(
+                        (currentPage - 1) * rowsPerPage,
+                        currentPage * rowsPerPage,
+                      )
+                      .map((vehicle) => {
+                        const occupancyPercentage =
+                          vehicle.capacity > 0
+                            ? Math.round(
+                                (vehicle.passenger_count / vehicle.capacity) *
+                                  100,
+                              )
+                            : 0;
+                        const statusText =
+                          vehicle.status === 'AVAILABLE'
+                            ? 'Disponible'
+                            : vehicle.status === 'IN_SERVICE'
+                              ? 'En Servicio'
+                              : vehicle.status === 'MAINTENANCE'
+                                ? 'Mantenimiento'
+                                : 'Fuera de Servicio';
 
-                      return (
-                        <tr
-                          key={vehicle.id}
-                          className={`border-t border-t-[#dcdfe5] cursor-pointer hover:bg-[#f0f2f4] ${selectedVehicle?.id === vehicle.id ? 'bg-[#e8edf3]' : ''}`}
-                          onClick={() => setSelectedVehicle(vehicle)}
-                        >
-                          {/* Placa */}
-                          <td className="table-veh-120 h-[72px] px-4 py-2 w-[400px] text-[#111317] text-sm font-medium leading-normal">
-                            {vehicle.plate}
-                          </td>
-                          {/* Capacidad */}
-                          <td className="table-veh-240 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                            {vehicle.capacity}
-                          </td>
-                          {/* Estado */}
-                          <td className="table-veh-360 h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal">
-                            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
-                              <span className="truncate">{statusText}</span>
-                            </button>
-                          </td>
-                          {/* Pasajeros */}
-                          <td className="table-veh-480 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                            {vehicle.passenger_count}
-                          </td>
-                          {/* Ocupación % */}
-                          <td className="table-veh-600 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                            {occupancyPercentage}%
-                          </td>
-                          {/* Último Mantenimiento */}
-                          <td className="table-veh-720 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                            {new Date(
-                              vehicle.last_maintenance,
-                            ).toLocaleDateString('es-ES')}
-                          </td>
-                          {/* Action */}
-                          <td className="table-veh-840 h-[72px] px-4 py-2 w-60 text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Implementar eliminar
-                              }}
-                              className="hover:text-red-600"
-                            >
-                              Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
+                        return (
+                          <tr
+                            key={vehicle.id}
+                            className={`border-t border-t-[#dcdfe5] cursor-pointer hover:bg-[#f0f2f4] ${selectedVehicle?.id === vehicle.id ? 'bg-[#e8edf3]' : ''}`}
+                            onClick={() => setSelectedVehicle(vehicle)}
+                          >
+                            {/* Placa */}
+                            <td className="table-veh-120 h-[72px] px-4 py-2 w-[400px] text-[#111317] text-sm font-medium leading-normal">
+                              {vehicle.plate}
+                            </td>
+                            {/* Capacidad */}
+                            <td className="table-veh-240 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                              {vehicle.capacity}
+                            </td>
+                            {/* Estado */}
+                            <td className="table-veh-360 h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal">
+                              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
+                                <span className="truncate">{statusText}</span>
+                              </button>
+                            </td>
+                            {/* Pasajeros */}
+                            <td className="table-veh-480 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                              {vehicle.passenger_count}
+                            </td>
+                            {/* Ocupación % */}
+                            <td className="table-veh-600 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                              {occupancyPercentage}%
+                            </td>
+                            {/* Último Mantenimiento */}
+                            <td className="table-veh-720 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                              {new Date(
+                                vehicle.last_maintenance,
+                              ).toLocaleDateString('es-ES')}
+                            </td>
+                            {/* Action */}
+                            <td className="table-veh-840 h-[72px] px-4 py-2 w-60 text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Implementar eliminar
+                                }}
+                                className="hover:text-red-600"
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination controls */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[#dcdfe5]">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-[#646f87]">
+                  Filas por página:
+                </span>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="h-8 px-2 rounded-lg border border-[#dcdfe5] bg-white text-sm text-[#111317] cursor-pointer"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-[#646f87]">
+                  {filteredVehicles.length === 0
+                    ? '0 de 0'
+                    : `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filteredVehicles.length)} de ${filteredVehicles.length}`}
+                </span>
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.min(
+                        Math.ceil(filteredVehicles.length / rowsPerPage),
+                        prev + 1,
+                      ),
+                    )
+                  }
+                  disabled={
+                    currentPage >=
+                    Math.ceil(filteredVehicles.length / rowsPerPage)
+                  }
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
             <style>{`
                 @container(max-width:120px){.table-veh-120{display:none}}
                 @container(max-width:240px){.table-veh-240{display:none}}

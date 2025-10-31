@@ -1,0 +1,857 @@
+import { useState, useRef, useEffect } from 'react';
+import {
+  createUser as createUserApi,
+  getUsers,
+  deleteUser as deleteUserApi,
+} from '../api/users_api';
+import type { User } from '../api/users_api';
+import { colorClasses } from '../styles/colors';
+
+export default function UsersPage() {
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    name?: string;
+    phone?: string;
+  }>({});
+  const [loading, setLoading] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error';
+    message: string;
+    visible: boolean;
+  } | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  const toastHideTimerRef = useRef<number | null>(null);
+  const toastEntryTimerRef = useRef<number | null>(null);
+
+  // Cargar usuarios al montar el componente
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  async function loadUsers() {
+    try {
+      setLoadingUsers(true);
+      const data = await getUsers();
+      setUsers(data);
+      // Seleccionar el primer usuario por defecto
+      if (data.length > 0 && !selectedUser) {
+        setSelectedUser(data[0]);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+      showToast('error', 'Error al cargar los usuarios');
+    } finally {
+      setLoadingUsers(false);
+    }
+  }
+
+  function closeModal() {
+    setIsAddOpen(false);
+    setErrors({});
+    setEmail('');
+    setPassword('');
+    setName('');
+    setPhone('');
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (toastHideTimerRef.current) clearTimeout(toastHideTimerRef.current);
+    };
+  }, []);
+
+  function showToast(type: 'success' | 'error', message: string) {
+    // clear any existing timers
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    if (toastHideTimerRef.current) {
+      clearTimeout(toastHideTimerRef.current);
+      toastHideTimerRef.current = null;
+    }
+    if (toastEntryTimerRef.current) {
+      clearTimeout(toastEntryTimerRef.current);
+      toastEntryTimerRef.current = null;
+    }
+
+    // Mount toast initially hidden so we can animate its entrance
+    setToast({ type, message, visible: false });
+    // small delay to allow mounting, then set visible to true to trigger enter animation
+    toastEntryTimerRef.current = window.setTimeout(() => {
+      setToast((t) => (t ? { ...t, visible: true } : t));
+      // hide after 4s (start hide animation slightly before remove)
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast((t) => (t ? { ...t, visible: false } : t));
+        // remove from DOM after animation completes
+        toastHideTimerRef.current = window.setTimeout(() => {
+          setToast(null);
+        }, 300);
+      }, 4000);
+    }, 20);
+  }
+
+  function createUser() {
+    // validate
+    const newErrors: {
+      email?: string;
+      password?: string;
+      name?: string;
+      phone?: string;
+    } = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+?\d{10,15}$/;
+
+    if (!email.trim()) newErrors.email = 'El email es obligatorio';
+    else if (!emailRegex.test(email)) newErrors.email = 'Email no válido';
+
+    if (!password.trim()) newErrors.password = 'La contraseña es obligatoria';
+    else if (password.length < 6)
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+
+    if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
+
+    if (!phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
+    else if (!phoneRegex.test(phone))
+      newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    // call API
+    setLoading(true);
+    createUserApi({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name,
+        phone,
+      },
+    })
+      .then((res) => {
+        console.log('created', res);
+        showToast('success', 'Usuario creado correctamente.');
+        // Recargar la lista de usuarios
+        loadUsers();
+        closeModal();
+      })
+      .catch((err) => {
+        console.error('create failed', err);
+        showToast('error', 'Error al crear el usuario.');
+      })
+      .finally(() => setLoading(false));
+  }
+
+  // Validation on blur handlers
+  function validateEmail() {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim())
+      setErrors((e) => ({ ...e, email: 'El email es obligatorio' }));
+    else if (!emailRegex.test(email))
+      setErrors((e) => ({ ...e, email: 'Email no válido' }));
+    else
+      setErrors((e) => {
+        const copy = { ...e };
+        delete copy.email;
+        return copy;
+      });
+  }
+
+  function validatePassword() {
+    if (!password.trim())
+      setErrors((e) => ({ ...e, password: 'La contraseña es obligatoria' }));
+    else if (password.length < 6)
+      setErrors((e) => ({
+        ...e,
+        password: 'La contraseña debe tener al menos 6 caracteres',
+      }));
+    else
+      setErrors((e) => {
+        const copy = { ...e };
+        delete copy.password;
+        return copy;
+      });
+  }
+
+  function validateName() {
+    if (!name.trim())
+      setErrors((e) => ({ ...e, name: 'El nombre es obligatorio' }));
+    else
+      setErrors((e) => {
+        const copy = { ...e };
+        delete copy.name;
+        return copy;
+      });
+  }
+
+  function validatePhone() {
+    const phoneRegex = /^\+?\d{10,15}$/;
+    if (!phone.trim())
+      setErrors((e) => ({ ...e, phone: 'El teléfono es obligatorio' }));
+    else if (!phoneRegex.test(phone))
+      setErrors((e) => ({
+        ...e,
+        phone: 'Teléfono no válido (ej: +573001234567)',
+      }));
+    else
+      setErrors((e) => {
+        const copy = { ...e };
+        delete copy.phone;
+        return copy;
+      });
+  }
+
+  function openEditModal() {
+    if (!selectedUser) return;
+    // Cargar los datos del usuario seleccionado
+    setEmail(selectedUser.email);
+    setName(selectedUser.name);
+    setPhone(selectedUser.phone);
+    setPassword(''); // No mostrar la contraseña actual
+    setErrors({});
+    setIsEditOpen(true);
+  }
+
+  function closeEditModal() {
+    setIsEditOpen(false);
+    setEmail('');
+    setPassword('');
+    setName('');
+    setPhone('');
+    setErrors({});
+  }
+
+  function updateUser() {
+    if (!selectedUser) return;
+
+    // validate (password opcional en edición)
+    const newErrors: {
+      email?: string;
+      password?: string;
+      name?: string;
+      phone?: string;
+    } = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+?\d{10,15}$/;
+
+    if (!email.trim()) newErrors.email = 'El email es obligatorio';
+    else if (!emailRegex.test(email)) newErrors.email = 'Email no válido';
+
+    if (password && password.length < 6)
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+
+    if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
+
+    if (!phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
+    else if (!phoneRegex.test(phone))
+      newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    // TODO: Implementar updateUserApi cuando esté disponible
+    setLoading(true);
+    setTimeout(() => {
+      // Simular actualización
+      showToast('success', 'Usuario actualizado correctamente');
+      loadUsers();
+      closeEditModal();
+      setLoading(false);
+    }, 800);
+  }
+
+  function confirmDelete() {
+    if (!selectedUser) return;
+
+    setLoading(true);
+    deleteUserApi(selectedUser.id)
+      .then(() => {
+        showToast('success', 'Usuario eliminado correctamente');
+        setSelectedUser(null);
+        setIsDeleteOpen(false);
+        loadUsers();
+      })
+      .catch((err: unknown) => {
+        console.error('delete failed', err);
+        showToast('error', 'Error al eliminar el usuario');
+      })
+      .finally(() => setLoading(false));
+  }
+
+  return (
+    <>
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`fixed top-6 right-6 z-60 transform transition-all duration-300 ease-out ${
+            toast.visible
+              ? 'opacity-100 translate-y-0 scale-100'
+              : 'opacity-0 translate-y-3 scale-95'
+          }`}
+          style={{ willChange: 'opacity, transform' }}
+        >
+          <div
+            className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg border ${toast.type === 'success' ? 'bg-white text-gray-900 border-green-100' : 'bg-white text-gray-900 border-red-100'}`}
+          >
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toast.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}
+            >
+              {toast.type === 'success' ? (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M20 6L9 17L4 12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 9v4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 17h.01"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate max-w-xs">
+                {toast.message}
+              </div>
+            </div>
+            <button
+              className="ml-3 text-sm underline text-gray-500"
+              onClick={() => setToast(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="gap-1 px-6 flex flex-1 justify-center py-5">
+        {/* Left column: Users list */}
+        <div className="layout-content-container flex flex-col w-80">
+          <div className="flex flex-wrap justify-between gap-3 p-4">
+            <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
+              Usuarios
+            </p>
+          </div>
+          <div className="flex items-center gap-4 bg-white px-4 min-h-14">
+            <label className="flex flex-col min-w-40 h-12 flex-1">
+              <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
+                <div className="text-[#646f87] flex border border-[#dcdfe5] bg-white items-center justify-center pl-4 rounded-l-xl border-r-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24px"
+                    height="24px"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
+                  </svg>
+                </div>
+                <input
+                  placeholder="Buscar usuarios"
+                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-full placeholder:text-[#646f87] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
+                />
+              </div>
+            </label>
+          </div>
+
+          {loadingUsers ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <p className="text-sm text-gray-500">Cargando usuarios...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="pb-3">
+              {users.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <p className="text-[#646f87] text-base">
+                    No hay usuarios registrados
+                  </p>
+                  <p className="text-[#646f87] text-sm mt-2">
+                    Crea el primer usuario para comenzar
+                  </p>
+                </div>
+              ) : (
+                users.map((user) => (
+                  <div
+                    key={user.id}
+                    onClick={() => setSelectedUser(user)}
+                    className={`flex items-center gap-4 px-4 min-h-[72px] py-2 cursor-pointer transition-colors ${
+                      selectedUser?.id === user.id
+                        ? 'bg-[#f0f2f4]'
+                        : 'hover:bg-[#f8f9fa]'
+                    }`}
+                  >
+                    <div className="flex h-14 shrink-0 items-center justify-center rounded-full bg-[#f0f2f4] w-14">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24px"
+                        height="24px"
+                        fill="currentColor"
+                        viewBox="0 0 256 256"
+                      >
+                        <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM96,120a32,32,0,1,1,32,32A32,32,0,0,1,96,120Zm97.76,66.41a79.66,79.66,0,0,0-36.06-28.75,48,48,0,1,0-59.4,0,79.66,79.66,0,0,0-36.06,28.75,88,88,0,1,1,131.52,0Z"></path>
+                      </svg>
+                    </div>
+                    <div className="flex flex-1 flex-col justify-center">
+                      <p className="text-[#111317] text-base font-medium leading-normal line-clamp-1">
+                        {user.name || 'Sin nombre'}
+                      </p>
+                      <p className="text-[#646f87] text-sm font-normal leading-normal line-clamp-2">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right column: User details */}
+        <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+          <div className="flex flex-wrap justify-between gap-3 p-4">
+            <div className="flex flex-col gap-1 min-w-72">
+              <p className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em]">
+                {selectedUser
+                  ? selectedUser.name || 'Sin nombre'
+                  : 'Selecciona un usuario'}
+              </p>
+              {selectedUser && (
+                <p className="text-[#646f87] text-base font-normal leading-normal">
+                  {selectedUser.email}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setIsAddOpen(true)}
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
+            >
+              <div className="text-[#111317]" data-icon="Plus" data-size="20px" data-weight="regular">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20px"
+                  height="20px"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z" />
+                </svg>
+              </div>
+              <span className="truncate">Nuevo Usuario</span>
+            </button>
+          </div>
+
+          {selectedUser && (
+            <div className="flex flex-col gap-4 p-4">
+              <div className="flex gap-6 flex-wrap">
+                <div className="flex flex-col gap-2 flex-1">
+                  <p className="text-[#111317] text-base font-medium leading-normal">
+                    Información Personal
+                  </p>
+                  <div className="rounded-xl border border-[#dcdfe5] bg-white p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[#646f87] text-sm">Nombre:</p>
+                        <p className="text-[#111317] text-sm font-medium">
+                          {selectedUser.name || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-[#646f87] text-sm">Email:</p>
+                        <p className="text-[#111317] text-sm font-medium">
+                          {selectedUser.email}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-[#646f87] text-sm">Teléfono:</p>
+                        <p className="text-[#111317] text-sm font-medium">
+                          {selectedUser.phone || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-[#646f87] text-sm">Creado:</p>
+                        <p className="text-[#111317] text-sm font-medium">
+                          {new Date(selectedUser.created_at).toLocaleDateString(
+                            'es-ES',
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-[#646f87] text-sm">
+                          Email Confirmado:
+                        </p>
+                        <p className="text-[#111317] text-sm font-medium">
+                          {selectedUser.email_confirmed_at ? 'Sí' : 'No'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 px-4 pb-4">
+                <button
+                  onClick={openEditModal}
+                  className={`flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 ${colorClasses.btnPrimary} text-white text-sm font-bold leading-normal tracking-[0.015em] hover:opacity-90 transition-opacity`}
+                >
+                  Editar Usuario
+                </button>
+                <button
+                  onClick={() => setIsDeleteOpen(true)}
+                  className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-red-600 hover:bg-red-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors"
+                >
+                  Eliminar Usuario
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal: Agregar Usuario */}
+      {isAddOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/40"
+            onClick={() => !loading && closeModal()}
+          />
+          <div className="relative z-50 bg-white rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-[#111317] text-xl font-bold mb-4">
+              Crear Nuevo Usuario
+            </h2>
+
+            <div className="flex flex-col gap-4">
+              {/* Email */}
+              <label className="flex flex-col min-w-40 flex-1">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Email *
+                </p>
+                <input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={validateEmail}
+                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    errors.email
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-[#dcdfe5] bg-white'
+                  }`}
+                />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
+              </label>
+
+              {/* Password */}
+              <label className="flex flex-col min-w-40 flex-1">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Contraseña *
+                </p>
+                <input
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={validatePassword}
+                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    errors.password
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-[#dcdfe5] bg-white'
+                  }`}
+                />
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
+              </label>
+
+              {/* Name */}
+              <label className="flex flex-col min-w-40 flex-1">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Nombre Completo *
+                </p>
+                <input
+                  type="text"
+                  placeholder="Juan Pérez"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={validateName}
+                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    errors.name
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-[#dcdfe5] bg-white'
+                  }`}
+                />
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
+              </label>
+
+              {/* Phone */}
+              <label className="flex flex-col min-w-40 flex-1">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Teléfono *
+                </p>
+                <input
+                  type="tel"
+                  placeholder="+573001234567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onBlur={validatePhone}
+                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    errors.phone
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-[#dcdfe5] bg-white'
+                  }`}
+                />
+                {errors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                )}
+              </label>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => !loading && closeModal()}
+                disabled={loading}
+                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={createUser}
+                disabled={
+                  loading ||
+                  !email.trim() ||
+                  !password.trim() ||
+                  !name.trim() ||
+                  !phone.trim() ||
+                  Object.keys(errors).length > 0
+                }
+                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
+                  email.trim() &&
+                  password.trim() &&
+                  name.trim() &&
+                  phone.trim() &&
+                  Object.keys(errors).length === 0 &&
+                  !loading
+                    ? colorClasses.btnSecondary
+                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
+                }`}
+              >
+                {loading ? 'Creando...' : 'Crear Usuario'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición */}
+      {isEditOpen && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-[#111317] text-xl font-bold">
+                Editar Usuario
+              </h2>
+              <button
+                onClick={() => !loading && closeEditModal()}
+                disabled={loading}
+                className="text-[#646f87] hover:text-[#111317]"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <label className="flex flex-col gap-2">
+                <span className="text-[#111317] text-sm font-medium">
+                  Email *
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={validateEmail}
+                  placeholder="usuario@example.com"
+                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
+                />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-[#111317] text-sm font-medium">
+                  Nueva Contraseña (opcional)
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={validatePassword}
+                  placeholder="Dejar vacío para mantener actual"
+                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
+                />
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-[#111317] text-sm font-medium">
+                  Nombre *
+                </span>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={validateName}
+                  placeholder="Juan Pérez"
+                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
+                />
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-[#111317] text-sm font-medium">
+                  Teléfono *
+                </span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onBlur={validatePhone}
+                  placeholder="+573001234567"
+                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
+                />
+                {errors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                )}
+              </label>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => !loading && closeEditModal()}
+                disabled={loading}
+                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={updateUser}
+                disabled={
+                  loading ||
+                  !email.trim() ||
+                  !name.trim() ||
+                  !phone.trim() ||
+                  Object.keys(errors).length > 0
+                }
+                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
+                  email.trim() &&
+                  name.trim() &&
+                  phone.trim() &&
+                  Object.keys(errors).length === 0 &&
+                  !loading
+                    ? colorClasses.btnSecondary
+                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
+                }`}
+              >
+                {loading ? 'Actualizando...' : 'Actualizar Usuario'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {isDeleteOpen && selectedUser && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
+            <h3
+              className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}
+            >
+              Eliminar Usuario
+            </h3>
+            <p className={`${colorClasses.textTerciary} mb-6`}>
+              ¿Estás seguro de que deseas eliminar a{' '}
+              <strong>{selectedUser.name}</strong>? Esta acción no se puede
+              deshacer.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={loading}
+                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSurface} rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={loading}
+                className={`px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {loading ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

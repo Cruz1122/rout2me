@@ -109,6 +109,17 @@ export default function Navbar() {
             >
               Disponibilidad
             </span>
+            <Link
+              to="/users"
+              className={`relative text-sm font-medium leading-normal pb-1 ${colorClasses.textPrimary} hover:text-[#1E56A0]`}
+            >
+              Usuarios
+              {isActive('/users') && (
+                <span
+                  className={`absolute bottom-0 left-0 right-0 h-0.5 ${colorClasses.bgSecondary}`}
+                />
+              )}
+            </Link>
           </nav>
         </div>
         <div className="flex flex-1 justify-end gap-8">

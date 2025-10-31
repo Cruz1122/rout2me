@@ -1,0 +1,229 @@
+// Configuración de Supabase
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY =
+  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
+
+export type UserRole = 'admin' | 'user' | 'driver' | 'supervisor';
+
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  phone: string;
+  role?: UserRole;
+  created_at: string;
+  email_confirmed_at?: string;
+};
+
+export type UserCreate = {
+  email: string;
+  password: string;
+  email_confirm: boolean;
+  user_metadata: {
+    name: string;
+    phone: string;
+  };
+};
+
+export type UserUpdate = {
+  email?: string;
+  password?: string;
+  user_metadata?: {
+    name?: string;
+    phone?: string;
+  };
+};
+
+export type UserWithRole = {
+  user_id: string;
+  role: UserRole;
+};
+
+// Helper para obtener el token del localStorage
+function getAuthToken(): string | null {
+  return localStorage.getItem('access_token');
+}
+
+// Obtener todos los usuarios
+export async function getUsers(): Promise<User[]> {
+  console.log('=== GET USERS DEBUG ===');
+  console.log('SUPABASE_URL:', SUPABASE_URL);
+
+  const url = `${SUPABASE_URL}/auth/v1/admin/users?per_page=50&page=1`;
+  console.log('Full URL:', url);
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  console.log('Response status:', res.status);
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Get users error:', errorText);
+    throw new Error(`Get users failed: ${res.status} ${errorText}`);
+  }
+
+  const data = await res.json();
+  console.log('Raw response data:', data);
+
+  // La respuesta tiene estructura { users: [...], aud: "..." }
+  const usersArray = data.users || [];
+  console.log('Number of users:', usersArray.length);
+
+  return usersArray.map((user: any) => ({
+    id: user.id,
+    email: user.email || '',
+    name: user.user_metadata?.name || 'Sin nombre',
+    phone: user.user_metadata?.phone || '',
+    role: 'user', // Por defecto, se puede mejorar si tienen roles en user_metadata
+    created_at: user.created_at,
+    email_confirmed_at: user.email_confirmed_at,
+  }));
+}
+
+// Obtener el rol de un usuario específico
+export async function getUserRole(userId: string): Promise<UserRole | null> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/user_roles?select=user_id,role&user_id=eq.${userId}`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  if (!res.ok) {
+    console.error('Get user role error');
+    return null;
+  }
+
+  const roles: UserWithRole[] = await res.json();
+  return roles.length > 0 ? roles[0].role : null;
+}
+
+// Crear un nuevo usuario (Admin endpoint)
+export async function createUser(payload: UserCreate): Promise<User> {
+  console.log('=== CREATE USER DEBUG ===');
+  console.log('User data being sent:', JSON.stringify(payload, null, 2));
+
+  const url = `${SUPABASE_URL}/auth/v1/admin/users`;
+  console.log('Full URL:', url);
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  console.log('Response status:', res.status);
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Create user error:', errorText);
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      throw new Error(
+        `Create user failed: ${errorJson.message || errorJson.code || errorText}`,
+      );
+    } catch (e) {
+      throw new Error(`Create user failed: ${res.status} ${errorText}`);
+    }
+  }
+
+  const newUser = await res.json();
+  console.log('✅ Usuario creado:', newUser);
+
+  return {
+    id: newUser.id,
+    email: newUser.email,
+    name: newUser.user_metadata?.name || '',
+    phone: newUser.user_metadata?.phone || '',
+    role: 'user',
+    created_at: newUser.created_at,
+    email_confirmed_at: newUser.email_confirmed_at,
+  };
+}
+
+// Actualizar un usuario existente
+export async function updateUser(
+  userId: string,
+  payload: UserUpdate,
+): Promise<User> {
+  console.log('=== UPDATE USER DEBUG ===');
+  console.log('User ID:', userId);
+  console.log('Update data:', JSON.stringify(payload, null, 2));
+
+  const url = `${SUPABASE_URL}/auth/v1/admin/users/${userId}`;
+  console.log('Full URL:', url);
+
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  console.log('Response status:', res.status);
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Update user error:', errorText);
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      throw new Error(
+        `Update user failed: ${errorJson.message || errorJson.code || errorText}`,
+      );
+    } catch (e) {
+      throw new Error(`Update user failed: ${res.status} ${errorText}`);
+    }
+  }
+
+  const updatedUser = await res.json();
+  console.log('✅ Usuario actualizado:', updatedUser);
+
+  return {
+    id: updatedUser.id,
+    email: updatedUser.email,
+    name: updatedUser.user_metadata?.name || '',
+    phone: updatedUser.user_metadata?.phone || '',
+    role: 'user',
+    created_at: updatedUser.created_at,
+    email_confirmed_at: updatedUser.email_confirmed_at,
+  };
+}
+
+// Eliminar un usuario
+export async function deleteUser(userId: string): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Delete user failed: ${res.status} ${text}`);
+  }
+}

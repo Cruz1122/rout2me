@@ -7,6 +7,7 @@ import Layout from '../components/Layout';
 // Lazy loading de componentes
 const HomePage = lazy(() => import('../pages/HomePage'));
 const Vehicles = lazy(() => import('../pages/Vehicles'));
+const Users = lazy(() => import('../pages/Users'));
 const SignIn = lazy(() => import('../pages/SignIn'));
 const SignUp = lazy(() => import('../pages/SignUp'));
 const AuthCallback = lazy(() => import('../pages/AuthCallback'));
@@ -51,6 +52,14 @@ const AppRoutes: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Vehicles />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <Users />
                 </ProtectedRoute>
               }
             />
