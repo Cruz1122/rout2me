@@ -373,7 +373,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
   }, [mapInstance]);
 
   const fitBoundsToRoute = useCallback(
-    (coordinates: [number, number][]) => {
+    (coordinates: [number, number][], hasInfoCard: boolean = true) => {
       if (!mapInstance.current || coordinates.length === 0) return;
 
       const bounds = new maplibregl.LngLatBounds();
@@ -381,9 +381,26 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         bounds.extend(coord);
       }
 
+      // Padding asimétrico para evitar que la card de información tape la ruta
+      // La card está en bottom-20 (80px) y tiene aproximadamente 250px de altura
+      // Usamos más padding en la parte inferior cuando hay card visible
+      const padding = hasInfoCard
+        ? {
+            top: 50,
+            bottom: 380, // 80px (posición) + 250px (altura card) + 50px (margen extra)
+            left: 50,
+            right: 50,
+          }
+        : {
+            top: 50,
+            bottom: 50,
+            left: 50,
+            right: 50,
+          };
+
       // Configuración mejorada para evitar tiles faltantes
       mapInstance.current.fitBounds(bounds, {
-        padding: 50,
+        padding: padding,
         duration: 1500, // Animación más lenta para evitar tiles faltantes
         maxZoom: 18, // Limitar zoom máximo para evitar cargar tiles innecesarios
         essential: true, // Marcar como esencial para evitar interrupciones

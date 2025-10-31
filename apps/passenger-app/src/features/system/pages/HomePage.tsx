@@ -175,8 +175,10 @@ export default function HomePage() {
           );
 
           // Ajustar vista para mostrar toda la ruta
+          // Usar padding extra en la parte inferior para evitar que la card tape la ruta
           fitBoundsToRoute(
             processedRoute.matchedGeometry.coordinates as [number, number][],
+            true, // hasInfoCard = true, ya que siempre se muestra la card cuando se selecciona una ruta
           );
 
           // Resaltar la ruta seleccionada
@@ -211,7 +213,7 @@ export default function HomePage() {
             outlineColor: '#ffffff',
             outlineWidth: 8,
           });
-          fitBoundsToRoute(item.coordinates);
+          fitBoundsToRoute(item.coordinates, true); // hasInfoCard = true
           highlightRoute(item.id, true);
 
           // Cargar buses para esta ruta (fallback)
@@ -695,6 +697,7 @@ export default function HomePage() {
         // Ajustar vista para mostrar toda la ruta
         fitBoundsToRoute(
           processedRoute.matchedGeometry.coordinates as [number, number][],
+          true, // hasInfoCard = true
         );
 
         // Resaltar la ruta
@@ -742,7 +745,7 @@ export default function HomePage() {
           outlineColor: '#ffffff',
           outlineWidth: 8,
         });
-        fitBoundsToRoute(searchItem.coordinates!);
+        fitBoundsToRoute(searchItem.coordinates!, true); // hasInfoCard = true
         highlightRoute(searchItem.id, true);
 
         // Cargar buses para esta ruta (fallback)
@@ -838,7 +841,7 @@ export default function HomePage() {
             });
 
             // Ajustar el mapa para mostrar toda la ruta
-            fitBoundsToRoute(variant.path);
+            fitBoundsToRoute(variant.path, true); // hasInfoCard = true
 
             // Resaltar la ruta
             highlightRoute(searchItem.id, true);
