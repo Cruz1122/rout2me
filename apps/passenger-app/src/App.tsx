@@ -22,6 +22,9 @@ const ProfilePage = lazy(() => import('./features/user/pages/ProfilePage'));
 const LogoutConfirmationPage = lazy(
   () => import('./features/user/pages/LogoutConfirmationPage'),
 );
+const ChangePasswordPage = lazy(
+  () => import('./features/user/pages/ChangePasswordPage'),
+);
 const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
 const TwoFAPage = lazy(() => import('./features/auth/pages/TwoFAPage'));
@@ -60,6 +63,11 @@ function TabsWithIcons() {
           <Route exact path="/perfil">
             <Suspense fallback={<GlobalLoader />}>
               <ProfilePage />
+            </Suspense>
+          </Route>
+          <Route exact path="/perfil/cambiar-password">
+            <Suspense fallback={<GlobalLoader />}>
+              <ChangePasswordPage />
             </Suspense>
           </Route>
           <Route exact path="/">

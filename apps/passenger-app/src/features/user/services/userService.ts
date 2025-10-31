@@ -112,6 +112,66 @@ export async function getUserInfo(accessToken: string): Promise<UserResponse> {
 }
 
 /**
+ * Actualiza la contraseña del usuario actual
+ */
+export async function updatePassword(
+  accessToken: string,
+  newPassword: string,
+): Promise<void> {
+  if (!AUTH_URL) {
+    throw new Error(
+      'Configuración de autenticación faltante. Verifica la variable de entorno VITE_BACKEND_AUTH_URL',
+    );
+  }
+
+  if (!PUBLISHABLE_KEY) {
+    throw new Error(
+      'Configuración de autenticación faltante. Verifica la variable de entorno VITE_PUBLISHABLE_KEY o VITE_SERVICE_ROLE_KEY',
+    );
+  }
+
+  if (!accessToken) {
+    throw new Error('Token de acceso no proporcionado');
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error('La contraseña debe tener al menos 6 caracteres');
+  }
+
+  try {
+    const response = await fetch(`${AUTH_URL}/user`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ password: newPassword }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const serviceError: UserServiceError = {
+        message:
+          errorData.message ||
+          `Error al actualizar la contraseña: ${response.status}`,
+        status: response.status,
+      };
+      throw serviceError;
+    }
+  } catch (error) {
+    if (error instanceof Error && 'status' in error) {
+      throw error;
+    }
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : 'Error desconocido al actualizar la contraseña',
+    );
+  }
+}
+
+/**
  * Formatea la fecha de creación del usuario para mostrar "Usuario desde [mes] [año]"
  */
 export function formatUserSinceDate(dateString: string): string {

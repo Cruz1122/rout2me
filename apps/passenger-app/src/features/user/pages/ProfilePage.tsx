@@ -60,6 +60,10 @@ export default function ProfilePage() {
     router.push('/perfil/cerrar-sesion', 'forward');
   };
 
+  const handleChangePassword = () => {
+    router.push('/perfil/cambiar-password', 'forward');
+  };
+
   const handleSettingsClick = (setting: string) => {
     // Placeholder para funcionalidad futura
     console.log(`Navegando a configuración: ${setting}`);
@@ -68,6 +72,10 @@ export default function ProfilePage() {
   const handleSupportClick = (support: string) => {
     if (support === 'logout') {
       handleLogout();
+      return;
+    }
+    if (support === 'change-password') {
+      handleChangePassword();
       return;
     }
     // Placeholder para funcionalidad futura
