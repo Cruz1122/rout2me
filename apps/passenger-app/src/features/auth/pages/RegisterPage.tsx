@@ -1,5 +1,10 @@
-import { useState } from 'react';
-import { IonContent, IonPage, useIonRouter } from '@ionic/react';
+import { useState, useEffect, useRef } from 'react';
+import {
+  IonContent,
+  IonPage,
+  useIonRouter,
+  useIonViewDidEnter,
+} from '@ionic/react';
 import {
   RiUser5Line,
   RiUser5Fill,
@@ -154,6 +159,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const backButtonRef = useRef<HTMLButtonElement>(null);
 
   // Validaciones básicas
   const validatePersonalData = () => {
@@ -367,6 +373,58 @@ export default function RegisterPage() {
         return null;
     }
   };
+
+  // Manejar el foco cuando la vista entra completamente
+  useIonViewDidEnter(() => {
+    // Habilitar el botón de retroceso para navegación por teclado solo si existe
+    if (backButtonRef.current && (currentPhase > 1 || showConfirmation)) {
+      backButtonRef.current.tabIndex = 0;
+    }
+  });
+
+  // Inicializar el botón de retroceso como no focusable hasta que la página esté visible
+  // También manejar cuando el botón aparece/desaparece
+  useEffect(() => {
+    const button = backButtonRef.current;
+
+    // Si el botón no existe aún, no hacer nada
+    if (!button) return;
+
+    // Inicializar tabIndex según la visibilidad
+    if (currentPhase > 1 || showConfirmation) {
+      button.tabIndex = -1; // Se habilitará en useIonViewDidEnter
+    }
+
+    // Observar cambios en aria-hidden del ancestro para quitar el foco cuando la página se oculta
+    const observer = new MutationObserver(() => {
+      const page = button.closest('.ion-page');
+      if (page?.getAttribute('aria-hidden') === 'true') {
+        // Si la página se oculta y este botón tiene el focus, quitarlo
+        if (document.activeElement === button) {
+          button.blur();
+        }
+        // Deshabilitar el botón mientras está oculto
+        button.tabIndex = -1;
+      }
+    });
+
+    // Observar cambios en el ancestro .ion-page
+    const page = button.closest('.ion-page');
+    if (page) {
+      observer.observe(page, {
+        attributes: true,
+        attributeFilter: ['aria-hidden'],
+      });
+    }
+
+    return () => {
+      observer.disconnect();
+      // Asegurar que el botón pierde el focus al desmontarse
+      if (document.activeElement === button) {
+        button.blur();
+      }
+    };
+  }, [currentPhase, showConfirmation]);
 
   // Función para obtener el texto del botón
   const getButtonText = () => {
@@ -690,12 +748,14 @@ export default function RegisterPage() {
         {/* Botón de retroceso - visible después de la fase 1 y en confirmación */}
         {(currentPhase > 1 || showConfirmation) && (
           <button
+            ref={backButtonRef}
             onClick={handlePreviousPhase}
             className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.9)',
             }}
-            tabIndex={0}
+            tabIndex={-1}
+            aria-label="Volver atrás"
           >
             <RiArrowLeftLine
               size={24}

@@ -1,5 +1,10 @@
-import { useState } from 'react';
-import { IonContent, IonPage, useIonRouter } from '@ionic/react';
+import { useState, useEffect, useRef } from 'react';
+import {
+  IonContent,
+  IonPage,
+  useIonRouter,
+  useIonViewDidEnter,
+} from '@ionic/react';
 import {
   RiGoogleLine,
   RiGoogleFill,
@@ -25,6 +30,7 @@ export default function LoginPage() {
   const [hoveredProvider, setHoveredProvider] = useState<
     'google' | 'microsoft' | null
   >(null);
+  const backButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +75,54 @@ export default function LoginPage() {
     // Implementar lógica de autenticación con Microsoft
   };
 
+  // Manejar el foco cuando la vista entra completamente
+  useIonViewDidEnter(() => {
+    // Habilitar el botón de retroceso para navegación por teclado
+    if (backButtonRef.current) {
+      backButtonRef.current.tabIndex = 0;
+    }
+  });
+
+  // Inicializar el botón de retroceso como no focusable hasta que la página esté visible
+  useEffect(() => {
+    if (backButtonRef.current) {
+      backButtonRef.current.tabIndex = -1;
+    }
+
+    // Observar cambios en aria-hidden del ancestro para quitar el foco cuando la página se oculta
+    const button = backButtonRef.current;
+    if (!button) return;
+
+    const observer = new MutationObserver(() => {
+      const page = button.closest('.ion-page');
+      if (page?.getAttribute('aria-hidden') === 'true') {
+        // Si la página se oculta y este botón tiene el focus, quitarlo
+        if (document.activeElement === button) {
+          button.blur();
+        }
+        // Deshabilitar el botón mientras está oculto
+        button.tabIndex = -1;
+      }
+    });
+
+    // Observar cambios en el ancestro .ion-page
+    const page = button.closest('.ion-page');
+    if (page) {
+      observer.observe(page, {
+        attributes: true,
+        attributeFilter: ['aria-hidden'],
+      });
+    }
+
+    return () => {
+      observer.disconnect();
+      // Asegurar que el botón pierde el focus al desmontarse
+      if (document.activeElement === button) {
+        button.blur();
+      }
+    };
+  }, []);
+
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
@@ -76,12 +130,14 @@ export default function LoginPage() {
         <ErrorNotification error={error} onClose={clearError} />
         {/* Botón de retroceso */}
         <button
+          ref={backButtonRef}
           onClick={() => router.push('/welcome', 'back')}
           className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
           }}
-          tabIndex={0}
+          tabIndex={-1}
+          aria-label="Volver atrás"
         >
           <RiArrowLeftLine
             size={24}
