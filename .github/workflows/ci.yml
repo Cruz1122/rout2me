@@ -71,6 +71,21 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
+      - name: Configurar variables de entorno para tests
+        working-directory: infra/supabase        
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_COMPANYKEY: ${{ secrets.TEST_COMPANYKEY }}
+        run: |
+          cat > .env.local << EOF
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+          TEST_COMPANYKEY=${TEST_COMPANYKEY}
+          EOF
+
       - name: Ejecutar tests
         run: pnpm -w test
         continue-on-error: true  # Temporal hasta que se implementen tests

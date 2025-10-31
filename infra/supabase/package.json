@@ -1,5 +1,5 @@
 {
-  "name": "rout2me-backend-tests",
+  "name": "@rout2me/supabase-tests",
   "private": true,
   "type": "module",
   "scripts": {
