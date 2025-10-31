@@ -3,12 +3,15 @@ import {
   createVehicle as createVehicleApi,
   getVehicles,
   getCompanies,
+  deleteVehicle as deleteVehicleApi,
 } from '../api/vehicles_api';
 import type { Vehicle, VehicleStatus, Company } from '../api/vehicles_api';
 import { colorClasses } from '../styles/colors';
 
 export default function VehiclesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
   const [company, setCompany] = useState('');
   const [plate, setPlate] = useState('');
   const [capacity, setCapacity] = useState('');
@@ -178,7 +181,10 @@ export default function VehiclesPage() {
       })
       .catch((err) => {
         console.error('create failed', err);
-        showToast('error', 'Error al crear el vehículo.');
+        // Mostrar el mensaje de error específico que viene del API
+        const errorMessage =
+          err instanceof Error ? err.message : 'Error al crear el vehículo.';
+        showToast('error', errorMessage);
       })
       .finally(() => setLoading(false));
   }
@@ -222,6 +228,42 @@ export default function VehiclesPage() {
         delete copy.capacity;
         return copy;
       });
+  }
+
+  // Abrir modal de confirmación de eliminación
+  function openDeleteModal(vehicle: Vehicle) {
+    setVehicleToDelete(vehicle);
+    setIsDeleteOpen(true);
+  }
+
+  // Cerrar modal de eliminación
+  function closeDeleteModal() {
+    setIsDeleteOpen(false);
+    setVehicleToDelete(null);
+  }
+
+  // Confirmar eliminación
+  function confirmDelete() {
+    if (!vehicleToDelete) return;
+
+    setLoading(true);
+    deleteVehicleApi(vehicleToDelete.id)
+      .then(() => {
+        showToast('success', 'Vehículo eliminado correctamente.');
+        // Si el vehículo eliminado estaba seleccionado, limpiar la selección
+        if (selectedVehicle?.id === vehicleToDelete.id) {
+          setSelectedVehicle(null);
+        }
+        closeDeleteModal();
+        loadVehicles();
+      })
+      .catch((err) => {
+        console.error('delete failed', err);
+        const errorMessage =
+          err instanceof Error ? err.message : 'Error al eliminar el vehículo.';
+        showToast('error', errorMessage);
+      })
+      .finally(() => setLoading(false));
   }
 
   // Filter vehicles based on search query (only by plate)
@@ -376,16 +418,17 @@ export default function VehiclesPage() {
                     Último Mantenimiento
                   </p>
                   <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {new Date(selectedVehicle.last_maintenance).toLocaleString(
-                      'es-ES',
-                      {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      },
-                    )}
+                    {selectedVehicle.last_maintenance
+                      ? new Date(
+                          selectedVehicle.last_maintenance,
+                        ).toLocaleString('es-ES', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Sin mantenimiento registrado'}
                   </p>
                 </div>
                 <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
@@ -417,95 +460,14 @@ export default function VehiclesPage() {
             )}
           </div>
 
-          <h3 className="text-[#111317] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">
-            Datos Históricos
-          </h3>
-          <div className="pb-3">
-            <div className="flex border-b border-[#dcdfe5] px-4 gap-8">
-              <a
-                className="flex flex-col items-center justify-center border-b-[3px] border-b-[#111317] text-[#111317] pb-[13px] pt-4"
-                href="#"
-              >
-                <p className="text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]">
-                  Rutas Anteriores
-                </p>
-              </a>
-              <a
-                className="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#646f87] pb-[13px] pt-4"
-                href="#"
-              >
-                <p className="text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
-                  Historial de Incidentes
-                </p>
-              </a>
-            </div>
-          </div>
-
-          {/* Past Routes table */}
-          <div className="px-4 py-3 [container-type:inline-size]">
-            <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
-              <table className="flex-1">
-                <thead>
-                  <tr className="bg-white">
-                    <th className="table-past-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      ID de Ruta
-                    </th>
-                    <th className="table-past-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Hora de Inicio
-                    </th>
-                    <th className="table-past-360 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Hora de Fin
-                    </th>
-                    <th className="table-past-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Distancia (km)
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    [
-                      'R1234',
-                      '2024-01-10 08:00 AM',
-                      '2024-01-10 05:00 PM',
-                      '250',
-                    ],
-                    [
-                      'R5678',
-                      '2024-01-11 09:00 AM',
-                      '2024-01-11 06:00 PM',
-                      '300',
-                    ],
-                    [
-                      'R9101',
-                      '2024-01-12 07:00 AM',
-                      '2024-01-12 04:00 PM',
-                      '200',
-                    ],
-                  ].map((row, i) => (
-                    <tr key={i} className="border-t border-t-[#dcdfe5]">
-                      {row.map((cell, j) => (
-                        <td
-                          key={j}
-                          className={`h-[72px] px-4 py-2 w-[400px] text-sm font-normal leading-normal ${j === 0 ? 'text-[#111317]' : 'text-[#646f87]'} table-past-${(j + 1) * 120}`}
-                        >
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <style>{`
-                @container(max-width:120px){.table-past-120{display:none}}
-                @container(max-width:240px){.table-past-240{display:none}}
-                @container(max-width:360px){.table-past-360{display:none}}
-                @container(max-width:480px){.table-past-480{display:none}}
-              `}</style>
-          </div>
-
           <div className="flex px-4 py-3 justify-start">
-            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]">
+            <button
+              onClick={() =>
+                selectedVehicle && openDeleteModal(selectedVehicle)
+              }
+              disabled={!selectedVehicle}
+              className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-red-600 hover:bg-red-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors ${!selectedVehicle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
               <span className="truncate">Eliminar</span>
             </button>
           </div>
@@ -730,14 +692,13 @@ export default function VehiclesPage() {
                     <th className="table-veh-720 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
                       Último Mantenimiento
                     </th>
-                    <th className="table-veh-840 px-4 py-3 text-left text-[#111317] w-60 text-[#646f87] text-sm font-medium leading-normal"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingVehicles ? (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={6}
                         className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
                       >
                         Cargando vehículos...
@@ -746,7 +707,7 @@ export default function VehiclesPage() {
                   ) : vehicles.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={6}
                         className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
                       >
                         No hay vehículos disponibles
@@ -755,7 +716,7 @@ export default function VehiclesPage() {
                   ) : filteredVehicles.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={6}
                         className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
                       >
                         No se encontraron vehículos
@@ -814,21 +775,11 @@ export default function VehiclesPage() {
                             </td>
                             {/* Último Mantenimiento */}
                             <td className="table-veh-720 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {new Date(
-                                vehicle.last_maintenance,
-                              ).toLocaleDateString('es-ES')}
-                            </td>
-                            {/* Action */}
-                            <td className="table-veh-840 h-[72px] px-4 py-2 w-60 text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // TODO: Implementar eliminar
-                                }}
-                                className="hover:text-red-600"
-                              >
-                                Eliminar
-                              </button>
+                              {vehicle.last_maintenance
+                                ? new Date(
+                                    vehicle.last_maintenance,
+                                  ).toLocaleDateString('es-ES')
+                                : 'N/A'}
                             </td>
                           </tr>
                         );
@@ -916,12 +867,51 @@ export default function VehiclesPage() {
                 @container(max-width:480px){.table-veh-480{display:none}}
                 @container(max-width:600px){.table-veh-600{display:none}}
                 @container(max-width:720px){.table-veh-720{display:none}}
-                @container(max-width:840px){.table-veh-840{display:none}}
-                @container(max-width:960px){.table-veh-960{display:none}}
               `}</style>
           </div>
         </div>
       </div>
+
+      {/* Modal de Confirmación de Eliminación */}
+      {isDeleteOpen && vehicleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/40"
+            onClick={() => !loading && closeDeleteModal()}
+          />
+          <div
+            className="relative z-50 bg-white rounded-lg p-6 max-w-md w-full mx-4"
+            style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+          >
+            <h2
+              className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}
+            >
+              Eliminar Vehículo
+            </h2>
+            <p className={`${colorClasses.textTerciary} mb-6`}>
+              ¿Estás seguro de que deseas eliminar el vehículo con placa{' '}
+              <strong>{vehicleToDelete.plate}</strong>? Esta acción no se puede
+              deshacer.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => !loading && closeDeleteModal()}
+                disabled={loading}
+                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSurface} rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={loading}
+                className={`px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {loading ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

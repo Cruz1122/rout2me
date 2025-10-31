@@ -15,7 +15,7 @@ export type Vehicle = {
   capacity: number;
   status: VehicleStatus;
   created_at: string;
-  last_maintenance: string;
+  last_maintenance?: string;
   passenger_count: number;
 };
 
@@ -177,6 +177,11 @@ export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
       const errorJson = JSON.parse(errorText);
       console.error('Error details:', errorJson);
 
+      // Si es un error de placa duplicada
+      if (errorJson.code === '23505') {
+        throw new Error(`La placa ${payload.plate} ya esta registrada.`);
+      }
+
       // Si es un error de RLS, dar un mensaje más claro
       if (errorJson.code === '42501') {
         throw new Error(
@@ -188,7 +193,10 @@ export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
         `Create vehicle failed: ${errorJson.message || errorJson.code || errorText}`,
       );
     } catch (e) {
-      if (e instanceof Error && e.message.includes('permisos')) {
+      if (
+        e instanceof Error &&
+        (e.message.includes('permisos') || e.message.includes('placa'))
+      ) {
         throw e;
       }
       throw new Error(`Create vehicle failed: ${res.status} ${errorText}`);
@@ -203,4 +211,55 @@ export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
     ...vehicle,
     passenger_count: vehicle.passenger_count ?? 0,
   };
+}
+
+// Eliminar un vehículo
+export async function deleteVehicle(vehicleId: string): Promise<void> {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error(
+      'No hay token de autenticación. Por favor inicia sesión nuevamente.',
+    );
+  }
+
+  console.log('=== DELETE VEHICLE DEBUG ===');
+  console.log('Vehicle ID:', vehicleId);
+  console.log('Full URL:', `${SUPABASE_URL}/rest/v1/buses?id=eq.${vehicleId}`);
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/buses?id=eq.${vehicleId}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Delete vehicle error:', errorText);
+    console.error('Response status:', res.status);
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      console.error('Error details:', errorJson);
+
+      // Si es un error de permisos
+      if (errorJson.code === '42501') {
+        throw new Error('No tienes permisos para eliminar vehículos.');
+      }
+
+      throw new Error(
+        `Delete vehicle failed: ${errorJson.message || errorJson.code || errorText}`,
+      );
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('permisos')) {
+        throw e;
+      }
+      throw new Error(`Delete vehicle failed: ${res.status} ${errorText}`);
+    }
+  }
+
+  console.log('✅ Vehículo eliminado exitosamente');
 }
