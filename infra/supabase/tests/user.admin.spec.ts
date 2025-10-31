@@ -1,30 +1,5 @@
-import { describe, test, it, afterAll, expect } from "vitest";
-import { admin, anon, randEmail, SUPABASE_URL, ANON_KEY, TEST_COMPANYKEY } from "./helpers/supabase";
-
-async function restGET(path: string, token: string) {
-  const url = `${SUPABASE_URL.replace("/project", "")}/rest/v1/${path}`;
-  const res = await fetch(url, {
-    headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  return { status: res.status, data };
-}
-
-async function restPATCH(path: string, token: string, body: any) {
-  const url = `${SUPABASE_URL.replace("/project", "")}/rest/v1/${path}`;
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: {
-      apikey: ANON_KEY,
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation"
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  return { status: res.status, data };
-}
+import { describe, it, afterAll, expect } from "vitest";
+import { admin, anon, randEmail, TEST_COMPANYKEY, restUser } from "./helpers/supabase";
 
 describe("Users CRUD (Supabase Auth + DB)", () => {
   const password = "S3gura!123";
@@ -72,7 +47,8 @@ describe("Users CRUD (Supabase Auth + DB)", () => {
       email_confirm: true,
       user_metadata: { name: "Dup" }
     });
-    expect(error).toBeTruthy(); // ya existe
+    expect(error).toBeTruthy();
+    expect(error?.message).toMatch(/already|registered/i);
   });
 
   it("Login with password and get access token", async () => {
@@ -94,25 +70,28 @@ describe("Users CRUD (Supabase Auth + DB)", () => {
     otherId = other!.user!.id;
 
     // GET my own
-    const mine = await restGET(`profile?id=eq.${user1Id}&select=id,email,name`, accessToken);
+    const mine = await restUser(`profile?id=eq.${user1Id}&select=id,email,name`, "GET", accessToken);
     expect(mine.status).toBe(200);
     expect(Array.isArray(mine.data)).toBe(true);
     expect(mine.data.length).toBe(1);
     expect(mine.data[0].id).toBe(user1Id);
 
-    // Try read someone else
-    const notAllowed = await restGET(`profile?id=eq.${otherId}&select=id,email`, accessToken);
+    // Try read someone else (RLS should prevent this)
+    const notAllowed = await restUser(`profile?id=eq.${otherId}&select=id,email`, "GET", accessToken);
     expect(notAllowed.status).toBe(200);
     expect(Array.isArray(notAllowed.data)).toBe(true);
-    expect(notAllowed.data.length).toBe(0); // RLS
+    expect(notAllowed.data.length).toBe(0); // RLS bloquea acceso a otros perfiles
   });
 
   it("Update my profile (PATCH REST with my token)", async () => {
     const phone = "+573009998877";
-    const upd = await restPATCH(`profile?id=eq.${user1Id}`, accessToken, { phone, updated_at: "now()" });
-    expect(upd.status).toBeGreaterThanOrEqual(200);
-    expect(upd.status).toBeLessThan(300);
+    const upd = await restUser(`profile?id=eq.${user1Id}`, "PATCH", accessToken, { 
+      phone, 
+      updated_at: "now()" 
+    });
+    expect(upd.status).toBe(200);
     expect(Array.isArray(upd.data)).toBe(true);
+    expect(upd.data.length).toBeGreaterThan(0);
     expect(upd.data[0].phone).toBe(phone);
   });
 

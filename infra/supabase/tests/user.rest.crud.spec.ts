@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import {
   admin, anon, randEmail, TEST_COMPANYKEY,
   restAdmin, restUser
@@ -64,9 +64,9 @@ describe("REST CRUD - profile/users via Supabase", () => {
       phone,
       updated_at: "now()"
     });
-    expect(status).toBeGreaterThanOrEqual(200);
-    expect(status).toBeLessThan(300);
+    expect(status).toBe(200);
     expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
     expect(data[0].phone).toBe(phone);
   });
 
@@ -80,8 +80,11 @@ describe("REST CRUD - profile/users via Supabase", () => {
     const path = `profile?on_conflict=id`; // constraint PK
     const { status, data } = await restAdmin(path, "POST", body);
     expect(status).toBeGreaterThanOrEqual(200);
-    expect(status).toBeLessThan(300);
+    expect(status).toBeLessThan(300); // POST exitoso (200 para update, 201 para create)
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
     expect(data[0].name).toBe("QA CRUD Upsert");
+    expect(data[0].id).toBe(userId);
   });
 
   // DELETE (admin)
@@ -95,5 +98,16 @@ describe("REST CRUD - profile/users via Supabase", () => {
     expect(status).toBe(200);
     expect(Array.isArray(data)).toBe(true);
     expect(data.length).toBe(0);
+  });
+
+  // Limpieza en caso de que algún test falle antes del DELETE
+  afterAll(async () => {
+    if (userId) {
+      try {
+        await admin.auth.admin.deleteUser(userId);
+      } catch {
+        // Usuario ya eliminado o no existe, ignorar
+      }
+    }
   });
 });
