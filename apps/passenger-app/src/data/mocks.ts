@@ -1,4 +1,4 @@
-import type { Stop } from '../types/search';
+import type { Stop } from '../shared/types/search';
 
 // Mock data para Manizales (corrigiendo coordenadas: lng, lat)
 export const mockStops: Stop[] = [

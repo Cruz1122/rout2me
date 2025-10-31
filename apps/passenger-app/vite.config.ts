@@ -16,12 +16,12 @@ export default defineConfig({
           maplibre: ['maplibre-gl'],
           // Separar servicios grandes
           services: [
-            './src/services/busService.ts',
-            './src/services/routeService.ts',
-            './src/services/cacheService.ts',
+            './src/features/routes/services/busService.ts',
+            './src/features/routes/services/routeService.ts',
+            './src/shared/services/cacheService.ts',
           ],
-          // Separar HomePage que es muy grande
-          homepage: ['./src/pages/HomePage.tsx'],
+          // Separar HomePage que es muy grande (ruta nueva)
+          homepage: ['./src/features/system/pages/HomePage.tsx'],
         },
       },
     },

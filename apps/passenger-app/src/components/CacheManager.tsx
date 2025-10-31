@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useCache } from '../hooks/useCache';
+import { useCache } from '../shared/hooks/useCache';
 import {
   RiRefreshLine,
   RiDeleteBinLine,

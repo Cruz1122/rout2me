@@ -1,4 +1,4 @@
-import type { BusLocation } from '../services/busService';
+import type { BusLocation } from '../features/routes/services/busService';
 
 /**
  * Mock de ubicaciones del usuario en diferentes puntos de Manizales
