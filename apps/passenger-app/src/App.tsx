@@ -19,6 +19,9 @@ const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
 const LivePage = lazy(() => import('./features/routes/pages/LivePage'));
 const AlertsPage = lazy(() => import('./features/system/pages/AlertsPage'));
 const ProfilePage = lazy(() => import('./features/user/pages/ProfilePage'));
+const LogoutConfirmationPage = lazy(
+  () => import('./features/user/pages/LogoutConfirmationPage'),
+);
 const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
 const TwoFAPage = lazy(() => import('./features/auth/pages/TwoFAPage'));
@@ -134,6 +137,11 @@ export default function App() {
           <Route exact path="/2fa">
             <Suspense fallback={<GlobalLoader />}>
               <TwoFAPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/perfil/cerrar-sesion">
+            <Suspense fallback={<GlobalLoader />}>
+              <LogoutConfirmationPage />
             </Suspense>
           </Route>
           <Route exact path="/">

@@ -24,6 +24,7 @@ import FilterSwitcher, {
 import GlobalLoader from '../../system/components/GlobalLoader';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MModal from '../../../shared/components/R2MModal';
+import R2MPageHeader from '../../../shared/components/R2MPageHeader';
 
 type FilterTab = 'all' | 'recent';
 
@@ -192,22 +193,7 @@ export default function RoutesPage() {
   return (
     <IonPage>
       <IonContent>
-        {/* Header fijo */}
-        <div
-          className="sticky top-0 z-50 bg-white backdrop-blur-lg"
-          style={{
-            borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-          }}
-        >
-          <div className="flex items-center justify-center h-14">
-            <h1
-              className="text-xl font-bold text-center"
-              style={{ color: 'var(--color-primary)' }}
-            >
-              Rutas
-            </h1>
-          </div>
-        </div>
+        <R2MPageHeader title="Rutas" />
 
         {/* Barra de búsqueda y filtros */}
         <div className="px-4 pt-4 pb-3 bg-white">
