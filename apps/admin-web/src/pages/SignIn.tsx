@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { signIn } from '../api/auth_api';
 import { useAuth } from '../context/AuthContext';
+import { colorClasses } from '../styles/colors';
 
 export default function SignIn() {
   const location = useLocation();
@@ -174,7 +175,9 @@ export default function SignIn() {
     >
       <div className="layout-container flex h-full grow flex-col">
         <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f0f2f4] px-10 py-3">
-          <div className="flex items-center gap-4 text-[#111317]">
+          <div
+            className={`flex items-center gap-4 ${colorClasses.textPrimary}`}
+          >
             <div className="size-4">
               <svg
                 viewBox="0 0 48 48"
@@ -187,36 +190,42 @@ export default function SignIn() {
                 ></path>
               </svg>
             </div>
-            <h2 className="text-[#111317] text-lg font-bold leading-tight tracking-[-0.015em]">
+            <h2
+              className={`${colorClasses.textPrimary} text-lg font-bold leading-tight tracking-[-0.015em]`}
+            >
               Route2Me Admin
             </h2>
           </div>
           <button
             onClick={() => navigate('/signup')}
-            className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#1d56c9] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#1448a8] transition-colors"
+            className={`flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 ${colorClasses.btnSecondary} text-sm font-bold leading-normal tracking-[0.015em] transition-colors`}
           >
             Registrarse
           </button>
         </header>
         <div className="flex flex-1 justify-center py-10">
           <div className="layout-content-container flex flex-col w-[512px] max-w-[512px] py-5">
-            <h2 className="text-[#111317] tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5">
+            <h2
+              className={`${colorClasses.textPrimary} tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5`}
+            >
               Inicia sesión en tu cuenta
             </h2>
             <form onSubmit={handleSubmit}>
               <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                 <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  <p
+                    className={`${colorClasses.textPrimary} text-base font-medium leading-normal pb-2`}
+                  >
                     Correo electrónico
                   </p>
                   <input
                     type="email"
                     name="email"
                     placeholder="Ingresa tu correo electrónico"
-                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl ${colorClasses.textPrimary} focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#97A3B1] p-[15px] text-base font-normal leading-normal ${
                       touched.email && errors.email
                         ? 'border-red-500 focus:border-red-500'
-                        : 'border-[#dcdfe5] focus:border-[#dcdfe5]'
+                        : 'border-[#D6E4F0] focus:border-[#1E56A0]'
                     }`}
                     value={formData.email}
                     onChange={handleChange}
@@ -229,7 +238,9 @@ export default function SignIn() {
               </div>
               <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                 <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  <p
+                    className={`${colorClasses.textPrimary} text-base font-medium leading-normal pb-2`}
+                  >
                     Contraseña
                   </p>
                   <div className="flex w-full flex-1 items-stretch rounded-xl">
@@ -237,20 +248,20 @@ export default function SignIn() {
                       type={showPassword ? 'text' : 'password'}
                       name="password"
                       placeholder="Ingresa tu contraseña"
-                      className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#646f87] p-[15px] rounded-r-none border-r-0 pr-2 text-base font-normal leading-normal ${
+                      className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl ${colorClasses.textPrimary} focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#97A3B1] p-[15px] rounded-r-none border-r-0 pr-2 text-base font-normal leading-normal ${
                         touched.password && errors.password
                           ? 'border-red-500 focus:border-red-500'
-                          : 'border-[#dcdfe5] focus:border-[#dcdfe5]'
+                          : 'border-[#D6E4F0] focus:border-[#1E56A0]'
                       }`}
                       value={formData.password}
                       onChange={handleChange}
                       onBlur={() => handleBlur('password')}
                     />
                     <div
-                      className={`text-[#646f87] flex border bg-white items-center justify-center pr-[15px] rounded-r-xl border-l-0 cursor-pointer ${
+                      className={`${colorClasses.textTerciary} flex border bg-white items-center justify-center pr-[15px] rounded-r-xl border-l-0 cursor-pointer ${
                         touched.password && errors.password
                           ? 'border-red-500'
-                          : 'border-[#dcdfe5]'
+                          : 'border-[#D6E4F0]'
                       }`}
                       onClick={() => setShowPassword(!showPassword)}
                     >
@@ -272,17 +283,19 @@ export default function SignIn() {
                   )}
                 </label>
               </div>
-              <p className="text-[#646f87] text-sm font-normal leading-normal pb-3 pt-1 px-4 underline cursor-pointer">
+              <p
+                className={`${colorClasses.textTerciary} text-sm font-normal leading-normal pb-3 pt-1 px-4 underline cursor-pointer`}
+              >
                 ¿Olvidaste tu contraseña?
               </p>
               <div className="flex px-4 py-3">
                 <button
                   type="submit"
-                  disabled={!isFormValid || isLoading}
-                  className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-12 px-5 flex-1 text-white text-base font-bold leading-normal tracking-[0.015em] ${
-                    isFormValid && !isLoading
-                      ? 'bg-[#1d56c9] cursor-pointer hover:bg-[#1448a8]'
-                      : 'bg-gray-400 cursor-not-allowed'
+                  disabled={isLoading || !isFormValid}
+                  className={`flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 flex-1 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors ${
+                    isLoading || !isFormValid
+                      ? 'bg-[#97A3B1] cursor-not-allowed'
+                      : colorClasses.btnSecondary
                   }`}
                 >
                   {isLoading ? (

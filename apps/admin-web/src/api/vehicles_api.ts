@@ -38,12 +38,25 @@ function getAuthToken(): string | null {
   return localStorage.getItem('access_token');
 }
 
+// Helper para obtener el user_id del localStorage
+function getUserId(): string | null {
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return null;
+
+  try {
+    const user = JSON.parse(userStr);
+    return user.id || null;
+  } catch {
+    return null;
+  }
+}
+
 // Obtener todas las compañías
 export async function getCompanies(): Promise<Company[]> {
   const token = getAuthToken();
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/companies?select=id,name,short_name,org_key&order=name.asc`,
+    `${SUPABASE_URL}/rest/v1/companies?select=id,name,short_name&order=name.asc`,
     {
       method: 'GET',
       headers: {
@@ -126,6 +139,22 @@ export async function getVehicleById(id: string): Promise<Vehicle> {
 // Crear un nuevo vehículo
 export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
   const token = getAuthToken();
+  const userId = getUserId();
+
+  if (!token) {
+    throw new Error(
+      'No hay token de autenticación. Por favor inicia sesión nuevamente.',
+    );
+  }
+
+  console.log('=== CREATE VEHICLE DEBUG ===');
+  console.log('User ID from localStorage:', userId);
+  console.log('Vehicle data being sent:', JSON.stringify(payload, null, 2));
+  console.log(
+    'Using token:',
+    token ? `${token.substring(0, 20)}...` : 'No token',
+  );
+  console.log('Full URL:', `${SUPABASE_URL}/rest/v1/buses`);
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/buses`, {
     method: 'POST',
@@ -141,14 +170,27 @@ export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
   if (!res.ok) {
     const errorText = await res.text();
     console.error('Create vehicle error:', errorText);
+    console.error('Response status:', res.status);
 
     // Intentar parsear el error como JSON para mostrar más detalles
     try {
       const errorJson = JSON.parse(errorText);
+      console.error('Error details:', errorJson);
+
+      // Si es un error de RLS, dar un mensaje más claro
+      if (errorJson.code === '42501') {
+        throw new Error(
+          'No tienes permisos para crear vehículos. Verifica que estés autenticado correctamente.',
+        );
+      }
+
       throw new Error(
         `Create vehicle failed: ${errorJson.message || errorJson.code || errorText}`,
       );
     } catch (e) {
+      if (e instanceof Error && e.message.includes('permisos')) {
+        throw e;
+      }
       throw new Error(`Create vehicle failed: ${res.status} ${errorText}`);
     }
   }

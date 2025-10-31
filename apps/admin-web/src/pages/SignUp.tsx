@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signUp } from '../api/auth_api';
+import { colorClasses } from '../styles/colors';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -179,7 +180,9 @@ export default function SignUp() {
     >
       <div className="layout-container flex h-full grow flex-col">
         <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f0f2f4] px-10 py-3">
-          <div className="flex items-center gap-4 text-[#111317]">
+          <div
+            className={`flex items-center gap-4 ${colorClasses.textPrimary}`}
+          >
             <div className="size-4">
               <svg
                 viewBox="0 0 48 48"
@@ -192,36 +195,40 @@ export default function SignUp() {
                 ></path>
               </svg>
             </div>
-            <h2 className="text-[#111317] text-lg font-bold leading-tight tracking-[-0.015em]">
+            <h2
+              className={`${colorClasses.textPrimary} text-lg font-bold leading-tight tracking-[-0.015em]`}
+            >
               Route2Me Admin
             </h2>
           </div>
           <button
             onClick={() => navigate('/signin')}
-            className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#1d56c9] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#1448a8] transition-colors"
+            className={`flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 ${colorClasses.btnSecondary} text-sm font-bold leading-normal tracking-[0.015em] transition-colors`}
           >
             Iniciar Sesión
           </button>
         </header>
         <div className="flex flex-1 justify-center py-10">
           <div className="layout-content-container flex flex-col w-[512px] max-w-[512px] py-5">
-            <h2 className="text-[#111317] tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5">
+            <h2
+              className={`${colorClasses.textPrimary} tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5`}
+            >
               Crea tu cuenta
             </h2>
             <form onSubmit={handleSubmit}>
               <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                 <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  <p className="${colorClasses.textPrimary} text-base font-medium leading-normal pb-2">
                     Correo electrónico
                   </p>
                   <input
                     type="email"
                     name="email"
                     placeholder="Ingresa tu correo electrónico"
-                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl ${colorClasses.textPrimary} focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:${colorClasses.textTerciary} p-[15px] text-base font-normal leading-normal ${
                       touched.email && errors.email
                         ? 'border-red-500 focus:border-red-500'
-                        : 'border-[#dcdfe5] focus:border-[#dcdfe5]'
+                        : 'border-[#D6E4F0] focus:border-[#D6E4F0]'
                     }`}
                     value={formData.email}
                     onChange={handleChange}
@@ -234,17 +241,17 @@ export default function SignUp() {
               </div>
               <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                 <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  <p className="${colorClasses.textPrimary} text-base font-medium leading-normal pb-2">
                     Contraseña
                   </p>
                   <input
                     type="password"
                     name="password"
                     placeholder="Ingresa tu contraseña"
-                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl ${colorClasses.textPrimary} focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:${colorClasses.textTerciary} p-[15px] text-base font-normal leading-normal ${
                       touched.password && errors.password
                         ? 'border-red-500 focus:border-red-500'
-                        : 'border-[#dcdfe5] focus:border-[#dcdfe5]'
+                        : 'border-[#D6E4F0] focus:border-[#D6E4F0]'
                     }`}
                     value={formData.password}
                     onChange={handleChange}
@@ -259,17 +266,17 @@ export default function SignUp() {
               </div>
               <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                 <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  <p className="${colorClasses.textPrimary} text-base font-medium leading-normal pb-2">
                     Nombre
                   </p>
                   <input
                     type="text"
                     name="name"
                     placeholder="Ingresa tu nombre"
-                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl ${colorClasses.textPrimary} focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:${colorClasses.textTerciary} p-[15px] text-base font-normal leading-normal ${
                       touched.name && errors.name
                         ? 'border-red-500 focus:border-red-500'
-                        : 'border-[#dcdfe5] focus:border-[#dcdfe5]'
+                        : 'border-[#D6E4F0] focus:border-[#D6E4F0]'
                     }`}
                     value={formData.name}
                     onChange={handleChange}
@@ -282,17 +289,17 @@ export default function SignUp() {
               </div>
               <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                 <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  <p className="${colorClasses.textPrimary} text-base font-medium leading-normal pb-2">
                     Teléfono
                   </p>
                   <input
                     type="tel"
                     name="phone"
                     placeholder="Ingresa tu número de teléfono"
-                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
+                    className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl ${colorClasses.textPrimary} focus:outline-0 focus:ring-0 border bg-white h-14 placeholder:${colorClasses.textTerciary} p-[15px] text-base font-normal leading-normal ${
                       touched.phone && errors.phone
                         ? 'border-red-500 focus:border-red-500'
-                        : 'border-[#dcdfe5] focus:border-[#dcdfe5]'
+                        : 'border-[#D6E4F0] focus:border-[#D6E4F0]'
                     }`}
                     value={formData.phone}
                     onChange={handleChange}
@@ -309,8 +316,8 @@ export default function SignUp() {
                   disabled={!isFormValid || loading}
                   className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-12 px-5 flex-1 text-white text-base font-bold leading-normal tracking-[0.015em] ${
                     isFormValid && !loading
-                      ? 'bg-[#1d56c9] cursor-pointer hover:bg-[#1448a8]'
-                      : 'bg-gray-400 cursor-not-allowed'
+                      ? colorClasses.btnSecondary
+                      : 'bg-[#97A3B1] cursor-not-allowed'
                   }`}
                 >
                   <span className="truncate">
@@ -319,7 +326,9 @@ export default function SignUp() {
                 </button>
               </div>
             </form>
-            <p className="text-[#646f87] text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center">
+            <p
+              className={`${colorClasses.textTerciary} text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center`}
+            >
               Al registrarte, aceptas nuestros Términos de Servicio y Política
               de Privacidad.
             </p>

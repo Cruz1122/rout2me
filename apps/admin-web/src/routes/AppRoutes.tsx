@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import PublicRoute from '../components/PublicRoute';
+import Layout from '../components/Layout';
 
 // Lazy loading de componentes
 const HomePage = lazy(() => import('../pages/HomePage'));
@@ -26,51 +27,53 @@ const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
       <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route path="/" element={<AuthCallback />} />
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app"
-            element={
-              <ProtectedRoute>
-                <App />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vehicles"
-            element={
-              <ProtectedRoute>
-                <Vehicles />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/signin"
-            element={
-              <PublicRoute>
-                <SignIn />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/signup"
-            element={
-              <PublicRoute>
-                <SignUp />
-              </PublicRoute>
-            }
-          />
-          <Route path="/email-verified" element={<EmailVerified />} />
-          <Route path="*" element={<Navigate to="/signin" replace />} />
-        </Routes>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<AuthCallback />} />
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app"
+              element={
+                <ProtectedRoute>
+                  <App />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vehicles"
+              element={
+                <ProtectedRoute>
+                  <Vehicles />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/signin"
+              element={
+                <PublicRoute>
+                  <SignIn />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <PublicRoute>
+                  <SignUp />
+                </PublicRoute>
+              }
+            />
+            <Route path="/email-verified" element={<EmailVerified />} />
+            <Route path="*" element={<Navigate to="/signin" replace />} />
+          </Routes>
+        </Layout>
       </Suspense>
     </BrowserRouter>
   );

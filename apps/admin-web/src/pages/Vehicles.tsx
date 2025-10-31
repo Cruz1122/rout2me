@@ -5,7 +5,7 @@ import {
   getCompanies,
 } from '../api/vehicles_api';
 import type { Vehicle, VehicleStatus, Company } from '../api/vehicles_api';
-import { Link } from 'react-router-dom';
+import { colorClasses } from '../styles/colors';
 
 export default function VehiclesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -221,136 +221,456 @@ export default function VehiclesPage() {
       });
   }
   return (
-    <div
-      className="relative flex h-auto min-h-screen w-full flex-col bg-white group/design-root overflow-x-hidden"
-      style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
-    >
-      <div className="layout-container flex h-full grow flex-col">
-        {/* Toast */}
-        {toast && (
-          // Modern styled toast with icon, shadow and smooth enter/exit animation
+    <>
+      {/* Toast */}
+      {toast && (
+        // Modern styled toast with icon, shadow and smooth enter/exit animation
+        <div
+          className={`fixed top-6 right-6 z-60 transform transition-all duration-300 ease-out ${
+            toast.visible
+              ? 'opacity-100 translate-y-0 scale-100'
+              : 'opacity-0 translate-y-3 scale-95'
+          }`}
+          style={{ willChange: 'opacity, transform' }}
+        >
           <div
-            className={`fixed top-6 right-6 z-60 transform transition-all duration-300 ease-out ${
-              toast.visible
-                ? 'opacity-100 translate-y-0 scale-100'
-                : 'opacity-0 translate-y-3 scale-95'
-            }`}
-            style={{ willChange: 'opacity, transform' }}
+            className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg border ${toast.type === 'success' ? 'bg-white text-gray-900 border-green-100' : 'bg-white text-gray-900 border-red-100'}`}
           >
             <div
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg border ${toast.type === 'success' ? 'bg-white text-gray-900 border-green-100' : 'bg-white text-gray-900 border-red-100'}`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toast.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}
             >
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toast.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}
-              >
-                {toast.type === 'success' ? (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M20 6L9 17L4 12"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 9v4"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12 17h.01"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-medium truncate max-w-xs">
-                  {toast.message}
-                </div>
-              </div>
-              <button
-                className="ml-3 text-sm underline text-gray-500"
-                onClick={() => setToast(null)}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        )}
-        <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f0f2f4] px-10 py-3">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 text-[#111317]">
-              <div className="size-4">
+              {toast.type === 'success' ? (
                 <svg
-                  viewBox="0 0 48 48"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    d="M24 45.8096C19.6865 45.8096 15.4698 44.5305 11.8832 42.134C8.29667 39.7376 5.50128 36.3314 3.85056 32.3462C2.19985 28.361 1.76794 23.9758 2.60947 19.7452C3.451 15.5145 5.52816 11.6284 8.57829 8.5783C11.6284 5.52817 15.5145 3.45101 19.7452 2.60948C23.9758 1.76795 28.361 2.19986 32.3462 3.85057C36.3314 5.50129 39.7376 8.29668 42.134 11.8833C44.5305 15.4698 45.8096 19.6865 45.8096 24L24 24L24 45.8096Z"
-                    fill="currentColor"
+                    d="M20 6L9 17L4 12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 </svg>
-              </div>
-              <h2 className="text-[#111317] text-lg font-bold leading-tight tracking-[-0.015em]">
-                Route2Me Admin
-              </h2>
+              ) : (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 9v4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 17h.01"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
             </div>
-            <nav className="flex items-center gap-9">
-              {[
-                'Dashboard',
-                'Flota en Vivo',
-                'Vehículos',
-                'Rutas',
-                'Incidentes',
-                'Disponibilidad',
-              ].map((item) => {
-                if (item === 'Dashboard') {
-                  return (
-                    <Link
-                      key={item}
-                      to="/"
-                      className="text-[#111317] text-sm font-medium leading-normal"
-                    >
-                      {item}
-                    </Link>
-                  );
-                }
-
-                return (
-                  <span
-                    key={item}
-                    className="text-[#111317] text-sm font-medium leading-normal"
-                  >
-                    {item}
-                  </span>
-                );
-              })}
-            </nav>
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate max-w-xs">
+                {toast.message}
+              </div>
+            </div>
+            <button
+              className="ml-3 text-sm underline text-gray-500"
+              onClick={() => setToast(null)}
+            >
+              Cerrar
+            </button>
           </div>
-          <div className="flex flex-1 justify-end gap-8">
-            <label className="flex flex-col min-w-40 !h-10 max-w-64">
+        </div>
+      )}
+
+      <div className="gap-1 px-6 flex flex-1 justify-center py-5">
+        {/* Left column: Vehicle details */}
+        <div className="layout-content-container flex flex-col w-80">
+          <div className="flex flex-wrap justify-between gap-3 p-4">
+            <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
+              Detalles del Vehículo
+            </p>
+          </div>
+
+          <div className="p-4 grid grid-cols-[20%_1fr] gap-x-6">
+            {selectedVehicle ? (
+              <>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    ID del Vehículo
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {selectedVehicle.id}
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Placa
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {selectedVehicle.plate}
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Compañía ID
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {selectedVehicle.company_id}
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Estado
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {selectedVehicle.status === 'AVAILABLE'
+                      ? 'Disponible'
+                      : selectedVehicle.status === 'IN_SERVICE'
+                        ? 'En Servicio'
+                        : selectedVehicle.status === 'MAINTENANCE'
+                          ? 'Mantenimiento'
+                          : 'Fuera de Servicio'}
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Capacidad
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {selectedVehicle.capacity} pasajeros
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Pasajeros Actuales
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {selectedVehicle.passenger_count}
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Último Mantenimiento
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {new Date(selectedVehicle.last_maintenance).toLocaleString(
+                      'es-ES',
+                      {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      },
+                    )}
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Fecha de Creación
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {new Date(selectedVehicle.created_at).toLocaleString(
+                      'es-ES',
+                      {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      },
+                    )}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="col-span-2 text-center py-8">
+                <p className="text-[#646f87] text-sm">
+                  {loadingVehicles
+                    ? 'Cargando...'
+                    : 'Selecciona un vehículo para ver sus detalles'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <h3 className="text-[#111317] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">
+            Datos Históricos
+          </h3>
+          <div className="pb-3">
+            <div className="flex border-b border-[#dcdfe5] px-4 gap-8">
+              <a
+                className="flex flex-col items-center justify-center border-b-[3px] border-b-[#111317] text-[#111317] pb-[13px] pt-4"
+                href="#"
+              >
+                <p className="text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]">
+                  Rutas Anteriores
+                </p>
+              </a>
+              <a
+                className="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#646f87] pb-[13px] pt-4"
+                href="#"
+              >
+                <p className="text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
+                  Historial de Incidentes
+                </p>
+              </a>
+            </div>
+          </div>
+
+          {/* Past Routes table */}
+          <div className="px-4 py-3 [container-type:inline-size]">
+            <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
+              <table className="flex-1">
+                <thead>
+                  <tr className="bg-white">
+                    <th className="table-past-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                      ID de Ruta
+                    </th>
+                    <th className="table-past-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                      Hora de Inicio
+                    </th>
+                    <th className="table-past-360 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                      Hora de Fin
+                    </th>
+                    <th className="table-past-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                      Distancia (km)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    [
+                      'R1234',
+                      '2024-01-10 08:00 AM',
+                      '2024-01-10 05:00 PM',
+                      '250',
+                    ],
+                    [
+                      'R5678',
+                      '2024-01-11 09:00 AM',
+                      '2024-01-11 06:00 PM',
+                      '300',
+                    ],
+                    [
+                      'R9101',
+                      '2024-01-12 07:00 AM',
+                      '2024-01-12 04:00 PM',
+                      '200',
+                    ],
+                  ].map((row, i) => (
+                    <tr key={i} className="border-t border-t-[#dcdfe5]">
+                      {row.map((cell, j) => (
+                        <td
+                          key={j}
+                          className={`h-[72px] px-4 py-2 w-[400px] text-sm font-normal leading-normal ${j === 0 ? 'text-[#111317]' : 'text-[#646f87]'} table-past-${(j + 1) * 120}`}
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <style>{`
+                @container(max-width:120px){.table-past-120{display:none}}
+                @container(max-width:240px){.table-past-240{display:none}}
+                @container(max-width:360px){.table-past-360{display:none}}
+                @container(max-width:480px){.table-past-480{display:none}}
+              `}</style>
+          </div>
+
+          <div className="flex px-4 py-3 justify-start">
+            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]">
+              <span className="truncate">Eliminar</span>
+            </button>
+          </div>
+        </div>
+        {/* Add Vehicle Modal */}
+        {isAddOpen && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
+            <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
+            <div
+              className="relative z-50 w-[512px] max-w-[96%] rounded-xl bg-white p-6"
+              style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+            >
+              <h1 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 text-left pb-3 pt-1">
+                Crear Vehículo
+              </h1>
+              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                <label className="flex flex-col min-w-40 flex-1">
+                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                    Compañía
+                  </p>
+                  <select
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    onBlur={validateCompany}
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
+                  >
+                    <option value="" disabled>
+                      {loadingCompanies
+                        ? 'Cargando...'
+                        : 'Seleccione una compañía'}
+                    </option>
+                    {companies.map((comp) => (
+                      <option key={comp.id} value={comp.id}>
+                        {comp.name}{' '}
+                        {comp.short_name ? `(${comp.short_name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.company && (
+                    <p className="text-red-600 text-sm mt-2">
+                      {errors.company}
+                    </p>
+                  )}
+                </label>
+              </div>
+
+              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                <label className="flex flex-col min-w-40 flex-1">
+                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                    Placa
+                  </p>
+                  <input
+                    value={plate}
+                    onChange={(e) => {
+                      const formatted = formatPlate(e.target.value);
+                      setPlate(formatted);
+                    }}
+                    onBlur={validatePlate}
+                    maxLength={7}
+                    placeholder="ABC-123"
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
+                  />
+                  {errors.plate && (
+                    <p className="text-red-600 text-sm mt-2">
+                      {errors.plate === 'Placa no válida'
+                        ? 'Placa no válida. Debe tener 3 letras, guion y 3 dígitos (ej: ABC-123).'
+                        : errors.plate}
+                    </p>
+                  )}
+                </label>
+              </div>
+
+              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                <label className="flex flex-col min-w-40 flex-1">
+                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                    Capacidad
+                  </p>
+                  <input
+                    value={capacity}
+                    onChange={(e) =>
+                      setCapacity(e.target.value.replace(/[^0-9]/g, ''))
+                    }
+                    onBlur={validateCapacity}
+                    placeholder="Ingrese Capacidad"
+                    inputMode="numeric"
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
+                  />
+                  {errors.capacity && (
+                    <p className="text-red-600 text-sm mt-2">
+                      {errors.capacity === 'Capacity must be numeric'
+                        ? 'La capacidad debe ser numérica.'
+                        : errors.capacity}
+                    </p>
+                  )}
+                </label>
+              </div>
+
+              <div className="flex px-4 py-3">
+                <div className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#f0f2f4] p-1">
+                  {(
+                    [
+                      { label: 'Disponible', value: 'AVAILABLE' },
+                      { label: 'En Servicio', value: 'IN_SERVICE' },
+                      { label: 'Mantenimiento', value: 'MAINTENANCE' },
+                      { label: 'Fuera de Servicio', value: 'OUT_OF_SERVICE' },
+                    ] as const
+                  ).map((s) => {
+                    return (
+                      <label
+                        key={s.value}
+                        className={`flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-xl px-2 text-sm font-medium leading-normal ${status === s.value ? 'bg-white shadow-[0_0_4px_rgba(0,0,0,0.1)] text-[#111317]' : 'text-[#646f87]'}`}
+                      >
+                        <span className="truncate">{s.label}</span>
+                        <input
+                          type="radio"
+                          name="vehicle-status"
+                          className="invisible w-0"
+                          value={s.value}
+                          checked={status === s.value}
+                          onChange={() => setStatus(s.value)}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-stretch">
+                <div className="flex flex-1 gap-3 flex-wrap px-4 py-3 justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]"
+                  >
+                    <span className="truncate">Cancelar</span>
+                  </button>
+                  <button
+                    onClick={createVehicle}
+                    disabled={
+                      !(
+                        company.trim() &&
+                        /^[A-Z]{3}-\d{3}$/.test(plate) &&
+                        /^\d+$/.test(capacity)
+                      )
+                    }
+                    className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] ${company.trim() && /^[A-Z]{3}-\d{3}$/.test(plate) && /^\d+$/.test(capacity) ? colorClasses.btnSecondary : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'}`}
+                  >
+                    <span className="truncate">
+                      {loading ? 'Creando...' : 'Crear Vehículo'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Right column: Vehicles list */}
+        <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+          <div className="flex flex-wrap justify-between gap-3 p-4">
+            <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
+              Vehículos
+            </p>
+            <button
+              onClick={() => setIsAddOpen(true)}
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
+            >
+              {loading ? (
+                <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
+              ) : null}
+              <span className="truncate">Agregar Vehículo</span>
+            </button>
+          </div>
+
+          <div className="px-4 py-3">
+            <label className="flex flex-col min-w-40 h-12 w-full">
               <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
                 <div className="text-[#646f87] flex border-none bg-[#f0f2f4] items-center justify-center pl-4 rounded-l-xl border-r-0">
                   <svg
@@ -364,544 +684,140 @@ export default function VehiclesPage() {
                   </svg>
                 </div>
                 <input
-                  placeholder="Buscar"
+                  placeholder="Buscar vehículos"
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border-none bg-[#f0f2f4] focus:border-none h-full placeholder:text-[#646f87] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
                   defaultValue=""
                 />
               </div>
             </label>
-            <div
-              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-              style={{
-                backgroundImage:
-                  'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBp7dPtAb4z1NUY_zXf2l2Xx2EIGS2L-TzYlG35a6hEBJKIujDPmHc98zs9Pb3_czQn9BfQKVWSvDGo43EdoqEEVQRds0hFg4Swf6u9qC480vFATG9jyzIpL5NAu21Y0x_cNofzXrVsGPczwxQn8raT5CwD5hRrXu2Ni5tjtL7tHUwFVn4r3ce7IIaCS7D7p3vbBtJvmCu04kAjcqXqRaasN_2Mq7E1hT4Wxbwbv-pYWU0S3lnG5wMtbEIUa3FY_SMy9WV66zEFCAKB")',
-              }}
-            />
           </div>
-        </header>
 
-        <div className="gap-1 px-6 flex flex-1 justify-center py-5">
-          {/* Left column: Vehicle details */}
-          <div className="layout-content-container flex flex-col w-80">
-            <div className="flex flex-wrap justify-between gap-3 p-4">
-              <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
-                Detalles del Vehículo
+          <div className="flex gap-3 p-3 flex-wrap pr-4">
+            <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#f0f2f4] pl-4 pr-4">
+              <p className="text-[#111317] text-sm font-medium leading-normal">
+                Estado
               </p>
             </div>
+          </div>
 
-            <div className="p-4 grid grid-cols-[20%_1fr] gap-x-6">
-              {selectedVehicle ? (
-                <>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
-                      ID del Vehículo
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {selectedVehicle.id}
-                    </p>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
+          {/* Vehicles table */}
+          <div className="px-4 py-3 [container-type:inline-size]">
+            <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
+              <table className="flex-1">
+                <thead>
+                  <tr className="bg-white">
+                    <th className="table-veh-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
                       Placa
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {selectedVehicle.plate}
-                    </p>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
-                      Compañía ID
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {selectedVehicle.company_id}
-                    </p>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    </th>
+                    <th className="table-veh-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                      Capacidad
+                    </th>
+                    <th className="table-veh-360 px-4 py-3 text-left text-[#111317] w-60 text-sm font-medium leading-normal">
                       Estado
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {selectedVehicle.status === 'AVAILABLE'
-                        ? 'Disponible'
-                        : selectedVehicle.status === 'IN_SERVICE'
-                          ? 'En Servicio'
-                          : selectedVehicle.status === 'MAINTENANCE'
-                            ? 'Mantenimiento'
-                            : 'Fuera de Servicio'}
-                    </p>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
-                      Capacidad
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {selectedVehicle.capacity} pasajeros
-                    </p>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
-                      Pasajeros Actuales
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {selectedVehicle.passenger_count}
-                    </p>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    </th>
+                    <th className="table-veh-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                      Pasajeros
+                    </th>
+                    <th className="table-veh-600 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                      Ocupación %
+                    </th>
+                    <th className="table-veh-720 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
                       Último Mantenimiento
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {new Date(
-                        selectedVehicle.last_maintenance,
-                      ).toLocaleString('es-ES', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                    <p className="text-[#646f87] text-sm font-normal leading-normal">
-                      Fecha de Creación
-                    </p>
-                    <p className="text-[#111317] text-sm font-normal leading-normal">
-                      {new Date(selectedVehicle.created_at).toLocaleString(
-                        'es-ES',
-                        {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        },
-                      )}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="col-span-2 text-center py-8">
-                  <p className="text-[#646f87] text-sm">
-                    {loadingVehicles
-                      ? 'Cargando...'
-                      : 'Selecciona un vehículo para ver sus detalles'}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <h3 className="text-[#111317] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">
-              Datos Históricos
-            </h3>
-            <div className="pb-3">
-              <div className="flex border-b border-[#dcdfe5] px-4 gap-8">
-                <a
-                  className="flex flex-col items-center justify-center border-b-[3px] border-b-[#111317] text-[#111317] pb-[13px] pt-4"
-                  href="#"
-                >
-                  <p className="text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]">
-                    Rutas Anteriores
-                  </p>
-                </a>
-                <a
-                  className="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#646f87] pb-[13px] pt-4"
-                  href="#"
-                >
-                  <p className="text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
-                    Historial de Incidentes
-                  </p>
-                </a>
-              </div>
-            </div>
-
-            {/* Past Routes table */}
-            <div className="px-4 py-3 [container-type:inline-size]">
-              <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
-                <table className="flex-1">
-                  <thead>
-                    <tr className="bg-white">
-                      <th className="table-past-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        ID de Ruta
-                      </th>
-                      <th className="table-past-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Hora de Inicio
-                      </th>
-                      <th className="table-past-360 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Hora de Fin
-                      </th>
-                      <th className="table-past-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Distancia (km)
-                      </th>
+                    </th>
+                    <th className="table-veh-840 px-4 py-3 text-left text-[#111317] w-60 text-[#646f87] text-sm font-medium leading-normal"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingVehicles ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
+                      >
+                        Cargando vehículos...
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      [
-                        'R1234',
-                        '2024-01-10 08:00 AM',
-                        '2024-01-10 05:00 PM',
-                        '250',
-                      ],
-                      [
-                        'R5678',
-                        '2024-01-11 09:00 AM',
-                        '2024-01-11 06:00 PM',
-                        '300',
-                      ],
-                      [
-                        'R9101',
-                        '2024-01-12 07:00 AM',
-                        '2024-01-12 04:00 PM',
-                        '200',
-                      ],
-                    ].map((row, i) => (
-                      <tr key={i} className="border-t border-t-[#dcdfe5]">
-                        {row.map((cell, j) => (
-                          <td
-                            key={j}
-                            className={`h-[72px] px-4 py-2 w-[400px] text-sm font-normal leading-normal ${j === 0 ? 'text-[#111317]' : 'text-[#646f87]'} table-past-${(j + 1) * 120}`}
-                          >
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <style>{`
-                @container(max-width:120px){.table-past-120{display:none}}
-                @container(max-width:240px){.table-past-240{display:none}}
-                @container(max-width:360px){.table-past-360{display:none}}
-                @container(max-width:480px){.table-past-480{display:none}}
-              `}</style>
-            </div>
+                  ) : vehicles.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
+                      >
+                        No hay vehículos disponibles
+                      </td>
+                    </tr>
+                  ) : (
+                    vehicles.map((vehicle) => {
+                      const occupancyPercentage =
+                        vehicle.capacity > 0
+                          ? Math.round(
+                              (vehicle.passenger_count / vehicle.capacity) *
+                                100,
+                            )
+                          : 0;
+                      const statusText =
+                        vehicle.status === 'AVAILABLE'
+                          ? 'Disponible'
+                          : vehicle.status === 'IN_SERVICE'
+                            ? 'En Servicio'
+                            : vehicle.status === 'MAINTENANCE'
+                              ? 'Mantenimiento'
+                              : 'Fuera de Servicio';
 
-            <div className="flex px-4 py-3 justify-start">
-              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]">
-                <span className="truncate">Eliminar</span>
-              </button>
-            </div>
-          </div>
-          {/* Add Vehicle Modal */}
-          {isAddOpen && (
-            <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
-              <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
-              <div
-                className="relative z-50 w-[512px] max-w-[96%] rounded-xl bg-white p-6"
-                style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
-              >
-                <h1 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 text-left pb-3 pt-1">
-                  Crear Vehículo
-                </h1>
-                <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                  <label className="flex flex-col min-w-40 flex-1">
-                    <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                      Compañía
-                    </p>
-                    <select
-                      value={company}
-                      onChange={(e) => setCompany(e.target.value)}
-                      onBlur={validateCompany}
-                      className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
-                    >
-                      <option value="" disabled>
-                        {loadingCompanies
-                          ? 'Cargando...'
-                          : 'Seleccione una compañía'}
-                      </option>
-                      {companies.map((comp) => (
-                        <option key={comp.id} value={comp.id}>
-                          {comp.name}{' '}
-                          {comp.short_name ? `(${comp.short_name})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.company && (
-                      <p className="text-red-600 text-sm mt-2">
-                        {errors.company}
-                      </p>
-                    )}
-                  </label>
-                </div>
-
-                <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                  <label className="flex flex-col min-w-40 flex-1">
-                    <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                      Placa
-                    </p>
-                    <input
-                      value={plate}
-                      onChange={(e) => {
-                        const formatted = formatPlate(e.target.value);
-                        setPlate(formatted);
-                      }}
-                      onBlur={validatePlate}
-                      maxLength={7}
-                      placeholder="ABC-123"
-                      className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
-                    />
-                    {errors.plate && (
-                      <p className="text-red-600 text-sm mt-2">
-                        {errors.plate === 'Placa no válida'
-                          ? 'Placa no válida. Debe tener 3 letras, guion y 3 dígitos (ej: ABC-123).'
-                          : errors.plate}
-                      </p>
-                    )}
-                  </label>
-                </div>
-
-                <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                  <label className="flex flex-col min-w-40 flex-1">
-                    <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                      Capacidad
-                    </p>
-                    <input
-                      value={capacity}
-                      onChange={(e) =>
-                        setCapacity(e.target.value.replace(/[^0-9]/g, ''))
-                      }
-                      onBlur={validateCapacity}
-                      placeholder="Ingrese Capacidad"
-                      inputMode="numeric"
-                      className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
-                    />
-                    {errors.capacity && (
-                      <p className="text-red-600 text-sm mt-2">
-                        {errors.capacity === 'Capacity must be numeric'
-                          ? 'La capacidad debe ser numérica.'
-                          : errors.capacity}
-                      </p>
-                    )}
-                  </label>
-                </div>
-
-                <div className="flex px-4 py-3">
-                  <div className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#f0f2f4] p-1">
-                    {(
-                      [
-                        { label: 'Disponible', value: 'AVAILABLE' },
-                        { label: 'En Servicio', value: 'IN_SERVICE' },
-                        { label: 'Mantenimiento', value: 'MAINTENANCE' },
-                        { label: 'Fuera de Servicio', value: 'OUT_OF_SERVICE' },
-                      ] as const
-                    ).map((s) => {
                       return (
-                        <label
-                          key={s.value}
-                          className={`flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-xl px-2 text-sm font-medium leading-normal ${status === s.value ? 'bg-white shadow-[0_0_4px_rgba(0,0,0,0.1)] text-[#111317]' : 'text-[#646f87]'}`}
+                        <tr
+                          key={vehicle.id}
+                          className={`border-t border-t-[#dcdfe5] cursor-pointer hover:bg-[#f0f2f4] ${selectedVehicle?.id === vehicle.id ? 'bg-[#e8edf3]' : ''}`}
+                          onClick={() => setSelectedVehicle(vehicle)}
                         >
-                          <span className="truncate">{s.label}</span>
-                          <input
-                            type="radio"
-                            name="vehicle-status"
-                            className="invisible w-0"
-                            value={s.value}
-                            checked={status === s.value}
-                            onChange={() => setStatus(s.value)}
-                          />
-                        </label>
+                          {/* Placa */}
+                          <td className="table-veh-120 h-[72px] px-4 py-2 w-[400px] text-[#111317] text-sm font-medium leading-normal">
+                            {vehicle.plate}
+                          </td>
+                          {/* Capacidad */}
+                          <td className="table-veh-240 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                            {vehicle.capacity}
+                          </td>
+                          {/* Estado */}
+                          <td className="table-veh-360 h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal">
+                            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
+                              <span className="truncate">{statusText}</span>
+                            </button>
+                          </td>
+                          {/* Pasajeros */}
+                          <td className="table-veh-480 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                            {vehicle.passenger_count}
+                          </td>
+                          {/* Ocupación % */}
+                          <td className="table-veh-600 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                            {occupancyPercentage}%
+                          </td>
+                          {/* Último Mantenimiento */}
+                          <td className="table-veh-720 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
+                            {new Date(
+                              vehicle.last_maintenance,
+                            ).toLocaleDateString('es-ES')}
+                          </td>
+                          {/* Action */}
+                          <td className="table-veh-840 h-[72px] px-4 py-2 w-60 text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Implementar eliminar
+                              }}
+                              className="hover:text-red-600"
+                            >
+                              Eliminar
+                            </button>
+                          </td>
+                        </tr>
                       );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex justify-stretch">
-                  <div className="flex flex-1 gap-3 flex-wrap px-4 py-3 justify-end">
-                    <button
-                      onClick={closeModal}
-                      className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]"
-                    >
-                      <span className="truncate">Cancelar</span>
-                    </button>
-                    <button
-                      onClick={createVehicle}
-                      disabled={
-                        !(
-                          company.trim() &&
-                          /^[A-Z]{3}-\d{3}$/.test(plate) &&
-                          /^\d+$/.test(capacity)
-                        )
-                      }
-                      className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] ${company.trim() && /^[A-Z]{3}-\d{3}$/.test(plate) && /^\d+$/.test(capacity) ? 'bg-[#1d56c9] text-white cursor-pointer' : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'}`}
-                    >
-                      <span className="truncate">
-                        {loading ? 'Creando...' : 'Crear Vehículo'}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-          )}
-
-          {/* Right column: Vehicles list */}
-          <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
-            <div className="flex flex-wrap justify-between gap-3 p-4">
-              <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
-                Vehículos
-              </p>
-              <button
-                onClick={() => setIsAddOpen(true)}
-                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
-              >
-                {loading ? (
-                  <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
-                ) : null}
-                <span className="truncate">Agregar Vehículo</span>
-              </button>
-            </div>
-
-            <div className="px-4 py-3">
-              <label className="flex flex-col min-w-40 h-12 w-full">
-                <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
-                  <div className="text-[#646f87] flex border-none bg-[#f0f2f4] items-center justify-center pl-4 rounded-l-xl border-r-0">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24px"
-                      height="24px"
-                      fill="currentColor"
-                      viewBox="0 0 256 256"
-                    >
-                      <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
-                    </svg>
-                  </div>
-                  <input
-                    placeholder="Buscar vehículos"
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border-none bg-[#f0f2f4] focus:border-none h-full placeholder:text-[#646f87] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
-                    defaultValue=""
-                  />
-                </div>
-              </label>
-            </div>
-
-            <div className="flex gap-3 p-3 flex-wrap pr-4">
-              <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#f0f2f4] pl-4 pr-4">
-                <p className="text-[#111317] text-sm font-medium leading-normal">
-                  Estado
-                </p>
-              </div>
-            </div>
-
-            {/* Vehicles table */}
-            <div className="px-4 py-3 [container-type:inline-size]">
-              <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
-                <table className="flex-1">
-                  <thead>
-                    <tr className="bg-white">
-                      <th className="table-veh-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Placa
-                      </th>
-                      <th className="table-veh-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Capacidad
-                      </th>
-                      <th className="table-veh-360 px-4 py-3 text-left text-[#111317] w-60 text-sm font-medium leading-normal">
-                        Estado
-                      </th>
-                      <th className="table-veh-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Pasajeros
-                      </th>
-                      <th className="table-veh-600 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Ocupación %
-                      </th>
-                      <th className="table-veh-720 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                        Último Mantenimiento
-                      </th>
-                      <th className="table-veh-840 px-4 py-3 text-left text-[#111317] w-60 text-[#646f87] text-sm font-medium leading-normal"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingVehicles ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                        >
-                          Cargando vehículos...
-                        </td>
-                      </tr>
-                    ) : vehicles.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                        >
-                          No hay vehículos disponibles
-                        </td>
-                      </tr>
-                    ) : (
-                      vehicles.map((vehicle) => {
-                        const occupancyPercentage =
-                          vehicle.capacity > 0
-                            ? Math.round(
-                                (vehicle.passenger_count / vehicle.capacity) *
-                                  100,
-                              )
-                            : 0;
-                        const statusText =
-                          vehicle.status === 'AVAILABLE'
-                            ? 'Disponible'
-                            : vehicle.status === 'IN_SERVICE'
-                              ? 'En Servicio'
-                              : vehicle.status === 'MAINTENANCE'
-                                ? 'Mantenimiento'
-                                : 'Fuera de Servicio';
-
-                        return (
-                          <tr
-                            key={vehicle.id}
-                            className={`border-t border-t-[#dcdfe5] cursor-pointer hover:bg-[#f0f2f4] ${selectedVehicle?.id === vehicle.id ? 'bg-[#e8edf3]' : ''}`}
-                            onClick={() => setSelectedVehicle(vehicle)}
-                          >
-                            {/* Placa */}
-                            <td className="table-veh-120 h-[72px] px-4 py-2 w-[400px] text-[#111317] text-sm font-medium leading-normal">
-                              {vehicle.plate}
-                            </td>
-                            {/* Capacidad */}
-                            <td className="table-veh-240 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {vehicle.capacity}
-                            </td>
-                            {/* Estado */}
-                            <td className="table-veh-360 h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal">
-                              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
-                                <span className="truncate">{statusText}</span>
-                              </button>
-                            </td>
-                            {/* Pasajeros */}
-                            <td className="table-veh-480 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {vehicle.passenger_count}
-                            </td>
-                            {/* Ocupación % */}
-                            <td className="table-veh-600 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {occupancyPercentage}%
-                            </td>
-                            {/* Último Mantenimiento */}
-                            <td className="table-veh-720 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {new Date(
-                                vehicle.last_maintenance,
-                              ).toLocaleDateString('es-ES')}
-                            </td>
-                            {/* Action */}
-                            <td className="table-veh-840 h-[72px] px-4 py-2 w-60 text-[#646f87] text-sm font-bold leading-normal tracking-[0.015em]">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // TODO: Implementar eliminar
-                                }}
-                                className="hover:text-red-600"
-                              >
-                                Eliminar
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <style>{`
+            <style>{`
                 @container(max-width:120px){.table-veh-120{display:none}}
                 @container(max-width:240px){.table-veh-240{display:none}}
                 @container(max-width:360px){.table-veh-360{display:none}}
@@ -911,10 +827,9 @@ export default function VehiclesPage() {
                 @container(max-width:840px){.table-veh-840{display:none}}
                 @container(max-width:960px){.table-veh-960{display:none}}
               `}</style>
-            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

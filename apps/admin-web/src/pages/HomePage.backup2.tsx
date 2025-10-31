@@ -1,13 +1,9 @@
-import { colorClasses } from '../styles/colors';
-
 export default function HomePage() {
   return (
     <>
       {/* Main content */}
       <div className="flex flex-wrap justify-between gap-3 p-4">
-        <p
-          className={`${colorClasses.textPrimary} tracking-light text-[32px] font-bold leading-tight min-w-72`}
-        >
+        <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
           Dashboard
         </p>
       </div>
@@ -16,11 +12,9 @@ export default function HomePage() {
         {['24h', '7d', '30d'].map((t) => (
           <div
             key={t}
-            className={`flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-xl ${colorClasses.bgSurface} pl-4 pr-4`}
+            className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#f0f2f4] pl-4 pr-4"
           >
-            <p
-              className={`${colorClasses.textPrimary} text-sm font-medium leading-normal`}
-            >
+            <p className="text-[#111317] text-sm font-medium leading-normal">
               {t}
             </p>
           </div>
@@ -28,21 +22,15 @@ export default function HomePage() {
       </div>
 
       <div className="flex gap-3 p-3 flex-wrap pr-4">
-        <div
-          className={`flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-xl ${colorClasses.bgSurface} pl-4 pr-4`}
-        >
-          <p
-            className={`${colorClasses.textPrimary} text-sm font-medium leading-normal`}
-          >
+        <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#f0f2f4] pl-4 pr-4">
+          <p className="text-[#111317] text-sm font-medium leading-normal">
             Filtros Guardados
           </p>
         </div>
       </div>
 
       {/* KPIs */}
-      <h2
-        className={`${colorClasses.textPrimary} text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5`}
-      >
+      <h2 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
         Indicadores Clave de Desempeño
       </h2>
       <div className="flex flex-wrap gap-4 p-4">
@@ -86,16 +74,12 @@ export default function HomePage() {
         ].map((k) => (
           <div
             key={k.title}
-            className={`flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 border ${colorClasses.borderSurface}`}
+            className="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 border border-[#dcdfe5]"
           >
-            <p
-              className={`${colorClasses.textPrimary} text-base font-medium leading-normal`}
-            >
+            <p className="text-[#111317] text-base font-medium leading-normal">
               {k.title}
             </p>
-            <p
-              className={`${colorClasses.textPrimary} tracking-light text-2xl font-bold leading-tight`}
-            >
+            <p className="text-[#111317] tracking-light text-2xl font-bold leading-tight">
               {k.val}
             </p>
             <p
@@ -109,18 +93,12 @@ export default function HomePage() {
       </div>
 
       {/* Trends */}
-      <h2
-        className={`${colorClasses.textPrimary} text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5`}
-      >
+      <h2 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
         Tendencias
       </h2>
       <div className="flex flex-wrap gap-4 px-4 py-6">
-        <div
-          className={`flex min-w-72 flex-1 flex-col gap-2 rounded-xl border ${colorClasses.borderSurface} p-6`}
-        >
-          <p
-            className={`${colorClasses.textPrimary} text-base font-medium leading-normal`}
-          >
+        <div className="flex min-w-72 flex-1 flex-col gap-2 rounded-xl border border-[#dcdfe5] p-6">
+          <p className="text-[#111317] text-base font-medium leading-normal">
             Ocupación en el Tiempo
           </p>
           <div className="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
