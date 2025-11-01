@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Route2Me Color Palette */
+:root {
+  --color-primary: #163172;
+  --color-secondary: #1E56A0;
+  --color-terciary: #97A3B1;
+  --color-bg: #F6F6F6;
+  --color-surface: #D6E4F0;
+  --color-text: #163172;
+  --color-accent: #1E56A0;
+}
+
 /* Custom global styles for admin-web */
 body {
   margin: 0;

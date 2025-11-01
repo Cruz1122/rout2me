@@ -1,19 +1,107 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import HomePage from '../pages/HomePage';
-import Vehicles from '../pages/Vehicles';
-import App from '../App';
+import ProtectedRoute from '../components/ProtectedRoute';
+import PublicRoute from '../components/PublicRoute';
+import Layout from '../components/Layout';
+
+// Lazy loading de componentes
+const HomePage = lazy(() => import('../pages/HomePage'));
+const Vehicles = lazy(() => import('../pages/Vehicles'));
+const Users = lazy(() => import('../pages/Users'));
+const LiveFleet = lazy(() => import('../pages/LiveFleet'));
+const RoutesPage = lazy(() => import('../pages/Routes'));
+const SignIn = lazy(() => import('../pages/SignIn'));
+const SignUp = lazy(() => import('../pages/SignUp'));
+const AuthCallback = lazy(() => import('../pages/AuthCallback'));
+const EmailVerified = lazy(() => import('../pages/EmailVerified'));
+const App = lazy(() => import('../App'));
+
+// Componente de loading
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen bg-white">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      <p className="text-gray-600 text-sm font-medium">Cargando...</p>
+    </div>
+  </div>
+);
 
 const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        {/* Example nested route to keep legacy App component if needed */}
-        <Route path="/app" element={<App />} />
-        <Route path="/vehicles" element={<Vehicles />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<AuthCallback />} />
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app"
+              element={
+                <ProtectedRoute>
+                  <App />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vehicles"
+              element={
+                <ProtectedRoute>
+                  <Vehicles />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/live-fleet"
+              element={
+                <ProtectedRoute>
+                  <LiveFleet />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/routes"
+              element={
+                <ProtectedRoute>
+                  <RoutesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <Users />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/signin"
+              element={
+                <PublicRoute>
+                  <SignIn />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <PublicRoute>
+                  <SignUp />
+                </PublicRoute>
+              }
+            />
+            <Route path="/email-verified" element={<EmailVerified />} />
+            <Route path="*" element={<Navigate to="/signin" replace />} />
+          </Routes>
+        </Layout>
+      </Suspense>
     </BrowserRouter>
   );
 };
