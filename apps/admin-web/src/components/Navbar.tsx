@@ -78,11 +78,17 @@ export default function Navbar() {
                 />
               )}
             </Link>
-            <span
-              className={`${colorClasses.textTerciary} text-sm font-medium leading-normal cursor-not-allowed pb-1`}
+            <Link
+              to="/live-fleet"
+              className={`relative text-sm font-medium leading-normal pb-1 ${colorClasses.textPrimary} hover:text-[#1E56A0]`}
             >
               Flota en Vivo
-            </span>
+              {isActive('/live-fleet') && (
+                <span
+                  className={`absolute bottom-0 left-0 right-0 h-0.5 ${colorClasses.bgSecondary}`}
+                />
+              )}
+            </Link>
             <Link
               to="/vehicles"
               className={`relative text-sm font-medium leading-normal pb-1 ${colorClasses.textPrimary} hover:text-[#1E56A0]`}
@@ -148,8 +154,7 @@ export default function Navbar() {
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 cursor-pointer hover:opacity-80 transition-opacity"
               style={{
-                backgroundImage:
-                  'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBp7dPtAb4z1NUY_zXf2l2Xx2EIGS2L-TzYlG35a6hEBJKIujDPmHc98zs9Pb3_czQn9BfQKVWSvDGo43EdoqEEVQRds0hFg4Swf6u9qC480vFATG9jyzIpL5NAu21Y0x_cNofzXrVsGPczwxQn8raT5CwD5hRrXu2Ni5tjtL7tHUwFVn4r3ce7IIaCS7D7p3vbBtJvmCu04kAjcqXqRaasN_2Mq7E1hT4Wxbwbv-pYWU0S3lnG5wMtbEIUa3FY_SMy9WV66zEFCAKB")',
+                backgroundImage: 'url("/icon.webp")',
               }}
               title="Perfil"
             />

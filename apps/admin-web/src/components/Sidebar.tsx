@@ -23,7 +23,7 @@ export default function Sidebar() {
     },
     {
       label: 'Flota en Vivo',
-      path: '/fleet',
+      path: '/live-fleet',
       icon: 'M240,112H229.2L201.42,49.5A16,16,0,0,0,186.8,40H69.2a16,16,0,0,0-14.62,9.5L26.8,112H16a8,8,0,0,0,0,16h8v80a16,16,0,0,0,16,16H64a16,16,0,0,0,16-16V192h96v16a16,16,0,0,0,16,16h24a16,16,0,0,0,16-16V128h8a8,8,0,0,0,0-16ZM69.2,56H186.8l24.89,56H44.31ZM64,208H40V192H64Zm128,0V192h24v16Zm24-32H40V128H216ZM56,152a8,8,0,0,1,8-8H80a8,8,0,0,1,0,16H64A8,8,0,0,1,56,152Zm112,0a8,8,0,0,1,8-8h16a8,8,0,0,1,0,16H176A8,8,0,0,1,168,152Z',
     },
     {
@@ -61,8 +61,8 @@ export default function Sidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="layout-content-container flex flex-col w-80">
-      <div className="flex h-full min-h-[700px] flex-col bg-white p-4">
+    <div className="layout-content-container flex flex-col w-80 fixed left-0 top-0 h-screen overflow-y-auto bg-white z-10">
+      <div className="flex flex-col p-4 h-full">
         <div className="flex flex-col gap-4">
           <h1 className="text-[#111317] text-base font-medium leading-normal">
             Route2Me Admin
@@ -73,8 +73,7 @@ export default function Sidebar() {
             <div
               className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
               style={{
-                backgroundImage:
-                  'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBp7dPtAb4z1NUY_zXf2l2Xx2EIGS2L-TzYlG35a6hEBJKIujDPmHc98zs9Pb3_czQn9BfQKVWSvDGo43EdoqEEVQRds0hFg4Swf6u9qC480vFATG9jyzIpL5NAu21Y0x_cNofzXrVsGPczwxQn8raT5CwD5hRrXu2Ni5tjtL7tHUwFVn4r3ce7IIaCS7D7p3vbBtJvmCu04kAjcqXqRaasN_2Mq7E1hT4Wxbwbv-pYWU0S3lnG5wMtbEIUa3FY_SMy9WV66zEFCAKB")',
+                backgroundImage: 'url("/icon.webp")',
               }}
             />
             <div className="flex flex-col overflow-hidden">

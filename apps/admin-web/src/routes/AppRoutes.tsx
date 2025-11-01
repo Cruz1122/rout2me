@@ -8,6 +8,7 @@ import Layout from '../components/Layout';
 const HomePage = lazy(() => import('../pages/HomePage'));
 const Vehicles = lazy(() => import('../pages/Vehicles'));
 const Users = lazy(() => import('../pages/Users'));
+const LiveFleet = lazy(() => import('../pages/LiveFleet'));
 const SignIn = lazy(() => import('../pages/SignIn'));
 const SignUp = lazy(() => import('../pages/SignUp'));
 const AuthCallback = lazy(() => import('../pages/AuthCallback'));
@@ -52,6 +53,14 @@ const AppRoutes: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Vehicles />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/live-fleet"
+              element={
+                <ProtectedRoute>
+                  <LiveFleet />
                 </ProtectedRoute>
               }
             />

@@ -22,6 +22,7 @@ export default function Layout({ children }: LayoutProps) {
   const navbarRoutes = [
     '/vehicles',
     '/fleet',
+    '/live-fleet',
     '/routes',
     '/incidents',
     '/availability',
@@ -42,10 +43,10 @@ export default function Layout({ children }: LayoutProps) {
         className="relative flex h-auto min-h-screen w-full flex-col bg-white group/design-root overflow-x-hidden"
         style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
       >
-        <div className="layout-container flex h-full grow flex-col">
-          <div className="gap-1 px-6 flex flex-1 justify-center py-5">
-            <Sidebar />
-            <div className="layout-content-container flex flex-col flex-1">
+        <div className="layout-container flex h-full grow">
+          <Sidebar />
+          <div className="flex flex-1 ml-80">
+            <div className="layout-content-container flex flex-col flex-1 px-6 py-5">
               {children}
             </div>
           </div>

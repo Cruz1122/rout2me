@@ -1,6 +1,571 @@
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  Fragment,
+  useMemo,
+} from 'react';
 import { colorClasses } from '../styles/colors';
+import {
+  getVehicles,
+  getBusPositions,
+  getRouteVariants,
+  getCompanies,
+} from '../api/vehicles_api';
+import type {
+  Vehicle,
+  BusPosition,
+  RouteVariant,
+  Company,
+} from '../api/vehicles_api';
+import maplibregl, { Map as MlMap } from 'maplibre-gl';
+import { RiAddLine, RiSubtractLine, RiCompassLine } from 'react-icons/ri';
+import { processRouteWithCoordinates } from '../services/mapMatchingService';
+
+// Paleta de colores para organizaciones
+const ORGANIZATION_COLORS = [
+  '#ef4444', // red
+  '#3b82f6', // blue
+  '#10b981', // green
+  '#f59e0b', // amber
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#14b8a6', // teal
+  '#f97316', // orange
+  '#6366f1', // indigo
+  '#84cc16', // lime
+];
+
+// Función para obtener color consistente por organización
+function getOrganizationColor(
+  organizationId: string | null | undefined,
+  colorMap: Map<string, string>,
+): string {
+  // Si no hay organizationId, usar un color por defecto
+  if (!organizationId) {
+    return '#64748b'; // slate-500
+  }
+
+  // Si está en el mapa, usar ese color
+  if (colorMap.has(organizationId)) {
+    return colorMap.get(organizationId)!;
+  }
+
+  // Fallback: usar hash simple del ID para obtener un índice consistente
+  let hash = 0;
+  for (let i = 0; i < organizationId.length; i++) {
+    hash = organizationId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % ORGANIZATION_COLORS.length;
+  return ORGANIZATION_COLORS[index];
+}
 
 export default function HomePage() {
+  // Estados para el mapa
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [busPositions, setBusPositions] = useState<BusPosition[]>([]);
+  const [routeVariants, setRouteVariants] = useState<RouteVariant[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [mapReady, setMapReady] = useState(false);
+  const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
+  const [activeRoutesCount, setActiveRoutesCount] = useState(0); // Rutas con buses activos y GPS
+
+  // Referencias para el mapa
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstance = useRef<MlMap | null>(null);
+  const vehicleMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
+  const routeLayersIds = useRef<Set<string>>(new Set());
+  const vehiclesRef = useRef<Vehicle[]>([]); // Ref para mantener vehicles actualizado
+  const [mapBearing, setMapBearing] = useState(0);
+  const [isDraggingCompass, setIsDraggingCompass] = useState(false);
+  const [dragStart, setDragStart] = useState<{
+    x: number;
+    y: number;
+    bearing: number;
+  } | null>(null);
+
+  // Mantener la ref sincronizada con el estado
+  useEffect(() => {
+    vehiclesRef.current = vehicles;
+  }, [vehicles]);
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    const initializeData = async () => {
+      const myVehicles = await loadVehicles(); // Cargar primero los vehículos de mi org
+      await loadBusPositions(myVehicles); // Luego filtrar posiciones por mis vehículos
+      await loadRouteVariants();
+      await loadCompanies();
+    };
+
+    initializeData();
+
+    // Auto-refresh cada 10 segundos
+    const interval = setInterval(() => {
+      loadBusPositions(); // Aquí usará el estado actualizado
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadVehicles = async () => {
+    try {
+      const data = await getVehicles();
+      console.log('Vehicles loaded (my org):', data.length);
+      setVehicles(data);
+      vehiclesRef.current = data; // Actualizar la ref inmediatamente
+      return data; // Retornar para usarlo inmediatamente
+    } catch (error) {
+      console.error('Error loading vehicles:', error);
+      return [];
+    }
+  };
+
+  const loadBusPositions = useCallback(async (myVehicles?: Vehicle[]) => {
+    try {
+      const data = await getBusPositions();
+      console.log('All bus positions loaded:', data.length);
+
+      // Usar los vehículos pasados como parámetro o los de la ref actualizada
+      const vehiclesToFilter = myVehicles || vehiclesRef.current;
+
+      if (vehiclesToFilter.length === 0) {
+        console.warn('No vehicles loaded yet, skipping position filter');
+        return;
+      }
+
+      const myBusIds = new Set(vehiclesToFilter.map((v) => v.id));
+      const filteredPositions = data.filter((pos) => myBusIds.has(pos.bus_id));
+
+      console.log('Filtered bus positions (my org):', filteredPositions.length);
+      console.log('My bus IDs:', Array.from(myBusIds));
+      setBusPositions(filteredPositions);
+    } catch (error) {
+      console.error('Error loading bus positions:', error);
+    }
+  }, []); // Sin dependencias porque usa vehiclesRef
+
+  const loadRouteVariants = async () => {
+    try {
+      const data = await getRouteVariants();
+      console.log('Route variants loaded:', data.length);
+      setRouteVariants(data);
+    } catch (error) {
+      console.error('Error loading route variants:', error);
+    }
+  };
+
+  const loadCompanies = async () => {
+    try {
+      const data = await getCompanies();
+      console.log('Companies loaded:', data.length);
+      setCompanies(data);
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  };
+
+  // Crear mapeo de company_id a color
+  const companyColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    companies.forEach((company, index) => {
+      const colorIndex = index % ORGANIZATION_COLORS.length;
+      map.set(company.id, ORGANIZATION_COLORS[colorIndex]);
+    });
+    return map;
+  }, [companies]);
+
+  // Inicializar mapa
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapRef.current,
+      style: {
+        version: 8,
+        sources: {
+          'carto-light': {
+            type: 'raster',
+            tiles: [
+              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+            ],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: 'carto-light-layer',
+            type: 'raster',
+            source: 'carto-light',
+            minzoom: 0,
+            maxzoom: 22,
+          },
+        ],
+      },
+      center: [-75.5138, 5.0703], // Manizales, Colombia
+      zoom: 12,
+    });
+
+    map.on('load', () => {
+      console.log('Map loaded successfully');
+      map.resize();
+      setMapReady(true);
+    });
+
+    map.on('rotate', () => {
+      setMapBearing(map.getBearing());
+    });
+
+    mapInstance.current = map;
+
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
+  }, []);
+
+  // Dibujar todas las rutas en el mapa (solo una vez al cargar)
+  useEffect(() => {
+    if (
+      !mapInstance.current ||
+      !mapReady ||
+      routeVariants.length === 0 ||
+      busPositions.length === 0
+    )
+      return;
+
+    // Verificar si ya se dibujaron las rutas
+    if (routeLayersIds.current.size > 0) return;
+
+    console.log(
+      'Drawing routes on map. Map ready:',
+      mapReady,
+      'Routes:',
+      routeVariants.length,
+    );
+
+    const drawAllRoutes = async () => {
+      // Obtener API key
+      const apiKey = import.meta.env.VITE_STADIA_API_KEY;
+      const shouldApplyMapMatching = Boolean(apiKey && apiKey.trim() !== '');
+
+      // Agrupar buses por ruta para dibujar cada combinación ruta-empresa
+      // IMPORTANTE: Solo considerar buses que tienen ubicación GPS (están en busPositions)
+      const routeBusMap = new Map<
+        string,
+        Array<{ busId: string; companyId: string }>
+      >();
+      busPositions.forEach((pos) => {
+        // Solo agregar si tiene ruta activa, company_id Y ubicación GPS válida
+        if (
+          pos.active_route_variant_id &&
+          pos.company_id &&
+          pos.location_json
+        ) {
+          if (!routeBusMap.has(pos.active_route_variant_id)) {
+            routeBusMap.set(pos.active_route_variant_id, []);
+          }
+          routeBusMap.get(pos.active_route_variant_id)!.push({
+            busId: pos.bus_id,
+            companyId: pos.company_id,
+          });
+        }
+      });
+
+      console.log('=== DEBUG ROUTE DRAWING ===');
+      console.log('Bus positions with GPS:', busPositions.length);
+      console.log(
+        'Bus positions detail:',
+        busPositions.map((p) => ({
+          bus_id: p.bus_id,
+          plate: p.plate,
+          active_route_variant_id: p.active_route_variant_id,
+          company_id: p.company_id,
+          has_location: !!p.location_json,
+        })),
+      );
+      console.log(
+        'Route-Bus map (only buses with GPS):',
+        Array.from(routeBusMap.entries()),
+      );
+      console.log('All route variants:', routeVariants.length);
+      console.log(
+        'Route variants detail:',
+        routeVariants.map((r) => ({
+          variant_id: r.variant_id,
+          route_code: r.route_code,
+          route_name: r.route_name,
+        })),
+      );
+
+      // Filtrar solo las rutas que tienen buses activos CON UBICACIÓN GPS
+      const activeRoutes = routeVariants.filter((route) =>
+        routeBusMap.has(route.variant_id),
+      );
+
+      console.log(
+        `Drawing ${activeRoutes.length} active routes (out of ${routeVariants.length} total routes)`,
+      );
+      console.log(
+        'Active routes:',
+        activeRoutes.map((r) => ({
+          variant_id: r.variant_id,
+          route_code: r.route_code,
+        })),
+      );
+
+      // Actualizar el contador de rutas activas para los KPIs
+      setActiveRoutesCount(activeRoutes.length);
+
+      // Dibujar rutas solo para las que tienen buses activos
+      for (const route of activeRoutes) {
+        const busesOnRoute = routeBusMap.get(route.variant_id)!;
+
+        try {
+          const originalCoordinates = route.path.map(
+            (point) => [point.lng, point.lat] as [number, number],
+          );
+
+          // Procesar ruta con map matching (una sola vez por ruta)
+          const processedRoute = await processRouteWithCoordinates(
+            originalCoordinates,
+            apiKey,
+            shouldApplyMapMatching,
+          );
+
+          const routeGeoJSON = {
+            type: 'Feature' as const,
+            properties: {},
+            geometry: processedRoute.matchedGeometry,
+          };
+
+          // Dibujar una capa por cada bus en esta ruta
+          busesOnRoute.forEach((bus) => {
+            const sourceId = `route-${route.variant_id}-bus-${bus.busId}`;
+            const layerId = sourceId;
+            routeLayersIds.current.add(layerId);
+
+            // Color según la empresa del bus
+            const color = getOrganizationColor(bus.companyId, companyColorMap);
+
+            // Opacidad inicial
+            const opacity = 0.7;
+
+            // Agregar source y layer para esta combinación ruta-bus
+            mapInstance.current!.addSource(sourceId, {
+              type: 'geojson',
+              data: routeGeoJSON,
+            });
+
+            mapInstance.current!.addLayer({
+              id: layerId,
+              type: 'line',
+              source: sourceId,
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round',
+              },
+              paint: {
+                'line-color': color,
+                'line-width': 3,
+                'line-opacity': opacity,
+              },
+            });
+          });
+        } catch (error) {
+          console.error(`Error drawing route ${route.variant_id}:`, error);
+        }
+      }
+    };
+
+    drawAllRoutes();
+  }, [routeVariants, busPositions, mapReady, companyColorMap]);
+
+  // Actualizar opacidad de rutas cuando cambia la selección
+  useEffect(() => {
+    if (!mapInstance.current || routeLayersIds.current.size === 0) return;
+
+    // Actualizar opacidad de todas las rutas
+    routeLayersIds.current.forEach((layerId) => {
+      if (!mapInstance.current!.getLayer(layerId)) return;
+
+      // Extraer el busId del layerId (formato: route-{variant_id}-bus-{busId})
+      const busId = layerId.split('-bus-')[1];
+
+      // Determinar opacidad
+      const isBusSelected = selectedBusId === busId;
+      const opacity = selectedBusId === null || isBusSelected ? 0.7 : 0.2;
+
+      // Actualizar opacidad
+      mapInstance.current!.setPaintProperty(layerId, 'line-opacity', opacity);
+    });
+  }, [selectedBusId]);
+
+  // Actualizar marcadores de vehículos
+  useEffect(() => {
+    if (!mapInstance.current) return;
+
+    console.log(
+      'Updating vehicle markers:',
+      vehicles.length,
+      'vehicles,',
+      busPositions.length,
+      'positions',
+    );
+
+    // Limpiar marcadores existentes
+    vehicleMarkers.current.forEach((marker) => marker.remove());
+    vehicleMarkers.current.clear();
+
+    // Agregar marcadores para cada vehículo con posición
+    let markersAdded = 0;
+    vehicles.forEach((vehicle) => {
+      const position = busPositions.find((pos) => pos.bus_id === vehicle.id);
+
+      if (!position || !position.location_json) return;
+
+      const { lat, lng } = position.location_json;
+      markersAdded++;
+
+      // Obtener color según la compañía (usar company_id de position, no de vehicle)
+      const color = getOrganizationColor(position.company_id, companyColorMap);
+
+      // Log para debug (solo para el primer marcador)
+      if (markersAdded === 1) {
+        console.log('First marker color:', {
+          company_id: position.company_id,
+          color: color,
+          hasInMap: companyColorMap.has(position.company_id),
+          mapSize: companyColorMap.size,
+        });
+      }
+
+      // Determinar opacidad basada en selección
+      const isSelected = selectedBusId === position.bus_id;
+      const opacity = selectedBusId === null || isSelected ? '1' : '0.3';
+
+      // Crear elemento del marcador
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <div style="
+          background: ${color};
+          border: 3px solid white;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          opacity: ${opacity};
+          transition: opacity 0.3s ease;
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" fill="white" viewBox="0 0 256 256">
+            <path d="M247.42,117l-14-35A15.93,15.93,0,0,0,218.58,72H184V64a8,8,0,0,0-8-8H24A16,16,0,0,0,8,72V184a16,16,0,0,0,16,16H41a32,32,0,0,0,62,0h50a32,32,0,0,0,62,0h17a16,16,0,0,0,16-16V120A7.94,7.94,0,0,0,247.42,117ZM184,88h34.58l9.6,24H184ZM24,72H168v64H24ZM72,208a16,16,0,1,1,16-16A16,16,0,0,1,72,208Zm81-24H103a32,32,0,0,0-62,0H24V152H168v12.31A32.11,32.11,0,0,0,153,184Zm31,24a16,16,0,1,1,16-16A16,16,0,0,1,184,208Zm48-24H215a32.06,32.06,0,0,0-31-24V128h48Z" />
+          </svg>
+        </div>
+      `;
+
+      // Agregar click handler para seleccionar el bus
+      element.addEventListener('click', () => {
+        setSelectedBusId(
+          selectedBusId === position.bus_id ? null : position.bus_id,
+        );
+      });
+
+      const marker = new maplibregl.Marker({
+        element,
+        anchor: 'center',
+      })
+        .setLngLat([lng, lat])
+        .addTo(mapInstance.current!);
+
+      // Buscar información de la compañía
+      const company = companies.find((c) => c.id === position.company_id);
+      const companyName = company
+        ? company.short_name || company.name
+        : 'Sin compañía';
+
+      // Agregar popup con información del vehículo
+      const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
+          <div style="padding: 8px;">
+            <h3 style="margin: 0 0 4px 0; font-weight: bold;">${vehicle.plate}</h3>
+            <p style="margin: 0; font-size: 12px; color: #666;">Compañía: ${companyName}</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">Ruta: ${position.active_route_variant_id || 'Sin ruta'}</p>
+            ${position.speed_kph !== undefined ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">Velocidad: ${position.speed_kph.toFixed(1)} km/h</p>` : ''}
+          </div>
+        `);
+
+      marker.setPopup(popup);
+
+      vehicleMarkers.current.set(vehicle.id, marker);
+    });
+
+    console.log('Markers added to map:', markersAdded);
+  }, [vehicles, busPositions, companyColorMap, selectedBusId, companies]);
+
+  // Manejo de controles del mapa
+  const handleZoomIn = useCallback(() => {
+    if (!mapInstance.current) return;
+    mapInstance.current.zoomIn({ duration: 300 });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (!mapInstance.current) return;
+    mapInstance.current.zoomOut({ duration: 300 });
+  }, []);
+
+  const handleCompassMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsDraggingCompass(true);
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+        bearing: mapBearing,
+      });
+    },
+    [mapBearing],
+  );
+
+  const handleCompassMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDraggingCompass || !dragStart || !mapInstance.current) return;
+
+      const deltaX = e.clientX - dragStart.x;
+      const newBearing = dragStart.bearing - deltaX * 0.5;
+      mapInstance.current.setBearing(newBearing);
+    },
+    [isDraggingCompass, dragStart],
+  );
+
+  const handleCompassMouseUp = useCallback(() => {
+    setIsDraggingCompass(false);
+    setDragStart(null);
+  }, []);
+
+  useEffect(() => {
+    if (isDraggingCompass) {
+      document.addEventListener('mousemove', handleCompassMouseMove);
+      document.addEventListener('mouseup', handleCompassMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleCompassMouseMove);
+        document.removeEventListener('mouseup', handleCompassMouseUp);
+      };
+    }
+  }, [isDraggingCompass, handleCompassMouseMove, handleCompassMouseUp]);
+
+  const handleResetNorth = useCallback(() => {
+    if (!mapInstance.current) return;
+    mapInstance.current.easeTo({ bearing: 0, duration: 300 });
+  }, []);
+
   return (
     <>
       {/* Main content */}
@@ -49,19 +614,19 @@ export default function HomePage() {
         {[
           {
             title: 'Buses Activos',
-            val: '120',
+            val: busPositions.length.toString(),
             delta: '+10%',
             deltaColor: '#07883b',
           },
           {
             title: 'Ocupación Promedio %',
-            val: '85%',
+            val: '0%',
             delta: '-5%',
             deltaColor: '#e73908',
           },
           {
             title: 'Rutas en Servicio',
-            val: '100',
+            val: activeRoutesCount.toString(),
             delta: '+20%',
             deltaColor: '#07883b',
           },
@@ -175,19 +740,15 @@ export default function HomePage() {
               { h: '40%', label: 'Ruta B' },
               { h: '60%', label: 'Ruta C' },
             ].map((b) => (
-              <>
+              <Fragment key={b.label}>
                 <div
-                  key={b.label + 'bar'}
                   className="border-[#646f87] bg-[#f0f2f4] border-t-2 w-full"
                   style={{ height: b.h }}
                 ></div>
-                <p
-                  key={b.label + 'lbl'}
-                  className="text-[#646f87] text-[13px] font-bold leading-normal tracking-[0.015em]"
-                >
+                <p className="text-[#646f87] text-[13px] font-bold leading-normal tracking-[0.015em]">
                   {b.label}
                 </p>
-              </>
+              </Fragment>
             ))}
           </div>
         </div>
@@ -202,86 +763,119 @@ export default function HomePage() {
               { h: '30%', label: 'Tipo B' },
               { h: '90%', label: 'Tipo C' },
             ].map((b) => (
-              <>
+              <Fragment key={b.label}>
                 <div
-                  key={b.label + 'bar'}
                   className="border-[#646f87] bg-[#f0f2f4] border-t-2 w-full"
                   style={{ height: b.h }}
                 ></div>
-                <p
-                  key={b.label + 'lbl'}
-                  className="text-[#646f87] text-[13px] font-bold leading-normal tracking-[0.015em]"
-                >
+                <p className="text-[#646f87] text-[13px] font-bold leading-normal tracking-[0.015em]">
                   {b.label}
                 </p>
-              </>
+              </Fragment>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Situational Awareness */}
-      <h2 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
+      {/* Mapa de Flota */}
+      <h2
+        className={`${colorClasses.textPrimary} text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5`}
+      >
         Conciencia Situacional
       </h2>
-      <div className="flex px-4 py-3">
+      <div className="px-4 py-3">
         <div
-          className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-xl object-cover"
+          className="@[480px]:rounded-xl relative"
           style={{
-            backgroundImage:
-              'url("https://lh3.googleusercontent.com/aida-public/AB6AXuC8d3z0Y-BG6s3vIYI63i9sXffKWr5BzXe6-AH03YiIu1xbEIAFAvq2OudbiZsUH5d9VcF3AA0gkFP9rapJbohree9oWoEpo-yRyZvp1bOVipZz2JqGBrdpieB_WjYhaXy-xEW5n-6xh7ctsm_-1idlj7pSGMPFU2L4gs6qx7fdMbyJbx6O8shfNQ5xkHTCDLhWpImc_XOj2s3Tc20Ds9b3cDnuJB8XIMSI1zufatxmhhEX_s6etNLYdDIMyt_ARmzSCD19k5AMnx5q")',
+            backgroundColor: '#e5e7eb',
+            height: '500px',
+            width: '100%',
           }}
-        ></div>
-      </div>
+        >
+          {/* Controles del Mapa */}
+          <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+            {/* Zoom Controls */}
+            <div className="flex flex-col gap-0.5">
+              <button
+                onClick={handleZoomIn}
+                className="flex size-10 items-center justify-center rounded-t-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+              >
+                <RiAddLine size={20} className="text-[#111317]" />
+              </button>
+              <button
+                onClick={handleZoomOut}
+                className="flex size-10 items-center justify-center rounded-b-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+              >
+                <RiSubtractLine size={20} className="text-[#111317]" />
+              </button>
+            </div>
 
-      {[
-        {
-          iconPath:
-            'M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z',
-          title: 'Incidente: Congestión de Tráfico',
-          sub1: 'Retrasado por 15 minutos',
-          sub2: 'Vehículo 123 - Ruta A',
-        },
-        {
-          iconPath:
-            'M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z',
-          title: 'Incidente: Llanta Ponchada',
-          sub1: 'Resuelto',
-          sub2: 'Vehículo 456 - Ruta B',
-        },
-        {
-          iconPath:
-            'M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z',
-          title: 'Incidente: Problema Mecánico',
-          sub1: 'En Curso',
-          sub2: 'Vehículo 789 - Ruta C',
-        },
-      ].map((i, idx) => (
-        <div key={idx} className="flex gap-4 bg-white px-4 py-3">
-          <div className="text-[#111317] flex items-center justify-center rounded-lg bg-[#f0f2f4] shrink-0 size-12">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24px"
-              height="24px"
-              fill="currentColor"
-              viewBox="0 0 256 256"
-            >
-              <path d={i.iconPath}></path>
-            </svg>
+            {/* Compass Control */}
+            <div className="relative">
+              <button
+                onMouseDown={handleCompassMouseDown}
+                onDoubleClick={handleResetNorth}
+                className="flex size-10 items-center justify-center rounded-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors cursor-grab active:cursor-grabbing"
+                style={{
+                  transform: `rotate(${-mapBearing}deg)`,
+                }}
+              >
+                <RiCompassLine size={20} className="text-[#111317]" />
+              </button>
+            </div>
           </div>
-          <div className="flex flex-1 flex-col justify-center">
-            <p className="text-[#111317] text-base font-medium leading-normal">
-              {i.title}
-            </p>
-            <p className="text-[#646f87] text-sm font-normal leading-normal">
-              {i.sub1}
-            </p>
-            <p className="text-[#646f87] text-sm font-normal leading-normal">
-              {i.sub2}
-            </p>
+
+          {/* Mapa */}
+          <div
+            ref={mapRef}
+            style={{ width: '100%', height: '100%' }}
+            className="rounded-xl"
+          />
+
+          {/* Indicador de carga */}
+          {!mapReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 rounded-xl">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                <p className="mt-2 text-sm text-gray-600">Cargando mapa...</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Leyenda de Colores por Organización */}
+        <div className="mt-4 p-4 bg-white rounded-xl border border-[#dcdfe5]">
+          <p className={`${colorClasses.textPrimary} text-sm font-medium mb-2`}>
+            Colores por Organización
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {/* Mostrar organizaciones reales con sus colores */}
+            {companies.map((company) => {
+              const color = companyColorMap.get(company.id) || '#64748b';
+              return (
+                <div key={company.id} className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded-full"
+                    style={{ backgroundColor: color }}
+                  ></div>
+                  <span className="text-xs text-[#646f87]">
+                    {company.short_name || company.name}
+                  </span>
+                </div>
+              );
+            })}
+
+            {/* Leyenda para rutas */}
+            <div className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: '#94a3b8' }}
+              ></div>
+              <span className="text-xs text-[#646f87]">Rutas</span>
+            </div>
           </div>
         </div>
-      ))}
+      </div>
 
       {/* Table */}
       <h2 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
@@ -353,20 +947,17 @@ export default function HomePage() {
               ['Media', '90%'],
               ['Baja', '80%'],
             ].map(([label, width]) => (
-              <>
-                <p
-                  key={label + 'lbl'}
-                  className="text-[#646f87] text-[13px] font-bold leading-normal tracking-[0.015em]"
-                >
+              <Fragment key={label}>
+                <p className="text-[#646f87] text-[13px] font-bold leading-normal tracking-[0.015em]">
                   {label}
                 </p>
-                <div key={label + 'bar'} className="h-full flex-1">
+                <div className="h-full flex-1">
                   <div
                     className="border-[#646f87] bg-[#f0f2f4] border-r-2 h-full"
                     style={{ width }}
                   ></div>
                 </div>
-              </>
+              </Fragment>
             ))}
           </div>
         </div>

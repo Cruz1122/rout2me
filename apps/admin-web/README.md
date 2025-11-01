@@ -1,6 +1,6 @@
 # Rout2Me - Admin Web
 
-Panel de administración web para la plataforma Rout2Me, un sistema de gestión de transporte urbano.
+Panel de administración web para la plataforma Rout2Me, un sistema de gestión de transporte urbano con monitoreo en tiempo real.
 
 ## 🚀 Características
 
@@ -17,6 +17,32 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Persistencia de Sesión**: Los tokens se mantienen al recargar la página
 - **Rutas Protegidas**: Sistema de guardias para proteger el dashboard
 
+### Dashboard con Mapas en Tiempo Real (NUEVO)
+- **Mapa Interactivo**: Visualización con MapLibre GL y tiles de CARTO OpenStreetMap
+- **Buses en Tiempo Real**: Marcadores de buses con posición GPS actualizada cada 10 segundos
+- **Rutas Dinámicas**: Dibujo automático de rutas con Map Matching (Stadia Maps API)
+- **Colores por Organización**: Cada compañía tiene un color único para identificar sus buses y rutas
+- **Selección de Buses**: Click en bus para destacarlo (reduce opacidad de otros buses/rutas a 20%)
+- **Leyenda Dinámica**: Lista de compañías con sus colores asignados
+- **Controles de Mapa**:
+  - Zoom In/Out
+  - Resetear Norte (brújula)
+  - Centrar en ubicación del usuario
+  - Rotación del mapa con drag en la brújula
+- **Filtrado Inteligente**:
+  - Solo muestra buses de tu organización (RLS de Supabase)
+  - Solo dibuja rutas de buses con GPS activo
+  - Excluye buses sin ubicación
+- **Popups Informativos**: Información de placa, compañía y estado al hacer click en un bus
+- **KPIs Actualizados en Tiempo Real**:
+  - Buses Activos (solo con GPS)
+  - Ocupación Promedio
+  - Rutas en Servicio (solo rutas activas con buses GPS)
+  - Incidentes Abiertos
+  - Tasa de Puntualidad
+  - Actualización de Telemetría
+- **Optimización de Costos**: Map matching se ejecuta solo una vez al cargar, no en cada refresh
+
 ### Gestión de Vehículos
 - **Lista de Vehículos**: Visualización de todos los buses registrados con paginación
 - **Crear Vehículo**: Modal con formulario validado
@@ -28,7 +54,16 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Búsqueda en Tiempo Real**: Filtrado por placa del vehículo
 - **Integración con API Real**: Conexión directa con Supabase REST API
 
-### Gestión de Usuarios (NUEVO)
+### Rastreo de Flota en Vivo (LiveFleet) (NUEVO)
+- **Mapa de Seguimiento**: Vista de mapa completo con todos los buses activos
+- **Búsqueda de Vehículos**: Filtro por placa en tiempo real
+- **Visualización de Rutas**: Al seleccionar un bus, muestra su ruta completa con paradas
+- **Marcadores de Paradas**: Círculos naranjas con nombres de paradas
+- **Auto-refresh**: Actualización automática de posiciones cada 10 segundos
+- **Controles de Navegación**: Zoom, reset norte, centrar en usuario
+- **Panel Lateral**: Lista de vehículos con información de estado y selección
+
+### Gestión de Usuarios
 - **Lista de Usuarios**: Visualización completa de usuarios del sistema
 - **Crear Usuario**: Modal con formulario validado mediante API Admin
   - Validación de email con regex
@@ -49,13 +84,6 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **API Admin de Supabase**: Uso de Service Role Key para operaciones CRUD
 - **Toast Notifications**: Feedback visual para todas las operaciones
 
-### Dashboard
-- **KPIs en Tiempo Real**: Buses activos, ocupación promedio, rutas activas, pasajeros hoy
-- **Gráficos de Tendencias**: Visualización de ocupación por hora
-- **Tabla de Buses**: Lista con estado, ruta y ocupación actual
-- **Tabla de Rutas**: Información de rutas con buses asignados y pasajeros
-- **Interfaz Completamente en Español**
-
 ## 🛠️ Tecnologías
 
 - **React 19.1.1** - Framework de UI
@@ -65,6 +93,9 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Tailwind CSS 4.1.14** - Estilos utility-first
 - **Supabase** - Backend as a Service
 - **Fetch API** - Peticiones HTTP (sin SDK de Supabase)
+- **MapLibre GL 5.9.0** (NUEVO) - Renderizado de mapas open-source
+- **React Icons 5.5.0** (NUEVO) - Iconos para controles de UI
+- **Stadia Maps API** (NUEVO) - Map matching para rutas optimizadas
 
 ## 📁 Estructura del Proyecto
 
@@ -72,13 +103,20 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 src/
 ├── api/
 │   ├── auth_api.ts         # Funciones de autenticación
-│   ├── vehicles_api.ts     # Funciones de gestión de vehículos
-│   └── users_api.ts        # Funciones de gestión de usuarios (NUEVO)
+│   ├── vehicles_api.ts     # Funciones de gestión de vehículos + GPS positions
+│   └── users_api.ts        # Funciones de gestión de usuarios
+├── services/
+│   └── mapMatchingService.ts  # Servicio de map matching con Stadia Maps (NUEVO)
 ├── assets/                 # Imágenes y recursos estáticos
+├── public/                 # Archivos públicos estáticos (NUEVO)
+│   ├── icon.webp           # Icono de perfil (5.8KB)
+│   ├── icon-metadata.webp  # Favicon de la página (16KB)
+│   ├── onboarding.png      # Imagen de onboarding
+│   └── sw.js               # Service Worker
 ├── components/
 │   ├── Layout.tsx          # Layout principal con Sidebar y Navbar
-│   ├── Navbar.tsx          # Barra de navegación superior
-│   ├── Sidebar.tsx         # Menú lateral de navegación
+│   ├── Navbar.tsx          # Barra de navegación superior con perfil
+│   ├── Sidebar.tsx         # Menú lateral de navegación (sticky)
 │   ├── ProtectedRoute.tsx  # Guardia de rutas privadas
 │   └── PublicRoute.tsx     # Guardia de rutas públicas
 ├── context/
@@ -86,11 +124,12 @@ src/
 ├── pages/
 │   ├── AuthCallback.tsx    # Callback de verificación de email
 │   ├── EmailVerified.tsx   # Página de email verificado
-│   ├── HomePage.tsx        # Dashboard principal
+│   ├── HomePage.tsx        # Dashboard principal con mapa (ACTUALIZADO)
+│   ├── LiveFleet.tsx       # Rastreo de flota en vivo (NUEVO)
 │   ├── SignIn.tsx          # Página de inicio de sesión
 │   ├── SignUp.tsx          # Página de registro
 │   ├── Vehicles.tsx        # Gestión de vehículos
-│   └── Users.tsx           # Gestión de usuarios (NUEVO)
+│   └── Users.tsx           # Gestión de usuarios
 ├── routes/
 │   └── AppRoutes.tsx       # Configuración de rutas
 ├── styles/
@@ -98,7 +137,7 @@ src/
 ├── lib/
 │   └── supabase.ts         # Configuración de Supabase
 ├── App.tsx                 # Componente raíz
-├── main.tsx               # Punto de entrada
+├── main.tsx               # Punto de entrada con CSS de MapLibre
 └── index.css              # Estilos globales
 ```
 
@@ -112,25 +151,72 @@ Crear un archivo `.env` en la raíz del proyecto:
 VITE_SUPABASE_URL=https://rcdsqsvfxyfnrueoovpy.supabase.co
 VITE_SUPABASE_ANON_KEY=tu_clave_anonima_aqui
 VITE_SUPABASE_SERVICE_ROLE_KEY=tu_clave_service_role_aqui
+VITE_STADIA_API_KEY=tu_clave_stadia_maps_aqui
 ```
 
-> **⚠️ IMPORTANTE**: La `VITE_SUPABASE_SERVICE_ROLE_KEY` debe mantenerse **PRIVADA** y solo usarse en operaciones administrativas. Nunca la expongas en el código del cliente en producción.
+> **⚠️ IMPORTANTE**: 
+> - La `VITE_SUPABASE_SERVICE_ROLE_KEY` debe mantenerse **PRIVADA** y solo usarse en operaciones administrativas.
+> - La `VITE_STADIA_API_KEY` es opcional. Si no se proporciona, las rutas se dibujarán sin map matching.
+> - Nunca expongas estas claves en el código del cliente en producción.
 
 ### Instalación
 
 ```bash
 # Instalar dependencias
-npm install
+pnpm install
 
 # Ejecutar en modo desarrollo
-npm run dev
+pnpm run dev
 
 # Compilar para producción
-npm run build
+pnpm run build
 
 # Vista previa de producción
-npm run preview
+pnpm run preview
 ```
+
+## 🗺️ Sistema de Mapas
+
+### Configuración de MapLibre GL
+El mapa utiliza tiles de CARTO OpenStreetMap como base:
+- Centro por defecto: Manizales, Colombia `[-75.5138, 5.0703]`
+- Zoom inicial: 12
+- Tiles: `https://{a,b,c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png`
+
+### Map Matching con Stadia Maps
+Para mejorar la visualización de rutas, se utiliza la API de Stadia Maps:
+1. Las coordenadas crudas del GPS se envían a Stadia Maps
+2. El servicio devuelve una geometría optimizada que sigue las calles reales
+3. **Optimización de costos**: El map matching se ejecuta una sola vez al cargar el mapa
+4. Las actualizaciones de posición (cada 10s) NO recargan las rutas
+
+### Filtrado por Organización
+- Los buses se filtran usando Row Level Security (RLS) de Supabase
+- Solo se muestran buses de la organización del usuario autenticado
+- Las rutas solo se dibujan si tienen buses activos con GPS
+
+### Colores por Compañía
+Sistema de 10 colores predefinidos asignados consistentemente:
+```typescript
+const ORGANIZATION_COLORS = [
+  '#ef4444', // red
+  '#3b82f6', // blue
+  '#10b981', // green
+  '#f59e0b', // amber
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#14b8a6', // teal
+  '#f97316', // orange
+  '#6366f1', // indigo
+  '#84cc16', // lime
+];
+```
+
+### Actualización en Tiempo Real
+- **Intervalo**: 10 segundos
+- **Datos actualizados**: Posiciones GPS de buses
+- **Datos estáticos**: Rutas y variantes (cargados una vez)
+- **Efecto visual**: Marcadores se mueven suavemente entre posiciones
 
 ## 🔐 Sistema de Autenticación
 
@@ -278,12 +364,106 @@ export type User = {
 - **Email Confirmado Automáticamente**: Al crear usuarios mediante el endpoint admin, se pueden confirmar automáticamente con `email_confirm: true`.
 - **User Metadata**: Información adicional (nombre, teléfono) se almacena en `user_metadata` de Supabase Auth.
 
+## 📡 APIs de Vehículos y Rutas
+
+### Endpoints de Vehículos
+
+```typescript
+// Obtener vehículos de mi organización (con RLS)
+GET /rest/v1/buses?select=id,plate,capacity,status,created_at,last_maintenance,passenger_count,company:companies(id,name,short_name)&order=created_at.desc
+Headers:
+  - apikey: {anon_key}
+  - Authorization: Bearer {access_token}
+  - Content-Type: application/json
+
+// Obtener posiciones GPS de todos los buses
+GET /rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc
+Headers:
+  - apikey: {anon_key}
+  - Authorization: Bearer {access_token}
+  - Content-Type: application/json
+
+// Obtener variantes de rutas con paradas
+GET /rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active,variant_id,path,length_m_json,stops&order=route_code.asc,variant_id.asc
+Headers:
+  - apikey: {anon_key}
+  - Authorization: Bearer {access_token}
+  - Content-Type: application/json
+
+// Obtener todas las compañías
+GET /rest/v1/companies?select=id,name,short_name&order=name.asc
+Headers:
+  - apikey: {anon_key}
+  - Authorization: Bearer {access_token}
+  - Content-Type: application/json
+```
+
+### Tipos de Datos
+
+```typescript
+export type BusPosition = {
+  bus_id: string;
+  plate: string;
+  company_id: string;
+  status: string;
+  active_trip_id: string | null;
+  active_route_variant_id: string | null;
+  vp_id: string;
+  vp_at: string;
+  location_json: BusLocation;
+  speed_kph: number;
+  heading: number;
+};
+
+export type RouteVariant = {
+  route_id: string;
+  route_code: string;
+  route_name: string;
+  route_active: boolean;
+  variant_id: string;
+  path: BusLocation[];
+  length_m_json: number;
+  stops: RouteStop[];
+};
+
+export type Company = {
+  id: string;
+  name: string;
+  short_name: string;
+  org_key: string;
+};
+```
+
+### Filtrado y Optimización
+1. **Primera carga**:
+   - `getVehicles()` → Buses de mi organización (filtrados por RLS)
+   - `getBusPositions()` → Todas las posiciones GPS del sistema
+   - Filtrado local: Solo posiciones de buses en `myVehicles`
+   - Solo se dibujan rutas con buses que tienen GPS activo
+
+2. **Auto-refresh (cada 10s)**:
+   - Solo actualiza `getBusPositions()`
+   - Usa `vehiclesRef` para mantener el filtro sin recargar vehículos
+   - No recarga rutas (optimización de costos de map matching)
+
+3. **Lógica de filtrado**:
+```typescript
+const myBusIds = new Set(vehicles.map(v => v.id));
+const filteredPositions = data.filter(pos => 
+  myBusIds.has(pos.bus_id) && 
+  pos.active_route_variant_id && 
+  pos.company_id && 
+  pos.location_json
+);
+```
+
 ## 🎨 Estilos y UI
 
 ### Diseño Responsivo
 - Tailwind CSS con configuración personalizada
 - Layout adaptable a diferentes tamaños de pantalla
 - Modales centrados con overlay semi-transparente
+- Sidebar con posición fixed para scroll persistente
 
 ### Paleta de Colores
 - Primario: Verde (#10B981, #059669)
@@ -297,6 +477,7 @@ export type User = {
 - **Formularios**: Inputs con validación visual y mensajes de error
 - **Tablas**: Filas con hover y selección destacada
 - **Botones**: Variantes primary, secondary, outline, danger
+- **Mapas**: Controles flotantes con fondo blanco y sombras
 
 ## 🔄 Manejo de Estados
 

@@ -33,6 +33,42 @@ export type Company = {
   org_key: string;
 };
 
+export type BusLocation = {
+  lat: number;
+  lng: number;
+};
+
+export type BusPosition = {
+  bus_id: string;
+  plate: string;
+  company_id: string;
+  status: string;
+  active_trip_id: string | null;
+  active_route_variant_id: string | null;
+  vp_id: string;
+  vp_at: string;
+  location_json: BusLocation;
+  speed_kph: number;
+  heading: number;
+};
+
+export type RouteStop = {
+  id: string;
+  name: string;
+  location: BusLocation;
+};
+
+export type RouteVariant = {
+  route_id: string;
+  route_code: string;
+  route_name: string;
+  route_active: boolean;
+  variant_id: string;
+  path: BusLocation[];
+  length_m_json: number;
+  stops: RouteStop[];
+};
+
 // Helper para obtener el token del localStorage
 function getAuthToken(): string | null {
   return localStorage.getItem('access_token');
@@ -262,4 +298,54 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
   }
 
   console.log('✅ Vehículo eliminado exitosamente');
+}
+
+// Obtener las posiciones actuales de todos los buses
+export async function getBusPositions(): Promise<BusPosition[]> {
+  const token = getAuthToken();
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Get bus positions error:', errorText);
+    throw new Error(`Get bus positions failed: ${res.status} ${errorText}`);
+  }
+
+  return await res.json();
+}
+
+// Obtener las variantes de rutas con sus paradas
+export async function getRouteVariants(): Promise<RouteVariant[]> {
+  const token = getAuthToken();
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active,variant_id,path,length_m_json,stops&order=route_code.asc,variant_id.asc`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Get route variants error:', errorText);
+    throw new Error(`Get route variants failed: ${res.status} ${errorText}`);
+  }
+
+  return await res.json();
 }
