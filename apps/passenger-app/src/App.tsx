@@ -12,6 +12,7 @@ import { Route, Redirect } from 'react-router-dom';
 import AnimatedTabIcon from './shared/components/AnimatedTabIcon';
 import GlobalLoader from './features/system/components/GlobalLoader';
 import RouteGuard from './components/RouteGuard';
+import RecoveryRedirect from './features/auth/components/RecoveryRedirect';
 import { useActiveTab } from './features/system/hooks/useActiveTab';
 
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
@@ -28,6 +29,15 @@ const ChangePasswordPage = lazy(
 const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
 const TwoFAPage = lazy(() => import('./features/auth/pages/TwoFAPage'));
+const ForgotPasswordPage = lazy(
+  () => import('./features/auth/pages/ForgotPasswordPage'),
+);
+const ResetPasswordPage = lazy(
+  () => import('./features/auth/pages/ResetPasswordPage'),
+);
+const ExpiredLinkPage = lazy(
+  () => import('./features/auth/pages/ExpiredLinkPage'),
+);
 const LocationPermissionPage = lazy(
   () => import('./features/system/pages/LocationPermissionPage'),
 );
@@ -121,6 +131,7 @@ export default function App() {
   return (
     <IonApp>
       <IonReactRouter>
+        <RecoveryRedirect />
         <IonRouterOutlet>
           <Route exact path="/location-permission">
             <Suspense fallback={<GlobalLoader />}>
@@ -147,14 +158,58 @@ export default function App() {
               <TwoFAPage />
             </Suspense>
           </Route>
+          <Route exact path="/forgot-password">
+            <Suspense fallback={<GlobalLoader />}>
+              <ForgotPasswordPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/reset-password">
+            <Suspense fallback={<GlobalLoader />}>
+              <ResetPasswordPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/expired-link">
+            <Suspense fallback={<GlobalLoader />}>
+              <ExpiredLinkPage />
+            </Suspense>
+          </Route>
           <Route exact path="/perfil/cerrar-sesion">
             <Suspense fallback={<GlobalLoader />}>
               <LogoutConfirmationPage />
             </Suspense>
           </Route>
-          <Route exact path="/">
-            <Redirect to="/location-permission" />
-          </Route>
+          <Route
+            exact
+            path="/"
+            render={() => {
+              // Verificar si hay un hash de recuperación o error
+              const hash = globalThis.location.hash;
+              if (hash) {
+                const params = new URLSearchParams(hash.substring(1));
+                const type = params.get('type');
+                const error = params.get('error');
+                const errorCode = params.get('error_code');
+
+                // Si hay un error de token expirado
+                if (error === 'access_denied' && errorCode === 'otp_expired') {
+                  console.log(
+                    '❌ Token expirado detectado, redirigiendo a /expired-link',
+                  );
+                  return <Redirect to="/expired-link" />;
+                }
+
+                // Si es un enlace de recuperación válido
+                if (type === 'recovery') {
+                  console.log(
+                    '🔐 Recuperación detectada en raíz, redirigiendo a /reset-password con hash',
+                  );
+                  // Preservar el hash en la redirección
+                  return <Redirect to={`/reset-password${hash}`} />;
+                }
+              }
+              return <Redirect to="/location-permission" />;
+            }}
+          />
           <Route>
             <TabsWithIcons />
           </Route>

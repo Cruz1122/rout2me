@@ -107,3 +107,47 @@ h6 { font-size: 0.75rem; }   /* 12px - Pequeños */
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
+
+/* Animación de rotación para el botón de geolocalización */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animación de pulso para el marcador de ubicación del usuario */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(30, 86, 160, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(30, 86, 160, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(30, 86, 160, 0);
+  }
+}
+
+/* Animación mejorada para el nuevo marcador */
+@keyframes pulse-marker {
+  0% {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(30, 86, 160, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3), 0 0 0 15px rgba(30, 86, 160, 0);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(30, 86, 160, 0);
+  }
+}
+
+/* Estilos para el marcador de ubicación del usuario */
+.user-location-marker,
+.user-location-marker-v2 {
+  /* NO aplicar transform, MapLibre maneja el posicionamiento con anchor: 'center' */
+  display: block;
+  box-sizing: border-box;
+}

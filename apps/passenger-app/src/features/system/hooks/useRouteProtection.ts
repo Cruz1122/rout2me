@@ -15,8 +15,9 @@ export function isPublicRoute(pathname: string): boolean {
     '/register',
     '/email-verification',
     '/email-confirmation', // Alternativa común para verificación de email
-    '/forgot-password', // Por si se implementa en el futuro
-    '/reset-password', // Por si se implementa en el futuro
+    '/forgot-password', // Recuperación de contraseña
+    '/reset-password', // Restablecer contraseña
+    '/expired-link', // Enlace expirado
     '/2fa', // Verificación de dos factores
     '/location-permission', // Permisos de ubicación
   ];
