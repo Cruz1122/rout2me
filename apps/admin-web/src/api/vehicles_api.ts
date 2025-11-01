@@ -183,15 +183,6 @@ export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
     );
   }
 
-  console.log('=== CREATE VEHICLE DEBUG ===');
-  console.log('User ID from localStorage:', userId);
-  console.log('Vehicle data being sent:', JSON.stringify(payload, null, 2));
-  console.log(
-    'Using token:',
-    token ? `${token.substring(0, 20)}...` : 'No token',
-  );
-  console.log('Full URL:', `${SUPABASE_URL}/rest/v1/buses`);
-
   const res = await fetch(`${SUPABASE_URL}/rest/v1/buses`, {
     method: 'POST',
     headers: {
@@ -259,10 +250,6 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
     );
   }
 
-  console.log('=== DELETE VEHICLE DEBUG ===');
-  console.log('Vehicle ID:', vehicleId);
-  console.log('Full URL:', `${SUPABASE_URL}/rest/v1/buses?id=eq.${vehicleId}`);
-
   const res = await fetch(`${SUPABASE_URL}/rest/v1/buses?id=eq.${vehicleId}`, {
     method: 'DELETE',
     headers: {
@@ -296,8 +283,6 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
       throw new Error(`Delete vehicle failed: ${res.status} ${errorText}`);
     }
   }
-
-  console.log('✅ Vehículo eliminado exitosamente');
 }
 
 // Obtener las posiciones actuales de todos los buses

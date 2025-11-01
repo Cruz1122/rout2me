@@ -100,11 +100,17 @@ export default function Navbar() {
                 />
               )}
             </Link>
-            <span
-              className={`${colorClasses.textTerciary} text-sm font-medium leading-normal cursor-not-allowed pb-1`}
+            <Link
+              to="/routes"
+              className={`relative text-sm font-medium leading-normal pb-1 ${colorClasses.textPrimary} hover:text-[#1E56A0]`}
             >
               Rutas
-            </span>
+              {isActive('/routes') && (
+                <span
+                  className={`absolute bottom-0 left-0 right-0 h-0.5 ${colorClasses.bgSecondary}`}
+                />
+              )}
+            </Link>
             <span
               className={`${colorClasses.textTerciary} text-sm font-medium leading-normal cursor-not-allowed pb-1`}
             >

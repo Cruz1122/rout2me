@@ -23,42 +23,81 @@ import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import { RiAddLine, RiSubtractLine, RiCompassLine } from 'react-icons/ri';
 import { processRouteWithCoordinates } from '../services/mapMatchingService';
 
-// Paleta de colores para organizaciones
-const ORGANIZATION_COLORS = [
-  '#ef4444', // red
-  '#3b82f6', // blue
+// Colores específicos por compañía
+const COMPANY_COLORS: Record<string, string> = {
+  SOCOBUSES: '#3b82f6', // Azul
+  GRANCALDAS: '#f97316', // Naranja
+  SIDERAL: '#ef4444', // Rojo (para el rojo de sideral)
+};
+
+// Colores de respaldo para otras compañías
+const FALLBACK_COLORS = [
   '#10b981', // green
   '#f59e0b', // amber
   '#8b5cf6', // purple
   '#ec4899', // pink
   '#14b8a6', // teal
-  '#f97316', // orange
   '#6366f1', // indigo
   '#84cc16', // lime
 ];
 
-// Función para obtener color consistente por organización
-function getOrganizationColor(
-  organizationId: string | null | undefined,
+// Función para obtener color por nombre de compañía
+function getCompanyColor(
+  companyId: string | null | undefined,
+  companyMap: Map<string, Company>,
   colorMap: Map<string, string>,
 ): string {
-  // Si no hay organizationId, usar un color por defecto
-  if (!organizationId) {
-    return '#64748b'; // slate-500
+  // Si no hay companyId, usar un color por defecto
+  if (!companyId) {
+    return '#64748b'; // slate-500 (gris)
   }
 
-  // Si está en el mapa, usar ese color
-  if (colorMap.has(organizationId)) {
-    return colorMap.get(organizationId)!;
+  // Si ya está en el mapa de colores, retornar ese color
+  if (colorMap.has(companyId)) {
+    return colorMap.get(companyId)!;
   }
 
-  // Fallback: usar hash simple del ID para obtener un índice consistente
-  let hash = 0;
-  for (let i = 0; i < organizationId.length; i++) {
-    hash = organizationId.charCodeAt(i) + ((hash << 5) - hash);
+  // Buscar el nombre de la compañía
+  const company = companyMap.get(companyId);
+  let assignedColor: string = '#64748b'; // Color por defecto
+
+  if (company) {
+    const companyName = company.short_name || company.name;
+    const upperName = companyName.toUpperCase();
+
+    // Buscar coincidencia en los colores predefinidos
+    let foundColor = false;
+    for (const [key, color] of Object.entries(COMPANY_COLORS)) {
+      if (upperName.includes(key)) {
+        assignedColor = color;
+        foundColor = true;
+        break;
+      }
+    }
+
+    // Si no hay coincidencia, usar un color de respaldo basado en hash
+    if (!foundColor) {
+      let hash = 0;
+      for (let i = 0; i < companyId.length; i++) {
+        hash = companyId.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const index = Math.abs(hash) % FALLBACK_COLORS.length;
+      assignedColor = FALLBACK_COLORS[index];
+    }
+  } else {
+    // Si no se encuentra la compañía, usar color basado en hash del ID
+    let hash = 0;
+    for (let i = 0; i < companyId.length; i++) {
+      hash = companyId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % FALLBACK_COLORS.length;
+    assignedColor = FALLBACK_COLORS[index];
   }
-  const index = Math.abs(hash) % ORGANIZATION_COLORS.length;
-  return ORGANIZATION_COLORS[index];
+
+  // IMPORTANTE: Guardar el color en el mapa para uso futuro
+  colorMap.set(companyId, assignedColor);
+
+  return assignedColor;
 }
 
 export default function HomePage() {
@@ -112,7 +151,6 @@ export default function HomePage() {
   const loadVehicles = async () => {
     try {
       const data = await getVehicles();
-      console.log('Vehicles loaded (my org):', data.length);
       setVehicles(data);
       vehiclesRef.current = data; // Actualizar la ref inmediatamente
       return data; // Retornar para usarlo inmediatamente
@@ -125,7 +163,6 @@ export default function HomePage() {
   const loadBusPositions = useCallback(async (myVehicles?: Vehicle[]) => {
     try {
       const data = await getBusPositions();
-      console.log('All bus positions loaded:', data.length);
 
       // Usar los vehículos pasados como parámetro o los de la ref actualizada
       const vehiclesToFilter = myVehicles || vehiclesRef.current;
@@ -138,8 +175,6 @@ export default function HomePage() {
       const myBusIds = new Set(vehiclesToFilter.map((v) => v.id));
       const filteredPositions = data.filter((pos) => myBusIds.has(pos.bus_id));
 
-      console.log('Filtered bus positions (my org):', filteredPositions.length);
-      console.log('My bus IDs:', Array.from(myBusIds));
       setBusPositions(filteredPositions);
     } catch (error) {
       console.error('Error loading bus positions:', error);
@@ -149,7 +184,6 @@ export default function HomePage() {
   const loadRouteVariants = async () => {
     try {
       const data = await getRouteVariants();
-      console.log('Route variants loaded:', data.length);
       setRouteVariants(data);
     } catch (error) {
       console.error('Error loading route variants:', error);
@@ -159,22 +193,41 @@ export default function HomePage() {
   const loadCompanies = async () => {
     try {
       const data = await getCompanies();
-      console.log('Companies loaded:', data.length);
       setCompanies(data);
     } catch (error) {
       console.error('Error loading companies:', error);
     }
   };
 
-  // Crear mapeo de company_id a color
-  const companyColorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    companies.forEach((company, index) => {
-      const colorIndex = index % ORGANIZATION_COLORS.length;
-      map.set(company.id, ORGANIZATION_COLORS[colorIndex]);
+  // Crear mapeo de company_id a Company para búsquedas rápidas
+  const companyMap = useMemo(() => {
+    const map = new Map<string, Company>();
+    companies.forEach((company) => {
+      map.set(company.id, company);
     });
     return map;
   }, [companies]);
+
+  // Crear mapeo de company_id a color basándose en el nombre de la compañía
+  const companyColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+
+    // Obtener todos los company_id únicos de los buses con posición
+    const uniqueCompanyIds = new Set<string>();
+    busPositions.forEach((pos) => {
+      if (pos.company_id) {
+        uniqueCompanyIds.add(pos.company_id);
+      }
+    });
+
+    // Asignar colores a cada company_id basándose en el nombre de la compañía
+    uniqueCompanyIds.forEach((companyId) => {
+      const color = getCompanyColor(companyId, companyMap, map);
+      map.set(companyId, color);
+    });
+
+    return map;
+  }, [busPositions, companyMap]);
 
   // Inicializar mapa
   useEffect(() => {
@@ -210,7 +263,6 @@ export default function HomePage() {
     });
 
     map.on('load', () => {
-      console.log('Map loaded successfully');
       map.resize();
       setMapReady(true);
     });
@@ -239,15 +291,15 @@ export default function HomePage() {
     )
       return;
 
-    // Verificar si ya se dibujaron las rutas
-    if (routeLayersIds.current.size > 0) return;
+    // Verificar que las compañías estén cargadas
+    if (companyMap.size === 0) {
+      return;
+    }
 
-    console.log(
-      'Drawing routes on map. Map ready:',
-      mapReady,
-      'Routes:',
-      routeVariants.length,
-    );
+    // IMPORTANTE: Solo dibujar rutas UNA VEZ para evitar consumir API de map matching
+    if (routeLayersIds.current.size > 0) {
+      return;
+    }
 
     const drawAllRoutes = async () => {
       // Obtener API key
@@ -277,46 +329,9 @@ export default function HomePage() {
         }
       });
 
-      console.log('=== DEBUG ROUTE DRAWING ===');
-      console.log('Bus positions with GPS:', busPositions.length);
-      console.log(
-        'Bus positions detail:',
-        busPositions.map((p) => ({
-          bus_id: p.bus_id,
-          plate: p.plate,
-          active_route_variant_id: p.active_route_variant_id,
-          company_id: p.company_id,
-          has_location: !!p.location_json,
-        })),
-      );
-      console.log(
-        'Route-Bus map (only buses with GPS):',
-        Array.from(routeBusMap.entries()),
-      );
-      console.log('All route variants:', routeVariants.length);
-      console.log(
-        'Route variants detail:',
-        routeVariants.map((r) => ({
-          variant_id: r.variant_id,
-          route_code: r.route_code,
-          route_name: r.route_name,
-        })),
-      );
-
       // Filtrar solo las rutas que tienen buses activos CON UBICACIÓN GPS
       const activeRoutes = routeVariants.filter((route) =>
         routeBusMap.has(route.variant_id),
-      );
-
-      console.log(
-        `Drawing ${activeRoutes.length} active routes (out of ${routeVariants.length} total routes)`,
-      );
-      console.log(
-        'Active routes:',
-        activeRoutes.map((r) => ({
-          variant_id: r.variant_id,
-          route_code: r.route_code,
-        })),
       );
 
       // Actualizar el contador de rutas activas para los KPIs
@@ -344,19 +359,49 @@ export default function HomePage() {
             geometry: processedRoute.matchedGeometry,
           };
 
-          // Dibujar una capa por cada bus en esta ruta
+          // Dibujar una capa por cada compañía única en esta ruta
+          const uniqueCompanies = new Map<
+            string,
+            { busId: string; companyId: string }
+          >();
           busesOnRoute.forEach((bus) => {
-            const sourceId = `route-${route.variant_id}-bus-${bus.busId}`;
+            if (!uniqueCompanies.has(bus.companyId)) {
+              uniqueCompanies.set(bus.companyId, bus);
+            }
+          });
+
+          // Convertir a array para poder indexar
+          const companiesArray = Array.from(uniqueCompanies.values());
+          const totalCompanies = companiesArray.length;
+
+          companiesArray.forEach((bus, companyIndex) => {
+            const sourceId = `route-${route.variant_id}-company-${bus.companyId}`;
             const layerId = sourceId;
             routeLayersIds.current.add(layerId);
 
             // Color según la empresa del bus
-            const color = getOrganizationColor(bus.companyId, companyColorMap);
+            const color = getCompanyColor(
+              bus.companyId,
+              companyMap,
+              companyColorMap,
+            );
+            const companyName =
+              companyMap.get(bus.companyId)?.name || 'Unknown';
+
+            // Calcular offset lateral para rutas compartidas
+            // Si hay múltiples compañías, distribuir las líneas lateralmente
+            let lineOffset = 0;
+            if (totalCompanies > 1) {
+              // Desplazamiento de -2 a +2 metros por compañía
+              const offsetRange = 4; // rango total en metros
+              const step = offsetRange / (totalCompanies - 1);
+              lineOffset = companyIndex * step - offsetRange / 2;
+            }
 
             // Opacidad inicial
             const opacity = 0.7;
 
-            // Agregar source y layer para esta combinación ruta-bus
+            // Agregar source y layer para esta combinación ruta-compañía
             mapInstance.current!.addSource(sourceId, {
               type: 'geojson',
               data: routeGeoJSON,
@@ -374,6 +419,7 @@ export default function HomePage() {
                 'line-color': color,
                 'line-width': 3,
                 'line-opacity': opacity,
+                'line-offset': lineOffset, // Offset lateral para rutas compartidas
               },
             });
           });
@@ -384,39 +430,44 @@ export default function HomePage() {
     };
 
     drawAllRoutes();
-  }, [routeVariants, busPositions, mapReady, companyColorMap]);
+  }, [routeVariants, busPositions, mapReady, companyColorMap, companyMap]);
 
   // Actualizar opacidad de rutas cuando cambia la selección
   useEffect(() => {
     if (!mapInstance.current || routeLayersIds.current.size === 0) return;
 
+    // Obtener el company_id del bus seleccionado
+    let selectedBusCompanyId: string | null = null;
+    if (selectedBusId) {
+      const selectedBusPosition = busPositions.find(
+        (pos) => pos.bus_id === selectedBusId,
+      );
+      if (selectedBusPosition) {
+        selectedBusCompanyId = selectedBusPosition.company_id;
+      }
+    }
+
     // Actualizar opacidad de todas las rutas
     routeLayersIds.current.forEach((layerId) => {
       if (!mapInstance.current!.getLayer(layerId)) return;
 
-      // Extraer el busId del layerId (formato: route-{variant_id}-bus-{busId})
-      const busId = layerId.split('-bus-')[1];
+      // Extraer el companyId del layerId (formato: route-{variant_id}-company-{companyId})
+      const companyId = layerId.split('-company-')[1];
 
       // Determinar opacidad
-      const isBusSelected = selectedBusId === busId;
-      const opacity = selectedBusId === null || isBusSelected ? 0.7 : 0.2;
+      // Si no hay bus seleccionado, todas las rutas al 70%
+      // Si hay bus seleccionado, resaltar solo la ruta de su compañía
+      const isCompanySelected = selectedBusCompanyId === companyId;
+      const opacity = selectedBusId === null || isCompanySelected ? 0.7 : 0.2;
 
       // Actualizar opacidad
       mapInstance.current!.setPaintProperty(layerId, 'line-opacity', opacity);
     });
-  }, [selectedBusId]);
+  }, [selectedBusId, busPositions]);
 
   // Actualizar marcadores de vehículos
   useEffect(() => {
     if (!mapInstance.current) return;
-
-    console.log(
-      'Updating vehicle markers:',
-      vehicles.length,
-      'vehicles,',
-      busPositions.length,
-      'positions',
-    );
 
     // Limpiar marcadores existentes
     vehicleMarkers.current.forEach((marker) => marker.remove());
@@ -433,17 +484,11 @@ export default function HomePage() {
       markersAdded++;
 
       // Obtener color según la compañía (usar company_id de position, no de vehicle)
-      const color = getOrganizationColor(position.company_id, companyColorMap);
-
-      // Log para debug (solo para el primer marcador)
-      if (markersAdded === 1) {
-        console.log('First marker color:', {
-          company_id: position.company_id,
-          color: color,
-          hasInMap: companyColorMap.has(position.company_id),
-          mapSize: companyColorMap.size,
-        });
-      }
+      const color = getCompanyColor(
+        position.company_id,
+        companyMap,
+        companyColorMap,
+      );
 
       // Determinar opacidad basada en selección
       const isSelected = selectedBusId === position.bus_id;
@@ -506,9 +551,14 @@ export default function HomePage() {
 
       vehicleMarkers.current.set(vehicle.id, marker);
     });
-
-    console.log('Markers added to map:', markersAdded);
-  }, [vehicles, busPositions, companyColorMap, selectedBusId, companies]);
+  }, [
+    vehicles,
+    busPositions,
+    companyColorMap,
+    companyMap,
+    selectedBusId,
+    companies,
+  ]);
 
   // Manejo de controles del mapa
   const handleZoomIn = useCallback(() => {
@@ -864,15 +914,6 @@ export default function HomePage() {
                 </div>
               );
             })}
-
-            {/* Leyenda para rutas */}
-            <div className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: '#94a3b8' }}
-              ></div>
-              <span className="text-xs text-[#646f87]">Rutas</span>
-            </div>
           </div>
         </div>
       </div>

@@ -17,12 +17,20 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Persistencia de Sesión**: Los tokens se mantienen al recargar la página
 - **Rutas Protegidas**: Sistema de guardias para proteger el dashboard
 
-### Dashboard con Mapas en Tiempo Real (NUEVO)
+### Dashboard con Mapas en Tiempo Real
 - **Mapa Interactivo**: Visualización con MapLibre GL y tiles de CARTO OpenStreetMap
 - **Buses en Tiempo Real**: Marcadores de buses con posición GPS actualizada cada 10 segundos
 - **Rutas Dinámicas**: Dibujo automático de rutas con Map Matching (Stadia Maps API)
-- **Colores por Organización**: Cada compañía tiene un color único para identificar sus buses y rutas
-- **Selección de Buses**: Click en bus para destacarlo (reduce opacidad de otros buses/rutas a 20%)
+- **Colores por Compañía**: Sistema inteligente de asignación de colores
+  - Colores específicos para compañías conocidas (SOCOBUSES: Azul, GRANCALDAS: Naranja, SIDERAL: Rojo)
+  - Colores de respaldo basados en hash para otras compañías
+  - Consistencia visual en todas las vistas
+- **Selección de Buses**: Click en bus para destacarlo
+  - Resalta buses de la misma compañía
+  - Reduce opacidad de otras compañías a 20%
+- **Rutas Compartidas**: Visualización optimizada
+  - Offset lateral automático para múltiples compañías en la misma ruta
+  - Separación visual de -2 a +2 metros por compañía
 - **Leyenda Dinámica**: Lista de compañías con sus colores asignados
 - **Controles de Mapa**:
   - Zoom In/Out
@@ -42,6 +50,7 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
   - Tasa de Puntualidad
   - Actualización de Telemetría
 - **Optimización de Costos**: Map matching se ejecuta solo una vez al cargar, no en cada refresh
+- **Código Limpio**: Sin console.log en producción para mejor rendimiento
 
 ### Gestión de Vehículos
 - **Lista de Vehículos**: Visualización de todos los buses registrados con paginación
@@ -54,7 +63,7 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Búsqueda en Tiempo Real**: Filtrado por placa del vehículo
 - **Integración con API Real**: Conexión directa con Supabase REST API
 
-### Rastreo de Flota en Vivo (LiveFleet) (NUEVO)
+### Rastreo de Flota en Vivo (LiveFleet)
 - **Mapa de Seguimiento**: Vista de mapa completo con todos los buses activos
 - **Búsqueda de Vehículos**: Filtro por placa en tiempo real
 - **Visualización de Rutas**: Al seleccionar un bus, muestra su ruta completa con paradas
@@ -62,6 +71,36 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Auto-refresh**: Actualización automática de posiciones cada 10 segundos
 - **Controles de Navegación**: Zoom, reset norte, centrar en usuario
 - **Panel Lateral**: Lista de vehículos con información de estado y selección
+
+### Gestión de Rutas (NUEVO)
+- **Vista de Dos Columnas**: Panel de detalles izquierdo y lista de rutas derecha
+- **CRUD Completo de Rutas**:
+  - Crear nueva ruta con código, nombre y estado activo/inactivo
+  - Editar rutas existentes
+  - Eliminar rutas con confirmación
+  - Búsqueda en tiempo real por código o nombre
+- **Gestión de Variantes de Ruta**:
+  - Múltiples variantes por ruta (ida, vuelta, alternativas)
+  - Editor de mapa interactivo para dibujar trazados
+  - Visualización de distancia calculada en kilómetros
+  - CRUD completo para variantes
+- **Editor de Mapa Interactivo**:
+  - Click en mapa para agregar puntos de ruta
+  - Marcadores numerados y arrastrables
+  - Click en marcador para eliminar punto específico
+  - Botón "Deshacer" para eliminar último punto
+  - Botón "Limpiar Todo" para reiniciar
+  - Línea azul conectando puntos en tiempo real
+  - Validación mínima de 2 puntos
+  - Contador de puntos y segmentos
+- **Detalles de Ruta**: Panel lateral mostrando
+  - ID, código, nombre
+  - Estado (activa/inactiva)
+  - Fecha de creación
+  - Lista de variantes con número de puntos
+- **Paginación y Filtros**: Selector de filas por página (5, 10, 15) y búsqueda
+- **Toast Notifications**: Feedback visual para todas las operaciones
+- **Integración con APIs**: Conexión directa con Supabase para rutas y variantes
 
 ### Gestión de Usuarios
 - **Lista de Usuarios**: Visualización completa de usuarios del sistema
@@ -93,52 +132,57 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Tailwind CSS 4.1.14** - Estilos utility-first
 - **Supabase** - Backend as a Service
 - **Fetch API** - Peticiones HTTP (sin SDK de Supabase)
-- **MapLibre GL 5.9.0** (NUEVO) - Renderizado de mapas open-source
-- **React Icons 5.5.0** (NUEVO) - Iconos para controles de UI
-- **Stadia Maps API** (NUEVO) - Map matching para rutas optimizadas
+- **MapLibre GL 5.9.0** - Renderizado de mapas open-source
+- **React Icons 5.5.0** - Iconos para controles de UI
+- **Stadia Maps API** - Map matching para rutas optimizadas
+- **GeoJSON** - Formato estándar para geometrías de rutas
 
 ## 📁 Estructura del Proyecto
 
 ```
 src/
 ├── api/
-│   ├── auth_api.ts         # Funciones de autenticación
-│   ├── vehicles_api.ts     # Funciones de gestión de vehículos + GPS positions
-│   └── users_api.ts        # Funciones de gestión de usuarios
+│   ├── auth_api.ts              # Funciones de autenticación
+│   ├── vehicles_api.ts          # Gestión de vehículos + GPS positions
+│   ├── users_api.ts             # Gestión de usuarios
+│   ├── routes_api.ts            # CRUD de rutas (NUEVO)
+│   └── route_variants_api.ts   # CRUD de variantes de rutas (NUEVO)
 ├── services/
-│   └── mapMatchingService.ts  # Servicio de map matching con Stadia Maps (NUEVO)
-├── assets/                 # Imágenes y recursos estáticos
-├── public/                 # Archivos públicos estáticos (NUEVO)
-│   ├── icon.webp           # Icono de perfil (5.8KB)
-│   ├── icon-metadata.webp  # Favicon de la página (16KB)
-│   ├── onboarding.png      # Imagen de onboarding
-│   └── sw.js               # Service Worker
+│   └── mapMatchingService.ts    # Servicio de map matching con Stadia Maps
+├── assets/                      # Imágenes y recursos estáticos
+├── public/                      # Archivos públicos estáticos
+│   ├── icon.webp                # Icono de perfil (5.8KB)
+│   ├── icon-metadata.webp       # Favicon de la página (16KB)
+│   ├── onboarding.png           # Imagen de onboarding
+│   └── sw.js                    # Service Worker
 ├── components/
-│   ├── Layout.tsx          # Layout principal con Sidebar y Navbar
-│   ├── Navbar.tsx          # Barra de navegación superior con perfil
-│   ├── Sidebar.tsx         # Menú lateral de navegación (sticky)
-│   ├── ProtectedRoute.tsx  # Guardia de rutas privadas
-│   └── PublicRoute.tsx     # Guardia de rutas públicas
+│   ├── Layout.tsx               # Layout principal con Sidebar y Navbar
+│   ├── Navbar.tsx               # Barra de navegación superior con perfil
+│   ├── Sidebar.tsx              # Menú lateral de navegación (sticky)
+│   ├── RouteMapEditor.tsx       # Editor de mapa para rutas (NUEVO)
+│   ├── ProtectedRoute.tsx       # Guardia de rutas privadas
+│   └── PublicRoute.tsx          # Guardia de rutas públicas
 ├── context/
-│   └── AuthContext.tsx     # Contexto global de autenticación
+│   └── AuthContext.tsx          # Contexto global de autenticación
 ├── pages/
-│   ├── AuthCallback.tsx    # Callback de verificación de email
-│   ├── EmailVerified.tsx   # Página de email verificado
-│   ├── HomePage.tsx        # Dashboard principal con mapa (ACTUALIZADO)
-│   ├── LiveFleet.tsx       # Rastreo de flota en vivo (NUEVO)
-│   ├── SignIn.tsx          # Página de inicio de sesión
-│   ├── SignUp.tsx          # Página de registro
-│   ├── Vehicles.tsx        # Gestión de vehículos
-│   └── Users.tsx           # Gestión de usuarios
+│   ├── AuthCallback.tsx         # Callback de verificación de email
+│   ├── EmailVerified.tsx        # Página de email verificado
+│   ├── HomePage.tsx             # Dashboard principal con mapa
+│   ├── LiveFleet.tsx            # Rastreo de flota en vivo
+│   ├── Routes.tsx               # Gestión de rutas y variantes (NUEVO)
+│   ├── SignIn.tsx               # Página de inicio de sesión
+│   ├── SignUp.tsx               # Página de registro
+│   ├── Vehicles.tsx             # Gestión de vehículos
+│   └── Users.tsx                # Gestión de usuarios
 ├── routes/
-│   └── AppRoutes.tsx       # Configuración de rutas
+│   └── AppRoutes.tsx            # Configuración de rutas
 ├── styles/
-│   └── colors.ts           # Paleta de colores centralizada
+│   └── colors.ts                # Paleta de colores centralizada
 ├── lib/
-│   └── supabase.ts         # Configuración de Supabase
-├── App.tsx                 # Componente raíz
-├── main.tsx               # Punto de entrada con CSS de MapLibre
-└── index.css              # Estilos globales
+│   └── supabase.ts              # Configuración de Supabase
+├── App.tsx                      # Componente raíz
+├── main.tsx                     # Punto de entrada con CSS de MapLibre
+└── index.css                    # Estilos globales
 ```
 
 ## 🔧 Configuración

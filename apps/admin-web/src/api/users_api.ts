@@ -47,11 +47,7 @@ function getAuthToken(): string | null {
 
 // Obtener todos los usuarios
 export async function getUsers(): Promise<User[]> {
-  console.log('=== GET USERS DEBUG ===');
-  console.log('SUPABASE_URL:', SUPABASE_URL);
-
   const url = `${SUPABASE_URL}/auth/v1/admin/users?per_page=50&page=1`;
-  console.log('Full URL:', url);
 
   const res = await fetch(url, {
     method: 'GET',
@@ -62,8 +58,6 @@ export async function getUsers(): Promise<User[]> {
     },
   });
 
-  console.log('Response status:', res.status);
-
   if (!res.ok) {
     const errorText = await res.text();
     console.error('Get users error:', errorText);
@@ -71,11 +65,9 @@ export async function getUsers(): Promise<User[]> {
   }
 
   const data = await res.json();
-  console.log('Raw response data:', data);
 
   // La respuesta tiene estructura { users: [...], aud: "..." }
   const usersArray = data.users || [];
-  console.log('Number of users:', usersArray.length);
 
   return usersArray.map((user: any) => ({
     id: user.id,
@@ -113,11 +105,7 @@ export async function getUserRole(userId: string): Promise<UserRole | null> {
 
 // Crear un nuevo usuario (Admin endpoint)
 export async function createUser(payload: UserCreate): Promise<User> {
-  console.log('=== CREATE USER DEBUG ===');
-  console.log('User data being sent:', JSON.stringify(payload, null, 2));
-
   const url = `${SUPABASE_URL}/auth/v1/admin/users`;
-  console.log('Full URL:', url);
 
   const res = await fetch(url, {
     method: 'POST',
@@ -128,8 +116,6 @@ export async function createUser(payload: UserCreate): Promise<User> {
     },
     body: JSON.stringify(payload),
   });
-
-  console.log('Response status:', res.status);
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -146,7 +132,6 @@ export async function createUser(payload: UserCreate): Promise<User> {
   }
 
   const newUser = await res.json();
-  console.log('✅ Usuario creado:', newUser);
 
   return {
     id: newUser.id,
@@ -164,12 +149,7 @@ export async function updateUser(
   userId: string,
   payload: UserUpdate,
 ): Promise<User> {
-  console.log('=== UPDATE USER DEBUG ===');
-  console.log('User ID:', userId);
-  console.log('Update data:', JSON.stringify(payload, null, 2));
-
   const url = `${SUPABASE_URL}/auth/v1/admin/users/${userId}`;
-  console.log('Full URL:', url);
 
   const res = await fetch(url, {
     method: 'PUT',
@@ -180,8 +160,6 @@ export async function updateUser(
     },
     body: JSON.stringify(payload),
   });
-
-  console.log('Response status:', res.status);
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -198,7 +176,6 @@ export async function updateUser(
   }
 
   const updatedUser = await res.json();
-  console.log('✅ Usuario actualizado:', updatedUser);
 
   return {
     id: updatedUser.id,
