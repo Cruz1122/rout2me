@@ -39,7 +39,6 @@ export function useUserLocationMarker(
   const createMarker = useCallback(
     (lng: number, lat: number) => {
       if (!mapInstance.current) {
-        console.warn('⚠️ Mapa no disponible');
         return null;
       }
 
@@ -60,8 +59,6 @@ export function useUserLocationMarker(
       `;
       el.className = 'user-location-marker-v2';
 
-      console.log('🎯 Creando marcador en coordenadas:', { lng, lat });
-
       // Crear marcador con configuración específica para evitar problemas de posicionamiento
       const marker = new maplibregl.Marker({
         element: el,
@@ -72,8 +69,6 @@ export function useUserLocationMarker(
       // PRIMERO establecer coordenadas, LUEGO agregar al mapa
       marker.setLngLat([lng, lat]);
       marker.addTo(mapInstance.current);
-
-      console.log('✅ Marcador creado y agregado al mapa');
 
       return marker;
     },
@@ -87,16 +82,12 @@ export function useUserLocationMarker(
     (longitude: number, latitude: number): boolean => {
       // Validación estricta
       if (!isValidCoordinates(longitude, latitude)) {
-        console.error('❌ Coordenadas rechazadas:', { longitude, latitude });
         return false;
       }
 
       if (!mapInstance.current) {
-        console.warn('⚠️ Mapa no disponible');
         return false;
       }
-
-      console.log('✅ Actualizando marcador:', { longitude, latitude });
 
       // Guardar posición válida
       lastValidPosition.current = { lng: longitude, lat: latitude };
@@ -111,8 +102,7 @@ export function useUserLocationMarker(
         }
 
         return true;
-      } catch (error) {
-        console.error('❌ Error al actualizar marcador:', error);
+      } catch {
         // En caso de error, eliminar marcador corrupto
         if (markerRef.current) {
           try {
@@ -135,7 +125,6 @@ export function useUserLocationMarker(
       onError?: (error: GeolocationPositionError) => void,
     ) => {
       if (!navigator.geolocation) {
-        console.warn('❌ Geolocalización no disponible');
         onError?.(null as unknown as GeolocationPositionError);
         return;
       }
@@ -150,7 +139,6 @@ export function useUserLocationMarker(
           }
         },
         (error) => {
-          console.error('❌ Error obteniendo ubicación:', error.message);
           onError?.(error);
         },
         {
@@ -202,31 +190,49 @@ export function useUserLocationMarker(
     if (markerRef.current) {
       try {
         markerRef.current.remove();
-      } catch (error) {
-        console.error('Error eliminando marcador:', error);
-      }
+      } catch {}
       markerRef.current = null;
       lastValidPosition.current = null;
     }
   }, []);
 
-  // Auto-actualización
+  // Auto-actualización y creación inicial del marcador
   useEffect(() => {
-    if (!autoUpdate || !enabled || !mapInstance.current) return;
+    if (!autoUpdate || !enabled) return;
 
-    console.log(`🔄 Auto-actualización activada (cada ${updateInterval}ms)`);
+    // Función para verificar si el mapa está listo e iniciar
+    const initMarker = () => {
+      if (mapInstance.current) {
+        // Mapa está listo: crear marcador inmediatamente
+        getCurrentLocation();
 
-    // Actualización inmediata
-    getCurrentLocation();
+        // Configurar intervalo de actualización
+        const intervalId = setInterval(() => {
+          getCurrentLocation();
+        }, updateInterval);
 
-    // Intervalo de actualización
-    const intervalId = setInterval(() => {
-      getCurrentLocation();
-    }, updateInterval);
+        return intervalId;
+      }
+      return null;
+    };
+
+    // Intentar iniciar inmediatamente
+    let intervalId = initMarker();
+
+    // Si el mapa no está listo, usar un timeout para reintentar
+    if (!intervalId) {
+      const timeoutId = setTimeout(() => {
+        intervalId = initMarker();
+      }, 500); // Reintentar después de 500ms
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (intervalId) clearInterval(intervalId);
+      };
+    }
 
     return () => {
-      clearInterval(intervalId);
-      console.log('🛑 Auto-actualización desactivada');
+      if (intervalId) clearInterval(intervalId);
     };
   }, [autoUpdate, enabled, updateInterval, getCurrentLocation, mapInstance]);
 

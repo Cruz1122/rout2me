@@ -44,12 +44,14 @@ export default function HomePage() {
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [shouldInitMap, setShouldInitMap] = useState(false);
+  const [isMapReady, setIsMapReady] = useState(false);
   const { error, showError, clearError } = useErrorNotification();
 
   // Hook para gestionar el marcador de ubicación del usuario
   const { centerOnUserLocation } = useUserLocationMarker(mapInstance, {
     autoUpdate: true,
     updateInterval: 10000, // Actualizar cada 10 segundos
+    enabled: isMapReady, // Solo activar cuando el mapa esté listo
   });
   interface RouteFromNavigation {
     id: string;
@@ -263,7 +265,6 @@ export default function HomePage() {
 
   const handleLocationRequest = useCallback(() => {
     if (!mapInstance.current) {
-      console.warn('Mapa no está listo');
       return;
     }
 
@@ -271,8 +272,6 @@ export default function HomePage() {
       showError('Tu navegador no soporta geolocalización');
       return;
     }
-
-    console.log('📍 Solicitando ubicación y centrando mapa...');
 
     // Usar el hook para centrar en la ubicación del usuario
     centerOnUserLocation(16);
@@ -474,6 +473,31 @@ export default function HomePage() {
 
     map.on('load', () => {
       setIsMapLoading(false);
+      setIsMapReady(true); // Marcar el mapa como listo para activar el marcador
+
+      // Centrar mapa en ubicación del usuario al cargar
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            if (mapInstance.current) {
+              mapInstance.current.flyTo({
+                center: [longitude, latitude],
+                zoom: 15,
+                duration: 1500,
+              });
+            }
+          },
+          () => {
+            // Si falla, mantener ubicación por defecto (Manizales)
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0,
+          },
+        );
+      }
     });
 
     map.on('idle', () => {
