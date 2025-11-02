@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import PublicRoute from '../components/PublicRoute';
 import Layout from '../components/Layout';
+import GlobalLoader from '../components/GlobalLoader';
 
 // Lazy loading de componentes
 const HomePage = lazy(() => import('../pages/HomePage'));
@@ -16,20 +17,10 @@ const AuthCallback = lazy(() => import('../pages/AuthCallback'));
 const EmailVerified = lazy(() => import('../pages/EmailVerified'));
 const App = lazy(() => import('../App'));
 
-// Componente de loading
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-screen bg-white">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-      <p className="text-gray-600 text-sm font-medium">Cargando...</p>
-    </div>
-  </div>
-);
-
 const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<GlobalLoader />}>
         <Layout>
           <Routes>
             <Route path="/" element={<AuthCallback />} />

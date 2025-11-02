@@ -211,7 +211,7 @@ export default function Navbar() {
           <div className="fixed inset-0 bg-black/40" onClick={cancelLogout} />
           <div
             className="relative z-50 bg-white rounded-lg p-6 max-w-md w-full mx-4"
-            style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <h2
               className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}

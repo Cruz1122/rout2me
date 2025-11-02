@@ -7,6 +7,8 @@ import {
 } from '../api/vehicles_api';
 import type { Vehicle, VehicleStatus, Company } from '../api/vehicles_api';
 import { colorClasses } from '../styles/colors';
+import GlobalLoader from '../components/GlobalLoader';
+import PageHeader from '../components/PageHeader';
 
 export default function VehiclesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -347,14 +349,27 @@ export default function VehiclesPage() {
         </div>
       )}
 
+      <PageHeader
+        title="Vehículos"
+        action={
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
+          >
+            {loading ? (
+              <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
+            ) : null}
+            <span className="truncate">Agregar Vehículo</span>
+          </button>
+        }
+      />
+
       <div className="gap-1 px-6 flex flex-1 justify-center py-5">
         {/* Left column: Vehicle details */}
         <div className="layout-content-container flex flex-col w-80">
-          <div className="flex flex-wrap justify-between gap-3 p-4">
-            <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
-              Detalles del Vehículo
-            </p>
-          </div>
+          <h2 className="text-[#111317] tracking-light text-[22px] font-bold leading-tight px-4 pb-3 pt-5">
+            Detalles del Vehículo
+          </h2>
 
           <div className="p-4 grid grid-cols-[20%_1fr] gap-x-6">
             {selectedVehicle ? (
@@ -449,12 +464,14 @@ export default function VehiclesPage() {
                   </p>
                 </div>
               </>
+            ) : loadingVehicles ? (
+              <div className="col-span-2">
+                <GlobalLoader />
+              </div>
             ) : (
               <div className="col-span-2 text-center py-8">
                 <p className="text-[#646f87] text-sm">
-                  {loadingVehicles
-                    ? 'Cargando...'
-                    : 'Selecciona un vehículo para ver sus detalles'}
+                  Selecciona un vehículo para ver sus detalles
                 </p>
               </div>
             )}
@@ -478,7 +495,7 @@ export default function VehiclesPage() {
             <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
             <div
               className="relative z-50 w-[512px] max-w-[96%] rounded-xl bg-white p-6"
-              style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               <h1 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 text-left pb-3 pt-1">
                 Crear Vehículo
@@ -626,22 +643,7 @@ export default function VehiclesPage() {
 
         {/* Right column: Vehicles list */}
         <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
-          <div className="flex flex-wrap justify-between gap-3 p-4">
-            <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
-              Vehículos
-            </p>
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
-            >
-              {loading ? (
-                <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
-              ) : null}
-              <span className="truncate">Agregar Vehículo</span>
-            </button>
-          </div>
-
-          <div className="px-4 py-3">
+          <div className="px-4 py-3 pt-5">
             <label className="flex flex-col min-w-40 h-12 w-full">
               <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
                 <div className="text-[#646f87] flex border-none bg-[#f0f2f4] items-center justify-center pl-4 rounded-l-xl border-r-0">
@@ -697,11 +699,8 @@ export default function VehiclesPage() {
                 <tbody>
                   {loadingVehicles ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        Cargando vehículos...
+                      <td colSpan={6} className="h-[400px] p-0">
+                        <GlobalLoader />
                       </td>
                     </tr>
                   ) : vehicles.length === 0 ? (
@@ -881,7 +880,7 @@ export default function VehiclesPage() {
           />
           <div
             className="relative z-50 bg-white rounded-lg p-6 max-w-md w-full mx-4"
-            style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <h2
               className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}

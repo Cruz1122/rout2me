@@ -170,8 +170,8 @@ export default function SignIn() {
 
   return (
     <div
-      className="relative flex h-auto min-h-screen w-full flex-col bg-white group/design-root overflow-x-hidden"
-      style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+      className="relative flex size-full min-h-screen flex-col bg-white group/design-root overflow-x-hidden"
+      style={{ fontFamily: 'Inter, sans-serif' }}
     >
       <div className="layout-container flex h-full grow flex-col">
         <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f0f2f4] px-10 py-3">

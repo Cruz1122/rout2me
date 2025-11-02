@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GlobalLoader from '../components/GlobalLoader';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -43,12 +44,5 @@ export default function AuthCallback() {
     }
   }, [location, navigate, isAuthenticated, isLoading]);
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-white">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1d56c9] mx-auto"></div>
-        <p className="mt-4 text-gray-600">Redireccionando...</p>
-      </div>
-    </div>
-  );
+  return <GlobalLoader />;
 }

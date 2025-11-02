@@ -19,6 +19,7 @@ import {
   RiCompassLine,
 } from 'react-icons/ri';
 import { processRouteWithCoordinates } from '../services/mapMatchingService';
+import PageHeader from '../components/PageHeader';
 
 // Iconos SVG como componentes
 const TruckIcon = () => (
@@ -725,51 +726,54 @@ export default function LiveFleet() {
   };
 
   return (
-    <div className="flex h-full gap-1 px-6 py-5">
-      {/* Panel Izquierdo - Lista de Vehículos */}
-      <div className="flex w-80 flex-col">
-        {/* Buscador */}
-        <div className="px-4 py-3">
-          <label className="flex h-12 w-full min-w-40 flex-col">
-            <div className="flex h-full w-full flex-1 items-stretch rounded-xl">
-              <div className="flex items-center justify-center rounded-l-xl border-r-0 bg-[#f0f2f4] pl-4 text-[#646f87]">
-                <SearchIcon />
+    <>
+      <PageHeader title="Flota en Vivo" />
+
+      <div className="flex h-full gap-1 px-6 py-5">
+        {/* Panel Izquierdo - Lista de Vehículos */}
+        <div className="flex w-80 flex-col">
+          {/* Buscador */}
+          <div className="px-4 py-3">
+            <label className="flex h-12 w-full min-w-40 flex-col">
+              <div className="flex h-full w-full flex-1 items-stretch rounded-xl">
+                <div className="flex items-center justify-center rounded-l-xl border-r-0 bg-[#f0f2f4] pl-4 text-[#646f87]">
+                  <SearchIcon />
+                </div>
+                <input
+                  placeholder="Buscar vehículos"
+                  className="form-input flex h-full w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl rounded-l-none border-l-0 border-none bg-[#f0f2f4] px-4 pl-2 text-base font-normal leading-normal text-[#111317] placeholder:text-[#646f87] focus:border-none focus:outline-0 focus:ring-0"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-              <input
-                placeholder="Buscar vehículos"
-                className="form-input flex h-full w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl rounded-l-none border-l-0 border-none bg-[#f0f2f4] px-4 pl-2 text-base font-normal leading-normal text-[#111317] placeholder:text-[#646f87] focus:border-none focus:outline-0 focus:ring-0"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </label>
-        </div>
+            </label>
+          </div>
 
-        {/* Lista de Vehículos */}
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <p className="text-sm text-[#646f87]">Cargando vehículos...</p>
-            </div>
-          ) : filteredVehicles.length === 0 ? (
-            <div className="flex items-center justify-center p-8">
-              <p className="text-sm text-[#646f87]">
-                No se encontraron vehículos
-              </p>
-            </div>
-          ) : (
-            filteredVehicles.map((vehicle) => {
-              const position = busPositions.find(
-                (pos) => pos.bus_id === vehicle.id,
-              );
-              const hasPosition = position && position.location_json;
-              const isSelected = selectedVehicleId === vehicle.id;
+          {/* Lista de Vehículos */}
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-sm text-[#646f87]">Cargando vehículos...</p>
+              </div>
+            ) : filteredVehicles.length === 0 ? (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-sm text-[#646f87]">
+                  No se encontraron vehículos
+                </p>
+              </div>
+            ) : (
+              filteredVehicles.map((vehicle) => {
+                const position = busPositions.find(
+                  (pos) => pos.bus_id === vehicle.id,
+                );
+                const hasPosition = position && position.location_json;
+                const isSelected = selectedVehicleId === vehicle.id;
 
-              return (
-                <div
-                  key={vehicle.id}
-                  onClick={() => handleVehicleClick(vehicle)}
-                  className={`flex min-h-[72px] items-center justify-between gap-4 px-4 py-2 cursor-pointer transition-all
+                return (
+                  <div
+                    key={vehicle.id}
+                    onClick={() => handleVehicleClick(vehicle)}
+                    className={`flex min-h-[72px] items-center justify-between gap-4 px-4 py-2 cursor-pointer transition-all
                     ${
                       isSelected && !hasPosition
                         ? 'bg-red-50 border-l-4 border-red-500'
@@ -777,99 +781,100 @@ export default function LiveFleet() {
                           ? 'bg-blue-50 border-l-4 border-blue-500'
                           : 'bg-white hover:bg-gray-50'
                     }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-[#f0f2f4] text-[#111317]">
-                      <TruckIcon />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <p className="line-clamp-1 text-base font-medium leading-normal text-[#111317]">
-                        {vehicle.plate}
-                      </p>
-                      <p className="line-clamp-2 text-sm font-normal leading-normal text-[#646f87]">
-                        {getVehicleDisplayStatus(vehicle.status)}
-                      </p>
-                      {!hasPosition && (
-                        <p className="text-xs text-red-500 mt-1 font-medium">
-                          ⚠️ Sin ubicación disponible
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-[#f0f2f4] text-[#111317]">
+                        <TruckIcon />
+                      </div>
+                      <div className="flex flex-col justify-center">
+                        <p className="line-clamp-1 text-base font-medium leading-normal text-[#111317]">
+                          {vehicle.plate}
                         </p>
-                      )}
+                        <p className="line-clamp-2 text-sm font-normal leading-normal text-[#646f87]">
+                          {getVehicleDisplayStatus(vehicle.status)}
+                        </p>
+                        {!hasPosition && (
+                          <p className="text-xs text-red-500 mt-1 font-medium">
+                            ⚠️ Sin ubicación disponible
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <p className="text-base font-normal leading-normal text-[#111317]">
+                        {getVehicleCapacityLevel()}%
+                      </p>
                     </div>
                   </div>
-                  <div className="shrink-0">
-                    <p className="text-base font-normal leading-normal text-[#111317]">
-                      {getVehicleCapacityLevel()}%
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Panel Derecho - Mapa */}
-      <div className="flex max-w-[960px] flex-1 flex-col">
-        <div className="@container flex h-full flex-col">
-          <div className="flex flex-1 flex-col @[480px]:px-4 @[480px]:py-3">
-            <div
-              ref={mapRef}
-              className="@[480px]:rounded-xl flex min-h-[320px] flex-1 relative"
-              style={{
-                backgroundColor: '#e5e7eb',
-              }}
-            >
-              {/* Controles del Mapa */}
-              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-                {/* Zoom Controls */}
-                <div className="flex flex-col gap-0.5">
+        {/* Panel Derecho - Mapa */}
+        <div className="flex max-w-[960px] flex-1 flex-col">
+          <div className="@container flex h-full flex-col">
+            <div className="flex flex-1 flex-col @[480px]:px-4 @[480px]:py-3">
+              <div
+                ref={mapRef}
+                className="@[480px]:rounded-xl flex min-h-[320px] flex-1 relative"
+                style={{
+                  backgroundColor: '#e5e7eb',
+                }}
+              >
+                {/* Controles del Mapa */}
+                <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                  {/* Zoom Controls */}
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      onClick={handleZoomIn}
+                      className="flex size-10 items-center justify-center rounded-t-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                    >
+                      <RiAddLine size={20} className="text-[#111317]" />
+                    </button>
+                    <button
+                      onClick={handleZoomOut}
+                      className="flex size-10 items-center justify-center rounded-b-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                    >
+                      <RiSubtractLine size={20} className="text-[#111317]" />
+                    </button>
+                  </div>
+
+                  {/* Compass Control */}
                   <button
-                    onClick={handleZoomIn}
-                    className="flex size-10 items-center justify-center rounded-t-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                    onClick={handleResetBearing}
+                    onMouseDown={handleCompassMouseDown}
+                    className={`flex size-10 items-center justify-center rounded-xl transition-all duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50
+                    ${isDraggingCompass ? 'cursor-grabbing scale-105 bg-[#1E56A0]' : 'cursor-pointer bg-white'}`}
+                    aria-label="Arrastrar para rotar - Click para resetear"
                   >
-                    <RiAddLine size={20} className="text-[#111317]" />
+                    <RiCompassLine
+                      size={20}
+                      style={{
+                        color: isDraggingCompass ? '#FFFFFF' : '#111317',
+                        transform: `rotate(${mapBearing}deg)`,
+                        transition: isDraggingCompass
+                          ? 'none'
+                          : 'transform 0.2s ease',
+                      }}
+                    />
                   </button>
+
+                  {/* Location Control */}
                   <button
-                    onClick={handleZoomOut}
-                    className="flex size-10 items-center justify-center rounded-b-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                    onClick={handleLocationRequest}
+                    className="flex size-10 items-center justify-center rounded-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                    aria-label="Mi ubicación"
                   >
-                    <RiSubtractLine size={20} className="text-[#111317]" />
+                    <RiFocus3Line size={20} className="text-[#111317]" />
                   </button>
                 </div>
-
-                {/* Compass Control */}
-                <button
-                  onClick={handleResetBearing}
-                  onMouseDown={handleCompassMouseDown}
-                  className={`flex size-10 items-center justify-center rounded-xl transition-all duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50
-                    ${isDraggingCompass ? 'cursor-grabbing scale-105 bg-[#1E56A0]' : 'cursor-pointer bg-white'}`}
-                  aria-label="Arrastrar para rotar - Click para resetear"
-                >
-                  <RiCompassLine
-                    size={20}
-                    style={{
-                      color: isDraggingCompass ? '#FFFFFF' : '#111317',
-                      transform: `rotate(${mapBearing}deg)`,
-                      transition: isDraggingCompass
-                        ? 'none'
-                        : 'transform 0.2s ease',
-                    }}
-                  />
-                </button>
-
-                {/* Location Control */}
-                <button
-                  onClick={handleLocationRequest}
-                  className="flex size-10 items-center justify-center rounded-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
-                  aria-label="Mi ubicación"
-                >
-                  <RiFocus3Line size={20} className="text-[#111317]" />
-                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

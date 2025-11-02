@@ -7,6 +7,8 @@ import {
 } from '../api/users_api';
 import type { User } from '../api/users_api';
 import { colorClasses } from '../styles/colors';
+import GlobalLoader from '../components/GlobalLoader';
+import PageHeader from '../components/PageHeader';
 
 export default function UsersPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -403,14 +405,29 @@ export default function UsersPage() {
         </div>
       )}
 
+      <PageHeader
+        title="Usuarios"
+        action={
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
+          >
+            {loading ? (
+              <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
+            ) : (
+              <span className="mr-2">+</span>
+            )}
+            <span className="truncate">Nuevo Usuario</span>
+          </button>
+        }
+      />
+
       <div className="gap-1 px-6 flex flex-1 justify-center py-5">
         {/* Left column: User details */}
         <div className="layout-content-container flex flex-col w-80">
-          <div className="flex flex-wrap justify-between gap-3 p-4">
-            <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
-              Detalles del Usuario
-            </p>
-          </div>
+          <h2 className="text-[#111317] tracking-light text-[22px] font-bold leading-tight px-4 pb-3 pt-5">
+            Detalles del Usuario
+          </h2>
 
           <div className="p-4 grid grid-cols-[20%_1fr] gap-x-6">
             {selectedUser ? (
@@ -484,12 +501,14 @@ export default function UsersPage() {
                   </p>
                 </div>
               </>
+            ) : loadingUsers ? (
+              <div className="col-span-2">
+                <GlobalLoader />
+              </div>
             ) : (
               <div className="col-span-2 text-center py-8">
                 <p className="text-[#646f87] text-sm">
-                  {loadingUsers
-                    ? 'Cargando...'
-                    : 'Selecciona un usuario para ver sus detalles'}
+                  Selecciona un usuario para ver sus detalles
                 </p>
               </div>
             )}
@@ -516,24 +535,7 @@ export default function UsersPage() {
 
         {/* Right column: Users list */}
         <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
-          <div className="flex flex-wrap justify-between gap-3 p-4">
-            <p className="text-[#111317] tracking-light text-[32px] font-bold leading-tight min-w-72">
-              Usuarios
-            </p>
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
-            >
-              {loading ? (
-                <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
-              ) : (
-                <span className="mr-2">+</span>
-              )}
-              <span className="truncate">Nuevo Usuario</span>
-            </button>
-          </div>
-
-          <div className="px-4 py-3">
+          <div className="px-4 py-3 pt-5">
             <label className="flex flex-col min-w-40 h-12 w-full">
               <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
                 <div className="text-[#646f87] flex border-none bg-[#f0f2f4] items-center justify-center pl-4 rounded-l-xl border-r-0">
@@ -587,11 +589,8 @@ export default function UsersPage() {
                 <tbody>
                   {loadingUsers ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        Cargando usuarios...
+                      <td colSpan={6} className="h-[400px] p-0">
+                        <GlobalLoader />
                       </td>
                     </tr>
                   ) : users.length === 0 ? (
