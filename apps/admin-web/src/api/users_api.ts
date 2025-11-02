@@ -1,6 +1,5 @@
 // Configuración de Supabase
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const SUPABASE_SERVICE_ROLE_KEY =
   import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -40,11 +39,6 @@ export type UserWithRole = {
   role: UserRole;
 };
 
-// Helper para obtener el token del localStorage
-function getAuthToken(): string | null {
-  return localStorage.getItem('access_token');
-}
-
 // Obtener todos los usuarios
 export async function getUsers(): Promise<User[]> {
   const url = `${SUPABASE_URL}/auth/v1/admin/users?per_page=50&page=1`;
@@ -69,15 +63,23 @@ export async function getUsers(): Promise<User[]> {
   // La respuesta tiene estructura { users: [...], aud: "..." }
   const usersArray = data.users || [];
 
-  return usersArray.map((user: any) => ({
-    id: user.id,
-    email: user.email || '',
-    name: user.user_metadata?.name || 'Sin nombre',
-    phone: user.user_metadata?.phone || '',
-    role: 'user', // Por defecto, se puede mejorar si tienen roles en user_metadata
-    created_at: user.created_at,
-    email_confirmed_at: user.email_confirmed_at,
-  }));
+  return usersArray.map(
+    (user: {
+      id: string;
+      email: string;
+      user_metadata?: { name?: string; phone?: string };
+      created_at: string;
+      email_confirmed_at?: string;
+    }) => ({
+      id: user.id,
+      email: user.email || '',
+      name: user.user_metadata?.name || 'Sin nombre',
+      phone: user.user_metadata?.phone || '',
+      role: 'user', // Por defecto, se puede mejorar si tienen roles en user_metadata
+      created_at: user.created_at,
+      email_confirmed_at: user.email_confirmed_at,
+    }),
+  );
 }
 
 // Obtener el rol de un usuario específico
@@ -126,7 +128,7 @@ export async function createUser(payload: UserCreate): Promise<User> {
       throw new Error(
         `Create user failed: ${errorJson.message || errorJson.code || errorText}`,
       );
-    } catch (e) {
+    } catch {
       throw new Error(`Create user failed: ${res.status} ${errorText}`);
     }
   }
@@ -170,7 +172,7 @@ export async function updateUser(
       throw new Error(
         `Update user failed: ${errorJson.message || errorJson.code || errorText}`,
       );
-    } catch (e) {
+    } catch {
       throw new Error(`Update user failed: ${res.status} ${errorText}`);
     }
   }
