@@ -1,11 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   createVehicle as createVehicleApi,
   getVehicles,
   getCompanies,
   deleteVehicle as deleteVehicleApi,
+  getRoutes,
+  getRouteVariantsByRouteId,
+  assignRouteToVehicle,
+  removeRouteFromVehicle,
 } from '../api/vehicles_api';
-import type { Vehicle, VehicleStatus, Company } from '../api/vehicles_api';
+import type {
+  Vehicle,
+  VehicleStatus,
+  Company,
+  Route,
+  RouteVariant,
+} from '../api/vehicles_api';
+import { processRouteWithCoordinates } from '../services/mapMatchingService';
 import { colorClasses } from '../styles/colors';
 
 export default function VehiclesPage() {
@@ -38,6 +51,18 @@ export default function VehiclesPage() {
   const toastTimerRef = useRef<number | null>(null);
   const toastHideTimerRef = useRef<number | null>(null);
   const toastEntryTimerRef = useRef<number | null>(null);
+
+  // Estados para asignación de rutas
+  const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [routeVariants, setRouteVariants] = useState<RouteVariant[]>([]);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<RouteVariant | null>(
+    null,
+  );
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
+  const [loadingVariants, setLoadingVariants] = useState(false);
+  const [assigningRoute, setAssigningRoute] = useState(false);
 
   // Cargar vehículos al montar el componente
   useEffect(() => {
@@ -84,6 +109,147 @@ export default function VehiclesPage() {
       loadCompanies();
     }
   }, [isAddOpen]);
+
+  // Cargar rutas cuando se abre el modal de rutas
+  useEffect(() => {
+    if (isRouteModalOpen) {
+      loadRoutesForAssignment();
+    }
+  }, [isRouteModalOpen]);
+
+  async function loadRoutesForAssignment() {
+    try {
+      setLoadingRoutes(true);
+      const data = await getRoutes();
+      const activeRoutes = data.filter((r) => r.active); // Solo rutas activas
+      setRoutes(activeRoutes);
+
+      // Si el vehículo tiene una ruta asignada, pre-cargarla
+      if (selectedVehicle?.active_route_variant_id) {
+        await preloadCurrentRoute(activeRoutes);
+      }
+    } catch (error) {
+      console.error('Error loading routes:', error);
+      showToast('error', 'Error al cargar las rutas');
+    } finally {
+      setLoadingRoutes(false);
+    }
+  }
+
+  async function preloadCurrentRoute(activeRoutes: Route[]) {
+    if (!selectedVehicle || !selectedVehicle.active_route_variant_id) return;
+
+    try {
+      setLoadingVariants(true);
+
+      // Buscar en qué ruta está la variante activa
+      for (const route of activeRoutes) {
+        const variants = await getRouteVariantsByRouteId(route.id);
+        const currentVariant = variants.find(
+          (v) => v.variant_id === selectedVehicle.active_route_variant_id,
+        );
+
+        if (currentVariant) {
+          // Encontramos la ruta y variante actual
+          setSelectedRoute(route);
+          setRouteVariants(variants);
+          setSelectedVariant(currentVariant);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Error preloading current route:', error);
+    } finally {
+      setLoadingVariants(false);
+    }
+  }
+
+  async function loadVariantsForRoute(routeId: string) {
+    try {
+      setLoadingVariants(true);
+      const data = await getRouteVariantsByRouteId(routeId);
+      setRouteVariants(data);
+    } catch (error) {
+      console.error('Error loading variants:', error);
+      showToast('error', 'Error al cargar las variantes');
+    } finally {
+      setLoadingVariants(false);
+    }
+  }
+
+  function openRouteModal() {
+    setIsRouteModalOpen(true);
+    // Resetear solo si NO hay ruta asignada
+    if (!selectedVehicle?.active_route_variant_id) {
+      setSelectedRoute(null);
+      setSelectedVariant(null);
+      setRouteVariants([]);
+    }
+  }
+
+  function closeRouteModal() {
+    setIsRouteModalOpen(false);
+    setSelectedRoute(null);
+    setSelectedVariant(null);
+    setRouteVariants([]);
+  }
+
+  async function handleAssignRoute() {
+    if (!selectedVehicle || !selectedVariant) return;
+
+    try {
+      setAssigningRoute(true);
+      // Si el vehículo ya tiene active_trip_id, está en un trip activo
+      const hasActiveTrip = Boolean(selectedVehicle.active_trip_id);
+      await assignRouteToVehicle(
+        selectedVehicle.id,
+        selectedVariant.variant_id,
+        hasActiveTrip,
+      );
+      showToast('success', 'Ruta asignada correctamente');
+      closeRouteModal();
+
+      // Recargar vehículos y actualizar el seleccionado
+      const updatedVehicles = await getVehicles();
+      setVehicles(updatedVehicles);
+      const updatedVehicle = updatedVehicles.find(
+        (v) => v.id === selectedVehicle.id,
+      );
+      if (updatedVehicle) {
+        setSelectedVehicle(updatedVehicle);
+      }
+    } catch (error) {
+      console.error('Error assigning route:', error);
+      showToast('error', 'Error al asignar la ruta');
+    } finally {
+      setAssigningRoute(false);
+    }
+  }
+
+  async function handleRemoveRoute() {
+    if (!selectedVehicle) return;
+
+    try {
+      setAssigningRoute(true);
+      await removeRouteFromVehicle(selectedVehicle.id);
+      showToast('success', 'Ruta removida correctamente');
+
+      // Recargar vehículos y actualizar el seleccionado
+      const updatedVehicles = await getVehicles();
+      setVehicles(updatedVehicles);
+      const updatedVehicle = updatedVehicles.find(
+        (v) => v.id === selectedVehicle.id,
+      );
+      if (updatedVehicle) {
+        setSelectedVehicle(updatedVehicle);
+      }
+    } catch (error) {
+      console.error('Error removing route:', error);
+      showToast('error', 'Error al remover la ruta');
+    } finally {
+      setAssigningRoute(false);
+    }
+  }
 
   function closeModal() {
     setIsAddOpen(false);
@@ -399,53 +565,70 @@ export default function VehiclesPage() {
                 </div>
                 <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
                   <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Capacidad
+                    Ubicación GPS
                   </p>
                   <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.capacity} pasajeros
+                    {selectedVehicle.location_json
+                      ? `${selectedVehicle.location_json.lat.toFixed(6)}, ${selectedVehicle.location_json.lng.toFixed(6)}`
+                      : 'Sin ubicación'}
                   </p>
                 </div>
                 <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
                   <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Pasajeros Actuales
+                    Velocidad
                   </p>
                   <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.passenger_count}
+                    {selectedVehicle.speed_kph !== null
+                      ? `${selectedVehicle.speed_kph.toFixed(1)} km/h`
+                      : 'N/A'}
                   </p>
                 </div>
                 <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
                   <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Último Mantenimiento
+                    Última Act. GPS
                   </p>
                   <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.last_maintenance
-                      ? new Date(
-                          selectedVehicle.last_maintenance,
-                        ).toLocaleString('es-ES', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : 'Sin mantenimiento registrado'}
+                    {(() => {
+                      if (!selectedVehicle.vp_at) return 'N/A';
+
+                      const now = new Date();
+                      const past = new Date(selectedVehicle.vp_at);
+                      const diffMs = now.getTime() - past.getTime();
+                      const diffSeconds = Math.floor(diffMs / 1000);
+                      const diffMinutes = Math.floor(diffSeconds / 60);
+                      const diffHours = Math.floor(diffMinutes / 60);
+                      const diffDays = Math.floor(diffHours / 24);
+                      const diffMonths = Math.floor(diffDays / 30);
+                      const diffYears = Math.floor(diffDays / 365);
+
+                      if (diffYears > 0)
+                        return `hace ${diffYears} año${diffYears > 1 ? 's' : ''}`;
+                      if (diffMonths > 0)
+                        return `hace ${diffMonths} mes${diffMonths > 1 ? 'es' : ''}`;
+                      if (diffDays > 0)
+                        return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+                      if (diffHours > 0)
+                        return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+                      if (diffMinutes > 0) return `hace ${diffMinutes} min`;
+                      if (diffSeconds > 0) return `hace ${diffSeconds} seg`;
+                      return 'justo ahora';
+                    })()}
                   </p>
                 </div>
                 <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
                   <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Fecha de Creación
+                    Viaje Activo
                   </p>
                   <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {new Date(selectedVehicle.created_at).toLocaleString(
-                      'es-ES',
-                      {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      },
-                    )}
+                    {selectedVehicle.active_trip_id || 'Ninguno'}
+                  </p>
+                </div>
+                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
+                  <p className="text-[#646f87] text-sm font-normal leading-normal">
+                    Ruta Activa
+                  </p>
+                  <p className="text-[#111317] text-sm font-normal leading-normal">
+                    {selectedVehicle.active_route_variant_id || 'Ninguna'}
                   </p>
                 </div>
               </>
@@ -460,7 +643,34 @@ export default function VehiclesPage() {
             )}
           </div>
 
-          <div className="flex px-4 py-3 justify-start">
+          <div className="flex flex-col gap-2 px-4 py-3">
+            {selectedVehicle?.active_route_variant_id ? (
+              <>
+                <button
+                  onClick={openRouteModal}
+                  className="flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors cursor-pointer"
+                >
+                  <span className="truncate">Cambiar Ruta</span>
+                </button>
+                <button
+                  onClick={handleRemoveRoute}
+                  disabled={assigningRoute}
+                  className="flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <span className="truncate">
+                    {assigningRoute ? 'Removiendo...' : 'Remover Ruta'}
+                  </span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={openRouteModal}
+                disabled={!selectedVehicle}
+                className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors ${!selectedVehicle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span className="truncate">Asignar Ruta</span>
+              </button>
+            )}
             <button
               onClick={() =>
                 selectedVehicle && openDeleteModal(selectedVehicle)
@@ -674,23 +884,23 @@ export default function VehiclesPage() {
               <table className="flex-1">
                 <thead>
                   <tr className="bg-white">
-                    <th className="table-veh-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
+                    <th className="table-veh-120 px-4 py-3 text-left text-[#111317] w-[120px] text-sm font-medium leading-normal">
                       Placa
                     </th>
-                    <th className="table-veh-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Capacidad
-                    </th>
-                    <th className="table-veh-360 px-4 py-3 text-left text-[#111317] w-60 text-sm font-medium leading-normal">
+                    <th className="table-veh-240 px-4 py-3 text-left text-[#111317] w-[100px] text-sm font-medium leading-normal">
                       Estado
                     </th>
-                    <th className="table-veh-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Pasajeros
+                    <th className="table-veh-360 px-4 py-3 text-left text-[#111317] w-[180px] text-sm font-medium leading-normal">
+                      Ubicación
                     </th>
-                    <th className="table-veh-600 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Ocupación %
+                    <th className="table-veh-480 px-4 py-3 text-left text-[#111317] w-[100px] text-sm font-medium leading-normal">
+                      Velocidad
                     </th>
-                    <th className="table-veh-720 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Último Mantenimiento
+                    <th className="table-veh-600 px-4 py-3 text-left text-[#111317] w-[140px] text-sm font-medium leading-normal">
+                      Última Act. GPS
+                    </th>
+                    <th className="table-veh-720 px-4 py-3 text-left text-[#111317] w-[140px] text-sm font-medium leading-normal">
+                      Ruta Activa
                     </th>
                   </tr>
                 </thead>
@@ -729,13 +939,6 @@ export default function VehiclesPage() {
                         currentPage * rowsPerPage,
                       )
                       .map((vehicle) => {
-                        const occupancyPercentage =
-                          vehicle.capacity > 0
-                            ? Math.round(
-                                (vehicle.passenger_count / vehicle.capacity) *
-                                  100,
-                              )
-                            : 0;
                         const statusText =
                           vehicle.status === 'AVAILABLE'
                             ? 'Disponible'
@@ -745,6 +948,44 @@ export default function VehiclesPage() {
                                 ? 'Mantenimiento'
                                 : 'Fuera de Servicio';
 
+                        const locationText = vehicle.location_json
+                          ? `${vehicle.location_json.lat.toFixed(4)}, ${vehicle.location_json.lng.toFixed(4)}`
+                          : 'N/A';
+
+                        const speedText =
+                          vehicle.speed_kph !== null
+                            ? `${vehicle.speed_kph.toFixed(1)} km/h`
+                            : 'N/A';
+
+                        // Calcular tiempo relativo
+                        const getTimeAgo = (dateString: string | null) => {
+                          if (!dateString) return 'N/A';
+
+                          const now = new Date();
+                          const past = new Date(dateString);
+                          const diffMs = now.getTime() - past.getTime();
+                          const diffSeconds = Math.floor(diffMs / 1000);
+                          const diffMinutes = Math.floor(diffSeconds / 60);
+                          const diffHours = Math.floor(diffMinutes / 60);
+                          const diffDays = Math.floor(diffHours / 24);
+                          const diffMonths = Math.floor(diffDays / 30);
+                          const diffYears = Math.floor(diffDays / 365);
+
+                          if (diffYears > 0)
+                            return `hace ${diffYears} año${diffYears > 1 ? 's' : ''}`;
+                          if (diffMonths > 0)
+                            return `hace ${diffMonths} mes${diffMonths > 1 ? 'es' : ''}`;
+                          if (diffDays > 0)
+                            return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+                          if (diffHours > 0)
+                            return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+                          if (diffMinutes > 0) return `hace ${diffMinutes} min`;
+                          if (diffSeconds > 0) return `hace ${diffSeconds} seg`;
+                          return 'justo ahora';
+                        };
+
+                        const lastUpdateText = getTimeAgo(vehicle.vp_at);
+
                         return (
                           <tr
                             key={vehicle.id}
@@ -752,34 +993,30 @@ export default function VehiclesPage() {
                             onClick={() => setSelectedVehicle(vehicle)}
                           >
                             {/* Placa */}
-                            <td className="table-veh-120 h-[72px] px-4 py-2 w-[400px] text-[#111317] text-sm font-medium leading-normal">
+                            <td className="table-veh-120 h-[72px] px-4 py-2 w-[120px] text-[#111317] text-sm font-medium leading-normal">
                               {vehicle.plate}
                             </td>
-                            {/* Capacidad */}
-                            <td className="table-veh-240 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {vehicle.capacity}
-                            </td>
                             {/* Estado */}
-                            <td className="table-veh-360 h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal">
+                            <td className="table-veh-240 h-[72px] px-4 py-2 w-[100px] text-sm font-normal leading-normal">
                               <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
                                 <span className="truncate">{statusText}</span>
                               </button>
                             </td>
-                            {/* Pasajeros */}
-                            <td className="table-veh-480 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {vehicle.passenger_count}
+                            {/* Ubicación */}
+                            <td className="table-veh-360 h-[72px] px-4 py-2 w-[180px] text-[#646f87] text-sm font-normal leading-normal">
+                              {locationText}
                             </td>
-                            {/* Ocupación % */}
-                            <td className="table-veh-600 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {occupancyPercentage}%
+                            {/* Velocidad */}
+                            <td className="table-veh-480 h-[72px] px-4 py-2 w-[100px] text-[#646f87] text-sm font-normal leading-normal">
+                              {speedText}
                             </td>
-                            {/* Último Mantenimiento */}
-                            <td className="table-veh-720 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {vehicle.last_maintenance
-                                ? new Date(
-                                    vehicle.last_maintenance,
-                                  ).toLocaleDateString('es-ES')
-                                : 'N/A'}
+                            {/* Última Actualización GPS */}
+                            <td className="table-veh-600 h-[72px] px-4 py-2 w-[140px] text-[#646f87] text-sm font-normal leading-normal">
+                              {lastUpdateText}
+                            </td>
+                            {/* Ruta Activa */}
+                            <td className="table-veh-720 h-[72px] px-4 py-2 w-[140px] text-[#646f87] text-sm font-normal leading-normal">
+                              {vehicle.active_route_variant_id ? 'Sí' : 'No'}
                             </td>
                           </tr>
                         );
@@ -912,6 +1149,264 @@ export default function VehiclesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de Asignación de Ruta */}
+      {isRouteModalOpen && selectedVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/40"
+            onClick={() => !assigningRoute && closeRouteModal()}
+          />
+          <div
+            className="relative z-50 bg-white rounded-lg p-6 max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+          >
+            <h2 className="text-xl font-bold text-[#111317] mb-4">
+              {selectedVehicle.active_route_variant_id
+                ? 'Cambiar Ruta'
+                : 'Asignar Ruta'}
+            </h2>
+            <p className="text-[#646f87] mb-4">
+              Vehículo: <strong>{selectedVehicle.plate}</strong>
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* Selector de Ruta */}
+              <div>
+                <label className="block text-sm font-medium text-[#111317] mb-2">
+                  Selecciona una Ruta
+                </label>
+                <select
+                  value={selectedRoute?.id || ''}
+                  onChange={(e) => {
+                    const route = routes.find((r) => r.id === e.target.value);
+                    setSelectedRoute(route || null);
+                    setSelectedVariant(null);
+                    setRouteVariants([]);
+                    if (route) {
+                      loadVariantsForRoute(route.id);
+                    }
+                  }}
+                  disabled={loadingRoutes}
+                  className="w-full px-3 py-2 border border-[#dcdfe5] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">
+                    {loadingRoutes
+                      ? 'Cargando rutas...'
+                      : 'Seleccione una ruta'}
+                  </option>
+                  {routes.map((route) => (
+                    <option key={route.id} value={route.id}>
+                      {route.code} - {route.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Selector de Variante */}
+              <div>
+                <label className="block text-sm font-medium text-[#111317] mb-2">
+                  Selecciona una Variante
+                </label>
+                <select
+                  value={selectedVariant?.variant_id || ''}
+                  onChange={(e) => {
+                    const variant = routeVariants.find(
+                      (v) => v.variant_id === e.target.value,
+                    );
+                    setSelectedVariant(variant || null);
+                  }}
+                  disabled={!selectedRoute || loadingVariants}
+                  className="w-full px-3 py-2 border border-[#dcdfe5] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">
+                    {loadingVariants
+                      ? 'Cargando variantes...'
+                      : selectedRoute
+                        ? 'Seleccione una variante'
+                        : 'Primero seleccione una ruta'}
+                  </option>
+                  {routeVariants.map((variant) => (
+                    <option key={variant.variant_id} value={variant.variant_id}>
+                      Variante {variant.variant_id.substring(0, 8)} (
+                      {variant.length_m_json
+                        ? `${(variant.length_m_json / 1000).toFixed(2)} km`
+                        : 'N/A'}
+                      )
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Mapa de la Variante Seleccionada */}
+            {selectedVariant && (
+              <div className="mb-4">
+                <RouteMapPreview variant={selectedVariant} />
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => !assigningRoute && closeRouteModal()}
+                disabled={assigningRoute}
+                className={`px-4 py-2 text-sm font-medium bg-[#f0f2f4] hover:bg-[#e8edf3] text-[#111317] rounded-lg transition-colors ${assigningRoute ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAssignRoute}
+                disabled={!selectedVariant || assigningRoute}
+                className={`px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${!selectedVariant || assigningRoute ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {assigningRoute ? 'Asignando...' : 'Asignar Ruta'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+// Componente para mostrar vista previa del mapa
+function RouteMapPreview({ variant }: { variant: RouteVariant }) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return;
+
+    map.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: {
+        version: 8,
+        sources: {
+          'osm-tiles': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors',
+          },
+        },
+        layers: [
+          {
+            id: 'osm-tiles-layer',
+            type: 'raster',
+            source: 'osm-tiles',
+            minzoom: 0,
+            maxzoom: 19,
+          },
+        ],
+      },
+      center: [variant.path[0].lng, variant.path[0].lat],
+      zoom: 13,
+    });
+
+    map.current.on('load', async () => {
+      if (!map.current) return;
+
+      // Obtener la API key desde las variables de entorno
+      const apiKey = import.meta.env.VITE_STADIA_API_KEY;
+      const shouldApplyMapMatching = Boolean(apiKey && apiKey.trim() !== '');
+
+      // Preparar coordenadas originales
+      const originalCoordinates: [number, number][] = variant.path.map((p) => [
+        p.lng,
+        p.lat,
+      ]);
+
+      try {
+        // Procesar la ruta con map matching si está disponible
+        const processedRoute = await processRouteWithCoordinates(
+          originalCoordinates,
+          apiKey,
+          shouldApplyMapMatching,
+        );
+
+        // Usar las coordenadas procesadas (ajustadas a las calles)
+        const matchedCoordinates = processedRoute.matchedGeometry
+          .coordinates as [number, number][];
+
+        // Agregar la ruta al mapa
+        map.current!.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: processedRoute.matchedGeometry,
+          },
+        });
+
+        map.current!.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': '#1980e6',
+            'line-width': 4,
+          },
+        });
+
+        // Ajustar vista para mostrar toda la ruta
+        const bounds = new maplibregl.LngLatBounds();
+        matchedCoordinates.forEach((coord) => bounds.extend(coord));
+        map.current!.fitBounds(bounds, { padding: 40 });
+      } catch (error) {
+        console.error('Error processing route:', error);
+        // Fallback: usar coordenadas originales
+        map.current!.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: originalCoordinates,
+            },
+          },
+        });
+
+        map.current!.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': '#1980e6',
+            'line-width': 4,
+          },
+        });
+
+        // Ajustar vista para mostrar toda la ruta
+        const bounds = new maplibregl.LngLatBounds();
+        variant.path.forEach((p) => bounds.extend([p.lng, p.lat]));
+        map.current!.fitBounds(bounds, { padding: 40 });
+      }
+    });
+
+    return () => {
+      map.current?.remove();
+      map.current = null;
+    };
+  }, [variant]);
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-[#111317] mb-2">
+        Vista Previa de la Ruta
+      </label>
+      <div
+        ref={mapContainer}
+        className="w-full h-[400px] rounded-lg border border-[#dcdfe5]"
+      />
+    </div>
   );
 }

@@ -20,6 +20,7 @@ export default function RouteMapEditor({
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [path, setPath] = useState<Coordinate[]>(initialPath);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Función para agregar marcador
   const addMarker = (point: Coordinate, index: number) => {
@@ -59,7 +60,6 @@ export default function RouteMapEditor({
         if (currentIndex !== -1) {
           newPath[currentIndex] = { lat: lngLat.lat, lng: lngLat.lng };
           onPathChange(newPath);
-          updateLine(newPath);
         }
         return newPath;
       });
@@ -73,19 +73,12 @@ export default function RouteMapEditor({
       const currentIndex = markersRef.current.indexOf(marker);
       if (currentIndex === -1) return;
 
-      if (confirm(`¿Eliminar punto ${currentIndex + 1}?`)) {
-        setPath((prevPath) => {
-          const newPath = prevPath.filter((_, i) => i !== currentIndex);
-          onPathChange(newPath);
-
-          // Recrear todos los marcadores con nuevos números
-          markersRef.current.forEach((m) => m.remove());
-          markersRef.current = [];
-          newPath.forEach((p, i) => addMarker(p, i));
-          updateLine(newPath);
-          return newPath;
-        });
-      }
+      // Eliminar el punto directamente sin confirmación
+      setPath((prevPath) => {
+        const newPath = prevPath.filter((_, i) => i !== currentIndex);
+        onPathChange(newPath);
+        return newPath;
+      });
     });
 
     markersRef.current.push(marker);
@@ -102,12 +95,25 @@ export default function RouteMapEditor({
       return;
     }
 
+    // Filtrar puntos válidos antes de mapear
+    const validPath = currentPath.filter(
+      (p) => p && p.lng != null && p.lat != null,
+    );
+
+    if (validPath.length < 2) {
+      if (map.current?.getSource('route')) {
+        map.current.removeLayer('route');
+        map.current.removeSource('route');
+      }
+      return;
+    }
+
     const geojson: GeoJSON.Feature<GeoJSON.LineString> = {
       type: 'Feature',
       properties: {},
       geometry: {
         type: 'LineString',
-        coordinates: currentPath.map((p) => [p.lng, p.lat]),
+        coordinates: validPath.map((p) => [p.lng, p.lat]),
       },
     };
 
@@ -158,13 +164,6 @@ export default function RouteMapEditor({
     setPath((prevPath) => {
       const newPath = prevPath.slice(0, -1);
       onPathChange(newPath);
-
-      // Remover TODOS los marcadores y recrearlos con nuevos números
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      newPath.forEach((p, i) => addMarker(p, i));
-      updateLine(newPath);
-
       return newPath;
     });
   };
@@ -207,6 +206,7 @@ export default function RouteMapEditor({
     // Esperar a que el mapa se cargue
     map.current.on('load', () => {
       console.log('Mapa cargado');
+      setMapLoaded(true);
 
       // Cargar path inicial si existe
       if (initialPath.length > 0) {
@@ -233,8 +233,6 @@ export default function RouteMapEditor({
       setPath((prevPath) => {
         const newPath = [...prevPath, newPoint];
         onPathChange(newPath);
-        addMarker(newPoint, newPath.length - 1);
-        updateLine(newPath);
         return newPath;
       });
     });
@@ -244,8 +242,29 @@ export default function RouteMapEditor({
       markersRef.current.forEach((marker) => marker.remove());
       map.current?.remove();
       map.current = null;
+      setMapLoaded(false);
     };
   }, []);
+
+  // Efecto para actualizar marcadores y línea cuando cambia el path
+  useEffect(() => {
+    // Solo ejecutar si el mapa está cargado
+    if (!map.current || !mapLoaded) return;
+
+    // Limpiar marcadores existentes
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    // Agregar marcadores para cada punto
+    path.forEach((point, index) => {
+      if (point && point.lng != null && point.lat != null) {
+        addMarker(point, index);
+      }
+    });
+
+    // Actualizar línea
+    updateLine(path);
+  }, [path, mapLoaded]);
 
   return (
     <div className="flex flex-col gap-3">

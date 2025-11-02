@@ -54,14 +54,38 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 
 ### Gestión de Vehículos
 - **Lista de Vehículos**: Visualización de todos los buses registrados con paginación
+  - Tabla con información GPS en tiempo real
+  - Columnas: Placa, Estado, Ubicación (lat/lng), Velocidad (km/h), Última Actualización GPS, Ruta Activa
+  - Tiempo relativo de última actualización (hace X seg/min/hora/día)
 - **Crear Vehículo**: Modal con formulario validado
   - Formato automático de placa: ABC-123 (3 letras, guión, 3 números)
   - Validación de capacidad y modelo
   - Selección de estado del vehículo
+- **Asignación de Rutas a Vehículos** (NUEVO):
+  - **Modal de Selección de Ruta**: Interfaz en dos pasos
+    1. Selección de ruta (dropdown con código + nombre)
+    2. Selección de variante (dropdown con ID + distancia en km)
+  - **Vista Previa en Mapa**: Mapa interactivo con MapLibre GL mostrando:
+    - Ruta dibujada con Map Matching (ajustada a calles reales)
+    - Zoom automático a los límites de la ruta
+    - Tiles de OpenStreetMap
+  - **Operaciones de Trips**:
+    - **Crear Trip**: POST a `/rpc/create_trip` cuando el bus no tiene ruta
+    - **Cambiar Ruta**: POST a `/rpc/update_trip_route` cuando ya tiene un trip activo
+    - **Remover Ruta**: POST a `/rpc/end_active_trip` para terminar el viaje
+  - **Botones Condicionales**:
+    - Sin ruta: Botón verde "Asignar Ruta"
+    - Con ruta: Botones azul "Cambiar Ruta" + naranja "Remover Ruta"
+  - **Pre-carga Inteligente**: Al modificar ruta, el modal se abre con la ruta actual ya seleccionada
+  - **Actualización en Tiempo Real**: Los botones se actualizan automáticamente después de cada operación
 - **Detalle de Vehículo**: Panel lateral con información completa
+  - Estado del vehículo y ruta asignada
+  - Información GPS en tiempo real
 - **Paginación**: Selector de 5, 10 o 15 filas por página
 - **Búsqueda en Tiempo Real**: Filtrado por placa del vehículo
 - **Integración con API Real**: Conexión directa con Supabase REST API
+  - Endpoint: `/v_bus_latest_positions` para datos GPS agregados
+  - Vista con información de trips y posiciones actuales
 
 ### Rastreo de Flota en Vivo (LiveFleet)
 - **Mapa de Seguimiento**: Vista de mapa completo con todos los buses activos
@@ -72,7 +96,7 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Controles de Navegación**: Zoom, reset norte, centrar en usuario
 - **Panel Lateral**: Lista de vehículos con información de estado y selección
 
-### Gestión de Rutas (NUEVO)
+### Gestión de Rutas
 - **Vista de Dos Columnas**: Panel de detalles izquierdo y lista de rutas derecha
 - **CRUD Completo de Rutas**:
   - Crear nueva ruta con código, nombre y estado activo/inactivo
@@ -84,15 +108,19 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
   - Editor de mapa interactivo para dibujar trazados
   - Visualización de distancia calculada en kilómetros
   - CRUD completo para variantes
-- **Editor de Mapa Interactivo**:
+- **Editor de Mapa Interactivo** (MEJORADO):
   - Click en mapa para agregar puntos de ruta
   - Marcadores numerados y arrastrables
-  - Click en marcador para eliminar punto específico
+  - **Click en marcador para eliminar punto** sin confirmación (directo)
   - Botón "Deshacer" para eliminar último punto
   - Botón "Limpiar Todo" para reiniciar
   - Línea azul conectando puntos en tiempo real
   - Validación mínima de 2 puntos
   - Contador de puntos y segmentos
+  - **Sincronización mejorada**: UseEffect para actualizar marcadores y línea automáticamente
+  - **Validación de puntos**: Filtrado de puntos undefined o null antes de renderizar
+  - **Espera de carga del mapa**: No renderiza elementos hasta que el mapa esté completamente cargado
+  - **Prevención de errores**: Manejo robusto de estado asíncrono para evitar crashes
 - **Detalles de Ruta**: Panel lateral mostrando
   - ID, código, nombre
   - Estado (activa/inactiva)
@@ -298,11 +326,24 @@ localStorage.setItem('user', JSON.stringify(userData))
 ### Endpoints Utilizados
 
 ```typescript
-// Obtener todos los vehículos
-GET /rest/v1/buses
+// Obtener vehículos con información GPS agregada
+GET /rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc
 Headers:
   - Authorization: Bearer {token}
   - apikey: {supabase_anon_key}
+Response: {
+  bus_id: "uuid",
+  plate: "ABC-123",
+  company_id: "uuid",
+  status: "IN_SERVICE",
+  active_trip_id: "uuid | null",
+  active_route_variant_id: "uuid | null",
+  vp_id: "uuid | null",
+  vp_at: "2025-11-02T10:30:00Z",
+  location_json: { lat: 5.0689, lng: -75.5636 },
+  speed_kph: 45.2,
+  heading: 180
+}
 
 // Crear vehículo
 POST /rest/v1/buses
@@ -318,6 +359,58 @@ Body: {
   status: "AVAILABLE",
   company_id: "uuid"
 }
+```
+
+### API de Gestión de Trips (RPC Endpoints)
+
+```typescript
+// Crear un nuevo trip (asignar ruta a vehículo sin trip activo)
+POST /rest/v1/rpc/create_trip
+Headers:
+  - Authorization: Bearer {token}
+  - apikey: {supabase_anon_key}
+  - Content-Type: application/json
+  - Prefer: return=representation
+Body: {
+  _bus_id: "uuid-del-bus",
+  _route_variant_id: "uuid-de-la-variante"
+}
+
+// Actualizar ruta de un trip activo (cambiar ruta)
+POST /rest/v1/rpc/update_trip_route
+Headers:
+  - Authorization: Bearer {token}
+  - apikey: {supabase_anon_key}
+  - Content-Type: application/json
+  - Prefer: return=representation
+Body: {
+  _bus_id: "uuid-del-bus",
+  _new_route_variant_id: "uuid-de-nueva-variante",
+  _mode: "switch"
+}
+
+// Terminar trip activo (remover ruta de vehículo)
+POST /rest/v1/rpc/end_active_trip
+Headers:
+  - Authorization: Bearer {token}
+  - apikey: {supabase_anon_key}
+  - Content-Type: application/json
+  - Prefer: return=representation
+Body: {
+  _bus_id: "uuid-del-bus"
+}
+
+// Obtener rutas disponibles
+GET /rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active&order=route_code.asc
+Headers:
+  - Authorization: Bearer {token}
+  - apikey: {supabase_anon_key}
+
+// Obtener variantes de una ruta específica
+GET /rest/v1/v_route_variants_agg?select=*&route_id=eq.{routeId}&order=variant_id.asc
+Headers:
+  - Authorization: Bearer {token}
+  - apikey: {supabase_anon_key}
 ```
 
 ### Formato de Placa
