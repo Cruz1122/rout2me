@@ -17,41 +17,17 @@ import {
   RiAddLine,
   RiSubtractLine,
   RiCompassLine,
+  RiBusFill,
 } from 'react-icons/ri';
 import { processRouteWithCoordinates } from '../services/mapMatchingService';
 import PageHeader from '../components/PageHeader';
-
-// Iconos SVG como componentes
-const TruckIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24px"
-    height="24px"
-    fill="currentColor"
-    viewBox="0 0 256 256"
-  >
-    <path d="M247.42,117l-14-35A15.93,15.93,0,0,0,218.58,72H184V64a8,8,0,0,0-8-8H24A16,16,0,0,0,8,72V184a16,16,0,0,0,16,16H41a32,32,0,0,0,62,0h50a32,32,0,0,0,62,0h17a16,16,0,0,0,16-16V120A7.94,7.94,0,0,0,247.42,117ZM184,88h34.58l9.6,24H184ZM24,72H168v64H24ZM72,208a16,16,0,1,1,16-16A16,16,0,0,1,72,208Zm81-24H103a32,32,0,0,0-62,0H24V152H168v12.31A32.11,32.11,0,0,0,153,184Zm31,24a16,16,0,1,1,16-16A16,16,0,0,1,184,208Zm48-24H215a32.06,32.06,0,0,0-31-24V128h48Z" />
-  </svg>
-);
-
-const SearchIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24px"
-    height="24px"
-    fill="currentColor"
-    viewBox="0 0 256 256"
-  >
-    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
-  </svg>
-);
+import R2MSearchableList from '../components/R2MSearchableList';
 
 export default function LiveFleet() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [busPositions, setBusPositions] = useState<BusPosition[]>([]);
   const [routeVariants, setRouteVariants] = useState<RouteVariant[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(
     null,
@@ -72,6 +48,70 @@ export default function LiveFleet() {
     y: number;
     bearing: number;
   } | null>(null);
+
+  // Función para obtener el estado del vehículo basado en su status
+  const getVehicleDisplayStatus = (status: string): string => {
+    switch (status.toUpperCase()) {
+      case 'AVAILABLE':
+        return 'Disponible';
+      case 'IN_SERVICE':
+        return 'En Servicio';
+      case 'MAINTENANCE':
+        return 'Mantenimiento';
+      case 'OUT_OF_SERVICE':
+        return 'Fuera de Servicio';
+      default:
+        return status;
+    }
+  };
+
+  // Función para obtener el porcentaje de capacidad
+  const getVehicleCapacityLevel = (): number => {
+    return 0;
+  };
+
+  // Renderizado del item de vehículo para el componente reutilizable
+  const renderVehicleItem = (vehicle: Vehicle, isSelected: boolean) => {
+    const position = busPositions.find((pos) => pos.bus_id === vehicle.id);
+    const hasPosition = position?.location_json;
+
+    return (
+      <div
+        className={`flex min-h-[72px] items-center justify-between gap-4 px-4 py-2 transition-all
+          ${
+            isSelected && !hasPosition
+              ? 'bg-red-50 border-l-4 border-red-500'
+              : isSelected && hasPosition
+                ? 'bg-blue-50 border-l-4 border-blue-500'
+                : 'bg-white hover:bg-gray-50'
+          }`}
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-[#f0f2f4] text-[#111317]">
+            <RiBusFill size={24} />
+          </div>
+          <div className="flex flex-col justify-center">
+            <p className="line-clamp-1 text-base font-medium leading-normal text-[#111317]">
+              {vehicle.plate}
+            </p>
+            <p className="line-clamp-2 text-sm font-normal leading-normal text-[#646f87]">
+              {getVehicleDisplayStatus(vehicle.status)}
+            </p>
+            {!hasPosition && (
+              <p className="text-xs text-red-500 mt-1 font-medium">
+                Sin ubicación disponible
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0">
+          <p className="text-base font-normal leading-normal text-[#111317]">
+            {getVehicleCapacityLevel()}%
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   // Mantener la ref sincronizada con el estado
   useEffect(() => {
@@ -239,14 +279,6 @@ export default function LiveFleet() {
       }
     };
   }, []);
-
-  // Filtrar vehículos por búsqueda
-  const filteredVehicles = vehicles.filter((vehicle) => {
-    const matchesSearch = vehicle.plate
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
 
   // Función para limpiar ruta y paradas del mapa
   const clearRouteFromMap = useCallback(() => {
@@ -523,16 +555,18 @@ export default function LiveFleet() {
     if (!mapInstance.current) return;
 
     // Limpiar marcadores existentes
-    vehicleMarkers.current.forEach((marker) => marker.remove());
+    for (const marker of vehicleMarkers.current.values()) {
+      marker.remove();
+    }
     vehicleMarkers.current.clear();
 
-    // Agregar marcadores para vehículos filtrados con sus posiciones reales
-    filteredVehicles.forEach((vehicle) => {
+    // Agregar marcadores para todos los vehículos con sus posiciones reales
+    for (const vehicle of vehicles) {
       // Buscar la posición del bus
       const position = busPositions.find((pos) => pos.bus_id === vehicle.id);
 
       // Si no hay posición, no mostrar el marcador
-      if (!position || !position.location_json) return;
+      if (!position?.location_json) continue;
 
       const { lat, lng } = position.location_json;
 
@@ -601,13 +635,14 @@ export default function LiveFleet() {
 
       // Guardar referencia del marcador
       vehicleMarkers.current.set(vehicle.id, marker);
-    });
+    }
   }, [
-    filteredVehicles,
+    vehicles,
     busPositions,
     selectedVehicleId,
     handleVehicleClick,
     companies,
+    getVehicleDisplayStatus,
   ]);
 
   // Manejo de controles del mapa
@@ -705,173 +740,99 @@ export default function LiveFleet() {
     };
   }, [isDraggingCompass, handleCompassMove, handleCompassEnd]);
 
-  // Función para obtener el estado del vehículo basado en su status
-  const getVehicleDisplayStatus = (status: string): string => {
-    switch (status.toUpperCase()) {
-      case 'AVAILABLE':
-        return 'Disponible';
-      case 'IN_SERVICE':
-        return 'En Servicio';
-      case 'MAINTENANCE':
-        return 'Mantenimiento';
-      case 'OUT_OF_SERVICE':
-        return 'Fuera de Servicio';
-      default:
-        return status; // Mostrar el valor original si no coincide
-    }
-  };
+  // Ordenar vehículos: primero los que tienen ubicación, luego los que no
+  const sortedVehicles = [...vehicles].sort((a, b) => {
+    const positionA = busPositions.find((pos) => pos.bus_id === a.id);
+    const positionB = busPositions.find((pos) => pos.bus_id === b.id);
+    const hasPositionA = positionA?.location_json ? 1 : 0;
+    const hasPositionB = positionB?.location_json ? 1 : 0;
 
-  // Función para obtener el porcentaje de capacidad (por defecto 0% hasta que se implemente)
-  const getVehicleCapacityLevel = (): number => {
-    return 0;
-  };
+    // Ordenar descendente (con ubicación primero)
+    return hasPositionB - hasPositionA;
+  });
 
   return (
     <>
       <PageHeader title="Flota en Vivo" />
 
-      <div className="flex h-full gap-1 px-6 py-5">
-        {/* Panel Izquierdo - Lista de Vehículos */}
-        <div className="flex w-80 flex-col">
-          {/* Buscador */}
-          <div className="px-4 py-3">
-            <label className="flex h-12 w-full min-w-40 flex-col">
-              <div className="flex h-full w-full flex-1 items-stretch rounded-xl">
-                <div className="flex items-center justify-center rounded-l-xl border-r-0 bg-[#f0f2f4] pl-4 text-[#646f87]">
-                  <SearchIcon />
-                </div>
-                <input
-                  placeholder="Buscar vehículos"
-                  className="form-input flex h-full w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl rounded-l-none border-l-0 border-none bg-[#f0f2f4] px-4 pl-2 text-base font-normal leading-normal text-[#111317] placeholder:text-[#646f87] focus:border-none focus:outline-0 focus:ring-0"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </label>
-          </div>
-
-          {/* Lista de Vehículos */}
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center p-8">
-                <p className="text-sm text-[#646f87]">Cargando vehículos...</p>
-              </div>
-            ) : filteredVehicles.length === 0 ? (
-              <div className="flex items-center justify-center p-8">
-                <p className="text-sm text-[#646f87]">
-                  No se encontraron vehículos
-                </p>
-              </div>
-            ) : (
-              filteredVehicles.map((vehicle) => {
-                const position = busPositions.find(
-                  (pos) => pos.bus_id === vehicle.id,
-                );
-                const hasPosition = position && position.location_json;
-                const isSelected = selectedVehicleId === vehicle.id;
-
-                return (
-                  <div
-                    key={vehicle.id}
-                    onClick={() => handleVehicleClick(vehicle)}
-                    className={`flex min-h-[72px] items-center justify-between gap-4 px-4 py-2 cursor-pointer transition-all
-                    ${
-                      isSelected && !hasPosition
-                        ? 'bg-red-50 border-l-4 border-red-500'
-                        : isSelected && hasPosition
-                          ? 'bg-blue-50 border-l-4 border-blue-500'
-                          : 'bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-[#f0f2f4] text-[#111317]">
-                        <TruckIcon />
-                      </div>
-                      <div className="flex flex-col justify-center">
-                        <p className="line-clamp-1 text-base font-medium leading-normal text-[#111317]">
-                          {vehicle.plate}
-                        </p>
-                        <p className="line-clamp-2 text-sm font-normal leading-normal text-[#646f87]">
-                          {getVehicleDisplayStatus(vehicle.status)}
-                        </p>
-                        {!hasPosition && (
-                          <p className="text-xs text-red-500 mt-1 font-medium">
-                            ⚠️ Sin ubicación disponible
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="shrink-0">
-                      <p className="text-base font-normal leading-normal text-[#111317]">
-                        {getVehicleCapacityLevel()}%
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+      <div className="flex h-[calc(100vh-100px)] gap-4 px-6 py-5">
+        {/* Panel Izquierdo - Lista de Vehículos con componente reutilizable */}
+        <div className="w-80">
+          <R2MSearchableList
+            items={sortedVehicles}
+            searchPlaceholder="Buscar vehículos"
+            searchKey="plate"
+            onItemClick={handleVehicleClick}
+            renderItem={renderVehicleItem}
+            selectedItemId={selectedVehicleId}
+            loading={loading}
+            emptyMessage="No se encontraron vehículos"
+            height="100%"
+            itemsPerPage={8}
+          />
         </div>
 
-        {/* Panel Derecho - Mapa */}
-        <div className="flex max-w-[960px] flex-1 flex-col">
-          <div className="@container flex h-full flex-col">
-            <div className="flex flex-1 flex-col @[480px]:px-4 @[480px]:py-3">
-              <div
-                ref={mapRef}
-                className="@[480px]:rounded-xl flex min-h-[320px] flex-1 relative"
-                style={{
-                  backgroundColor: '#e5e7eb',
-                }}
-              >
-                {/* Controles del Mapa */}
-                <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-                  {/* Zoom Controls */}
-                  <div className="flex flex-col gap-0.5">
-                    <button
-                      onClick={handleZoomIn}
-                      className="flex size-10 items-center justify-center rounded-t-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
-                    >
-                      <RiAddLine size={20} className="text-[#111317]" />
-                    </button>
-                    <button
-                      onClick={handleZoomOut}
-                      className="flex size-10 items-center justify-center rounded-b-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
-                    >
-                      <RiSubtractLine size={20} className="text-[#111317]" />
-                    </button>
-                  </div>
-
-                  {/* Compass Control */}
-                  <button
-                    onClick={handleResetBearing}
-                    onMouseDown={handleCompassMouseDown}
-                    className={`flex size-10 items-center justify-center rounded-xl transition-all duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50
-                    ${isDraggingCompass ? 'cursor-grabbing scale-105 bg-[#1E56A0]' : 'cursor-pointer bg-white'}`}
-                    aria-label="Arrastrar para rotar - Click para resetear"
-                  >
-                    <RiCompassLine
-                      size={20}
-                      style={{
-                        color: isDraggingCompass ? '#FFFFFF' : '#111317',
-                        transform: `rotate(${mapBearing}deg)`,
-                        transition: isDraggingCompass
-                          ? 'none'
-                          : 'transform 0.2s ease',
-                      }}
-                    />
-                  </button>
-
-                  {/* Location Control */}
-                  <button
-                    onClick={handleLocationRequest}
-                    className="flex size-10 items-center justify-center rounded-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
-                    aria-label="Mi ubicación"
-                  >
-                    <RiFocus3Line size={20} className="text-[#111317]" />
-                  </button>
-                </div>
+        {/* Panel Derecho - Mapa con altura fija */}
+        <div className="flex-1 flex flex-col">
+          <div
+            ref={mapRef}
+            className="w-full h-full rounded-xl relative"
+            style={{
+              backgroundColor: '#e5e7eb',
+            }}
+          >
+            {/* Controles del Mapa */}
+            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+              {/* Zoom Controls */}
+              <div className="flex flex-col gap-0.5">
+                <button
+                  onClick={handleZoomIn}
+                  className="flex size-10 items-center justify-center rounded-t-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                  type="button"
+                  aria-label="Acercar"
+                >
+                  <RiAddLine size={20} className="text-[#111317]" />
+                </button>
+                <button
+                  onClick={handleZoomOut}
+                  className="flex size-10 items-center justify-center rounded-b-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                  type="button"
+                  aria-label="Alejar"
+                >
+                  <RiSubtractLine size={20} className="text-[#111317]" />
+                </button>
               </div>
+
+              {/* Compass Control */}
+              <button
+                onClick={handleResetBearing}
+                onMouseDown={handleCompassMouseDown}
+                className={`flex size-10 items-center justify-center rounded-xl transition-all duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50
+                ${isDraggingCompass ? 'cursor-grabbing scale-105 bg-[#1E56A0]' : 'cursor-pointer bg-white'}`}
+                aria-label="Arrastrar para rotar - Click para resetear"
+                type="button"
+              >
+                <RiCompassLine
+                  size={20}
+                  style={{
+                    color: isDraggingCompass ? '#FFFFFF' : '#111317',
+                    transform: `rotate(${mapBearing}deg)`,
+                    transition: isDraggingCompass
+                      ? 'none'
+                      : 'transform 0.2s ease',
+                  }}
+                />
+              </button>
+
+              {/* Location Control */}
+              <button
+                onClick={handleLocationRequest}
+                className="flex size-10 items-center justify-center rounded-xl bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:bg-gray-50 transition-colors"
+                aria-label="Mi ubicación"
+                type="button"
+              >
+                <RiFocus3Line size={20} className="text-[#111317]" />
+              </button>
             </div>
           </div>
         </div>
