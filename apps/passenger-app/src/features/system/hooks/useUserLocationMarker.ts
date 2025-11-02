@@ -107,7 +107,9 @@ export function useUserLocationMarker(
         if (markerRef.current) {
           try {
             markerRef.current.remove();
-          } catch {}
+          } catch {
+            // Ignorar errores al remover marcador
+          }
           markerRef.current = null;
         }
         return false;
@@ -190,7 +192,9 @@ export function useUserLocationMarker(
     if (markerRef.current) {
       try {
         markerRef.current.remove();
-      } catch {}
+      } catch {
+        // Ignorar errores al remover marcador
+      }
       markerRef.current = null;
       lastValidPosition.current = null;
     }

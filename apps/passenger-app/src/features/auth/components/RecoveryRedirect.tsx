@@ -72,7 +72,6 @@ export default function RecoveryRedirect() {
       );
       // No hacer nada aquí, Supabase redirigirá con el hash
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Solo ejecutar una vez al montar
 
   return null;

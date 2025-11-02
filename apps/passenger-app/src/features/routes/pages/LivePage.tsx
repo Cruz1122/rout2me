@@ -136,6 +136,24 @@ export default function LivePage() {
       );
     }
 
+    // Ordenar por distancia ascendente
+    if (userLocation) {
+      filteredBuses = filteredBuses.sort((busA, busB) => {
+        // Calcular distancia para cada bus
+        const distanceA =
+          busA.location !== null
+            ? getDistanceBetweenLocations(userLocation, busA.location)
+            : Infinity;
+        const distanceB =
+          busB.location !== null
+            ? getDistanceBetweenLocations(userLocation, busB.location)
+            : Infinity;
+
+        // Ordenar de menor a mayor distancia
+        return distanceA - distanceB;
+      });
+    }
+
     return filteredBuses;
   };
 
