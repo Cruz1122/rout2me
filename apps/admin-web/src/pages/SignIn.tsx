@@ -176,21 +176,21 @@ export default function SignIn() {
         }
       `}</style>
       <div
-        className="relative flex size-full min-h-screen flex-col bg-white group/design-root overflow-x-hidden"
+        className={`relative flex size-full min-h-screen flex-col ${colorClasses.bgPage} group/design-root overflow-x-hidden`}
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
         <div className="layout-container flex h-full grow flex-col">
           <AuthHeader showSignUp={true} />
           <div className="flex flex-1 justify-center py-10">
-            <div className="layout-content-container flex flex-col w-[512px] max-w-[512px] py-5">
+            <div className="flex flex-col items-center w-full max-w-[480px] px-4 py-5">
               <h2
-                className={`${colorClasses.textPrimary} tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5`}
+                className={`${colorClasses.textPrimary} tracking-light text-[28px] font-bold leading-tight text-center pb-3 pt-5 w-full`}
               >
                 Inicia sesión en tu cuenta
               </h2>
-              <form onSubmit={handleSubmit}>
-                <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                  <div className="flex flex-col flex-1 min-w-0">
+              <form onSubmit={handleSubmit} className="w-full">
+                <div className="flex flex-col gap-4 py-3">
+                  <div className="flex flex-col">
                     <p
                       className={`${colorClasses.textPrimary} text-base font-medium leading-normal pb-2`}
                     >
@@ -208,9 +208,7 @@ export default function SignIn() {
                       icon="ri-mail-line"
                     />
                   </div>
-                </div>
-                <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                  <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex flex-col">
                     <p
                       className={`${colorClasses.textPrimary} text-base font-medium leading-normal pb-2`}
                     >
@@ -228,23 +226,23 @@ export default function SignIn() {
                       icon="ri-lock-password-line"
                     />
                   </div>
-                </div>
-                <p
-                  className={`${colorClasses.textTerciary} text-sm font-normal leading-normal pb-3 pt-1 px-4 underline cursor-pointer`}
-                >
-                  ¿Olvidaste tu contraseña?
-                </p>
-                <div className="flex max-w-[480px] px-4 py-3">
-                  <R2MButton
-                    type="submit"
-                    disabled={isLoading || !isFormValid}
-                    loading={isLoading}
-                    variant="secondary"
-                    size="md"
-                    fullWidth
+                  <p
+                    className={`${colorClasses.textTerciary} text-sm font-normal leading-normal underline cursor-pointer`}
                   >
-                    Iniciar sesión
-                  </R2MButton>
+                    ¿Olvidaste tu contraseña?
+                  </p>
+                  <div className="pt-3">
+                    <R2MButton
+                      type="submit"
+                      disabled={isLoading || !isFormValid}
+                      loading={isLoading}
+                      variant="secondary"
+                      size="md"
+                      fullWidth
+                    >
+                      Iniciar sesión
+                    </R2MButton>
+                  </div>
                 </div>
               </form>
             </div>
@@ -262,10 +260,10 @@ export default function SignIn() {
             style={{ willChange: 'opacity, transform' }}
           >
             <div
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg border ${
+              className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg border bg-white ${
                 toast.type === 'success'
-                  ? 'bg-white text-gray-900 border-green-100'
-                  : 'bg-white text-gray-900 border-red-100'
+                  ? `${colorClasses.textPrimary} border-green-100`
+                  : `${colorClasses.textPrimary} border-red-100`
               }`}
             >
               <div
@@ -317,12 +315,14 @@ export default function SignIn() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium max-w-md">
+                <div
+                  className={`text-sm font-medium max-w-md ${colorClasses.textPrimary}`}
+                >
                   {toast.message}
                 </div>
               </div>
               <button
-                className="ml-3 text-sm underline text-gray-500 whitespace-nowrap"
+                className={`ml-3 text-sm underline ${colorClasses.textTerciary} whitespace-nowrap`}
                 onClick={() => setToast(null)}
               >
                 Cerrar
