@@ -120,6 +120,7 @@ export default function SignIn() {
   useEffect(() => {
     const isValid = validateForm();
     setIsFormValid(isValid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData]);
 
   const handleSubmit = async (e: React.FormEvent) => {

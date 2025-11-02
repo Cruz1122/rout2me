@@ -43,6 +43,7 @@ export default function UsersPage() {
   // Cargar usuarios al montar el componente
   useEffect(() => {
     loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadUsers() {

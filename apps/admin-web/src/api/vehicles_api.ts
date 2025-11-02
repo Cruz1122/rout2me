@@ -17,6 +17,14 @@ export type Vehicle = {
   created_at: string;
   last_maintenance?: string;
   passenger_count: number;
+  // Nuevos campos de v_bus_latest_positions
+  active_trip_id: string | null;
+  active_route_variant_id: string | null;
+  vp_id: string | null;
+  vp_at: string | null;
+  location_json: BusLocation | null;
+  speed_kph: number | null;
+  heading: number | null;
 };
 
 export type VehicleCreate = {
@@ -69,6 +77,13 @@ export type RouteVariant = {
   stops: RouteStop[];
 };
 
+export type Route = {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+};
+
 // Helper para obtener el token del localStorage
 function getAuthToken(): string | null {
   return localStorage.getItem('access_token');
@@ -99,12 +114,12 @@ export async function getCompanies(): Promise<Company[]> {
   return await res.json();
 }
 
-// Obtener todos los vehículos
+// Obtener todos los vehículos con información extendida
 export async function getVehicles(): Promise<Vehicle[]> {
   const token = getAuthToken();
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/buses?select=id,plate,capacity,status,created_at,last_maintenance,passenger_count,company:companies(id,name,short_name)&order=created_at.desc`,
+    `${SUPABASE_URL}/rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc`,
     {
       method: 'GET',
       headers: {
@@ -124,20 +139,36 @@ export async function getVehicles(): Promise<Vehicle[]> {
 
   const vehicles = await res.json();
 
-  // Asegurar que passenger_count tenga un valor por defecto de 0
+  // Mapear la respuesta al formato Vehicle esperado
   return vehicles.map(
     (vehicle: {
-      id: string;
-      company_id: string;
+      bus_id: string;
       plate: string;
-      capacity: number;
+      company_id: string;
       status: VehicleStatus;
-      created_at: string;
-      last_maintenance?: string;
-      passenger_count?: number;
+      active_trip_id: string | null;
+      active_route_variant_id: string | null;
+      vp_id: string | null;
+      vp_at: string | null;
+      location_json: BusLocation | null;
+      speed_kph: number | null;
+      heading: number | null;
     }) => ({
-      ...vehicle,
-      passenger_count: vehicle.passenger_count ?? 0,
+      id: vehicle.bus_id,
+      company_id: vehicle.company_id,
+      plate: vehicle.plate,
+      capacity: 0, // No disponible en esta vista
+      status: vehicle.status,
+      created_at: '', // No disponible en esta vista
+      last_maintenance: undefined,
+      passenger_count: 0, // No disponible en esta vista
+      active_trip_id: vehicle.active_trip_id,
+      active_route_variant_id: vehicle.active_route_variant_id,
+      vp_id: vehicle.vp_id,
+      vp_at: vehicle.vp_at,
+      location_json: vehicle.location_json,
+      speed_kph: vehicle.speed_kph,
+      heading: vehicle.heading,
     }),
   );
 }
@@ -330,4 +361,170 @@ export async function getRouteVariants(): Promise<RouteVariant[]> {
   }
 
   return await res.json();
+}
+
+// Obtener todas las rutas
+export async function getRoutes(): Promise<Route[]> {
+  const token = getAuthToken();
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active&order=route_code.asc`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Get routes error:', errorText);
+    throw new Error(`Get routes failed: ${res.status} ${errorText}`);
+  }
+
+  const data = await res.json();
+
+  // Remover duplicados agrupando por route_id
+  const uniqueRoutes = Array.from(
+    new Map(
+      data.map(
+        (item: {
+          route_id: string;
+          route_code: string;
+          route_name: string;
+          route_active: boolean;
+        }) => [
+          item.route_id,
+          {
+            id: item.route_id,
+            code: item.route_code,
+            name: item.route_name,
+            active: item.route_active,
+          },
+        ],
+      ),
+    ).values(),
+  ) as Route[];
+
+  return uniqueRoutes;
+}
+
+// Obtener variantes de una ruta específica
+export async function getRouteVariantsByRouteId(
+  routeId: string,
+): Promise<RouteVariant[]> {
+  const token = getAuthToken();
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active,variant_id,path,length_m_json,stops&route_id=eq.${routeId}&order=variant_id.asc`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Get route variants error:', errorText);
+    throw new Error(`Get route variants failed: ${res.status} ${errorText}`);
+  }
+
+  return await res.json();
+}
+
+// Asignar ruta activa a un bus
+export async function assignRouteToVehicle(
+  busId: string,
+  routeVariantId: string,
+  hasActiveTrip: boolean = false,
+): Promise<void> {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error(
+      'No hay token de autenticación. Por favor inicia sesión nuevamente.',
+    );
+  }
+
+  // Si el bus ya tiene un trip activo, actualizamos la ruta
+  if (hasActiveTrip) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_trip_route`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        _bus_id: busId,
+        _new_route_variant_id: routeVariantId,
+        _mode: 'switch',
+      }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Update trip route error:', errorText);
+      throw new Error(`Error al actualizar ruta: ${res.status} ${errorText}`);
+    }
+  } else {
+    // Si no tiene un trip activo, creamos uno nuevo
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_trip`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        _bus_id: busId,
+        _route_variant_id: routeVariantId,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Create trip error:', errorText);
+      throw new Error(`Error al crear trip: ${res.status} ${errorText}`);
+    }
+  }
+}
+
+// Remover ruta activa de un bus (terminar el trip)
+export async function removeRouteFromVehicle(busId: string): Promise<void> {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error(
+      'No hay token de autenticación. Por favor inicia sesión nuevamente.',
+    );
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/end_active_trip`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({
+      _bus_id: busId,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('End trip error:', errorText);
+    throw new Error(`Error al terminar trip: ${res.status} ${errorText}`);
+  }
 }
