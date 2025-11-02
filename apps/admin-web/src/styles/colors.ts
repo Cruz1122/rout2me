@@ -1,4 +1,4 @@
-// Paleta de colores de Route2Me
+// Paleta de colores de Rout2Me
 export const colors = {
   primary: '#163172',
   secondary: '#1E56A0',

@@ -20,12 +20,46 @@ import type {
 } from '../api/vehicles_api';
 import { processRouteWithCoordinates } from '../services/mapMatchingService';
 import { colorClasses } from '../styles/colors';
-import GlobalLoader from '../components/GlobalLoader';
 import PageHeader from '../components/PageHeader';
+import R2MDetailDisplay, {
+  type DetailItem,
+} from '../components/R2MDetailDisplay';
+import R2MTable, { type R2MTableColumn } from '../components/R2MTable';
+import R2MActionIconButton from '../components/R2MActionIconButton';
+import R2MButton from '../components/R2MButton';
+import R2MModal from '../components/R2MModal';
+import R2MFilterSwitcher from '../components/R2MFilterSwitcher';
+import R2MInput from '../components/R2MInput';
+import R2MSelect from '../components/R2MSelect';
+
+// Función para calcular tiempo relativo
+function getTimeAgo(dateString: string | null): string {
+  if (!dateString) return 'N/A';
+
+  const now = new Date();
+  const past = new Date(dateString);
+  const diffMs = now.getTime() - past.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
+
+  if (diffYears > 0) return `hace ${diffYears} año${diffYears > 1 ? 's' : ''}`;
+  if (diffMonths > 0)
+    return `hace ${diffMonths} mes${diffMonths > 1 ? 'es' : ''}`;
+  if (diffDays > 0) return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+  if (diffHours > 0) return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+  if (diffMinutes > 0) return `hace ${diffMinutes} min`;
+  if (diffSeconds > 0) return `hace ${diffSeconds} seg`;
+  return 'justo ahora';
+}
 
 export default function VehiclesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
   const [company, setCompany] = useState('');
   const [plate, setPlate] = useState('');
@@ -42,8 +76,6 @@ export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<{
     type: 'success' | 'error';
@@ -443,6 +475,205 @@ export default function VehiclesPage() {
     return vehicle.plate.toLowerCase().includes(query);
   });
 
+  // Definir columnas de la tabla
+  const tableColumns: R2MTableColumn<Vehicle>[] = [
+    {
+      key: 'plate',
+      header: 'Placa',
+      sortable: true,
+      width: '120px',
+      render: (vehicle) => (
+        <span className={`font-medium ${colorClasses.textPrimary}`}>
+          {vehicle.plate}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Estado',
+      sortable: true,
+      width: '140px',
+      render: (vehicle) => {
+        const statusText =
+          vehicle.status === 'AVAILABLE'
+            ? 'Disponible'
+            : vehicle.status === 'IN_SERVICE'
+              ? 'En Servicio'
+              : vehicle.status === 'MAINTENANCE'
+                ? 'Mantenimiento'
+                : 'Fuera de Servicio';
+        return (
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${colorClasses.bgSurface} ${colorClasses.textPrimary}`}
+          >
+            {statusText}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'location',
+      header: 'Ubicación',
+      sortable: false,
+      width: '180px',
+      render: (vehicle) => {
+        const locationText = vehicle.location_json
+          ? `${vehicle.location_json.lat.toFixed(4)}, ${vehicle.location_json.lng.toFixed(4)}`
+          : 'N/A';
+        return <span className="text-[#97A3B1]">{locationText}</span>;
+      },
+    },
+    {
+      key: 'speed_kph',
+      header: 'Velocidad',
+      sortable: true,
+      width: '100px',
+      render: (vehicle) => {
+        const speedText =
+          vehicle.speed_kph !== null
+            ? `${vehicle.speed_kph.toFixed(1)} km/h`
+            : 'N/A';
+        return <span className="text-[#97A3B1]">{speedText}</span>;
+      },
+    },
+    {
+      key: 'vp_at',
+      header: 'Última Act. GPS',
+      sortable: true,
+      width: '140px',
+      render: (vehicle) => (
+        <span className="text-[#97A3B1]">{getTimeAgo(vehicle.vp_at)}</span>
+      ),
+    },
+    {
+      key: 'active_route_variant_id',
+      header: 'Ruta Activa',
+      sortable: true,
+      width: '110px',
+      render: (vehicle) => (
+        <span className="text-[#97A3B1]">
+          {vehicle.active_route_variant_id ? 'Sí' : 'No'}
+        </span>
+      ),
+    },
+  ];
+
+  // Renderizar botones de acciones para cada vehículo
+  const renderActions = (vehicle: Vehicle) => (
+    <>
+      <R2MActionIconButton
+        icon="ri-eye-line"
+        label="Ver detalles"
+        variant="info"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedVehicle(vehicle);
+          setIsDetailsOpen(true);
+        }}
+      />
+      <R2MActionIconButton
+        icon="ri-route-line"
+        label={
+          vehicle.active_route_variant_id ? 'Cambiar ruta' : 'Asignar ruta'
+        }
+        variant="success"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedVehicle(vehicle);
+          openRouteModal();
+        }}
+      />
+      <R2MActionIconButton
+        icon="ri-delete-bin-line"
+        label="Eliminar vehículo"
+        variant="danger"
+        onClick={(e) => {
+          e.stopPropagation();
+          openDeleteModal(vehicle);
+        }}
+      />
+    </>
+  );
+
+  // Generar items de detalle para el vehículo seleccionado
+  function getVehicleDetailItems(vehicle: Vehicle | null): DetailItem[] {
+    if (!vehicle) return [];
+
+    const statusText =
+      vehicle.status === 'AVAILABLE'
+        ? 'Disponible'
+        : vehicle.status === 'IN_SERVICE'
+          ? 'En Servicio'
+          : vehicle.status === 'MAINTENANCE'
+            ? 'Mantenimiento'
+            : 'Fuera de Servicio';
+
+    const locationText = vehicle.location_json
+      ? `${vehicle.location_json.lat.toFixed(6)}, ${vehicle.location_json.lng.toFixed(6)}`
+      : 'Sin ubicación';
+
+    const speedText =
+      vehicle.speed_kph !== null
+        ? `${vehicle.speed_kph.toFixed(1)} km/h`
+        : 'N/A';
+
+    return [
+      {
+        label: 'ID del Vehículo',
+        value: vehicle.id,
+        type: 'id',
+        maxLength: 20,
+        copyable: true,
+      },
+      {
+        label: 'Placa',
+        value: vehicle.plate,
+        type: 'text',
+      },
+      {
+        label: 'Compañía ID',
+        value: vehicle.company_id,
+        type: 'id',
+        maxLength: 20,
+        copyable: true,
+      },
+      {
+        label: 'Estado',
+        value: statusText,
+        type: 'status',
+      },
+      {
+        label: 'Ubicación GPS',
+        value: locationText,
+        type: 'location',
+      },
+      {
+        label: 'Velocidad',
+        value: speedText,
+        type: 'text',
+      },
+      {
+        label: 'Última Act. GPS',
+        value: getTimeAgo(vehicle.vp_at),
+        type: 'time',
+      },
+      {
+        label: 'Viaje Activo',
+        value: vehicle.active_trip_id || 'Ninguno',
+        type: 'id',
+        maxLength: 20,
+        copyable: vehicle.active_trip_id ? true : false,
+      },
+      {
+        label: 'Ruta Activa',
+        value: vehicle.active_route_variant_id || 'Ninguna',
+        type: 'id',
+        maxLength: 20,
+        copyable: vehicle.active_route_variant_id ? true : false,
+      },
+    ];
+  }
+
   return (
     <>
       {/* Toast */}
@@ -508,12 +739,14 @@ export default function VehiclesPage() {
                 {toast.message}
               </div>
             </div>
-            <button
-              className="ml-3 text-sm underline text-gray-500"
+            <R2MButton
               onClick={() => setToast(null)}
+              variant="ghost"
+              size="sm"
+              className="!h-auto !px-0 !py-0 text-sm underline text-gray-500"
             >
               Cerrar
-            </button>
+            </R2MButton>
           </div>
         </div>
       )}
@@ -521,595 +754,274 @@ export default function VehiclesPage() {
       <PageHeader
         title="Vehículos"
         action={
-          <button
+          <R2MButton
             onClick={() => setIsAddOpen(true)}
-            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
+            variant="surface"
+            size="sm"
+            icon="ri-add-line"
+            iconPosition="left"
           >
-            {loading ? (
-              <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
-            ) : null}
-            <span className="truncate">Agregar Vehículo</span>
-          </button>
+            Agregar Vehículo
+          </R2MButton>
         }
       />
 
       <div className="gap-1 px-6 flex flex-1 justify-center py-5">
-        {/* Left column: Vehicle details */}
-        <div className="layout-content-container flex flex-col w-80">
-          <h2 className="text-[#111317] tracking-light text-[22px] font-bold leading-tight px-4 pb-3 pt-5">
-            Detalles del Vehículo
-          </h2>
-
-          <div className="p-4 grid grid-cols-[20%_1fr] gap-x-6">
-            {selectedVehicle ? (
-              <>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    ID del Vehículo
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.id}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Placa
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.plate}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Compañía ID
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.company_id}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Estado
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.status === 'AVAILABLE'
-                      ? 'Disponible'
-                      : selectedVehicle.status === 'IN_SERVICE'
-                        ? 'En Servicio'
-                        : selectedVehicle.status === 'MAINTENANCE'
-                          ? 'Mantenimiento'
-                          : 'Fuera de Servicio'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Ubicación GPS
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.location_json
-                      ? `${selectedVehicle.location_json.lat.toFixed(6)}, ${selectedVehicle.location_json.lng.toFixed(6)}`
-                      : 'Sin ubicación'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Velocidad
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.speed_kph !== null
-                      ? `${selectedVehicle.speed_kph.toFixed(1)} km/h`
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Última Act. GPS
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {(() => {
-                      if (!selectedVehicle.vp_at) return 'N/A';
-
-                      const now = new Date();
-                      const past = new Date(selectedVehicle.vp_at);
-                      const diffMs = now.getTime() - past.getTime();
-                      const diffSeconds = Math.floor(diffMs / 1000);
-                      const diffMinutes = Math.floor(diffSeconds / 60);
-                      const diffHours = Math.floor(diffMinutes / 60);
-                      const diffDays = Math.floor(diffHours / 24);
-                      const diffMonths = Math.floor(diffDays / 30);
-                      const diffYears = Math.floor(diffDays / 365);
-
-                      if (diffYears > 0)
-                        return `hace ${diffYears} año${diffYears > 1 ? 's' : ''}`;
-                      if (diffMonths > 0)
-                        return `hace ${diffMonths} mes${diffMonths > 1 ? 'es' : ''}`;
-                      if (diffDays > 0)
-                        return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-                      if (diffHours > 0)
-                        return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-                      if (diffMinutes > 0) return `hace ${diffMinutes} min`;
-                      if (diffSeconds > 0) return `hace ${diffSeconds} seg`;
-                      return 'justo ahora';
-                    })()}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Viaje Activo
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.active_trip_id || 'Ninguno'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Ruta Activa
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedVehicle.active_route_variant_id || 'Ninguna'}
-                  </p>
-                </div>
-              </>
-            ) : loadingVehicles ? (
-              <div className="col-span-2">
-                <GlobalLoader />
-              </div>
-            ) : (
-              <div className="col-span-2 text-center py-8">
-                <p className="text-[#646f87] text-sm">
-                  Selecciona un vehículo para ver sus detalles
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2 px-4 py-3">
-            {selectedVehicle?.active_route_variant_id ? (
-              <>
-                <button
-                  onClick={openRouteModal}
-                  className="flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors cursor-pointer"
-                >
-                  <span className="truncate">Cambiar Ruta</span>
-                </button>
-                <button
-                  onClick={handleRemoveRoute}
-                  disabled={assigningRoute}
-                  className="flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <span className="truncate">
-                    {assigningRoute ? 'Removiendo...' : 'Remover Ruta'}
-                  </span>
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={openRouteModal}
-                disabled={!selectedVehicle}
-                className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors ${!selectedVehicle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <span className="truncate">Asignar Ruta</span>
-              </button>
-            )}
-            <button
-              onClick={() =>
-                selectedVehicle && openDeleteModal(selectedVehicle)
-              }
-              disabled={!selectedVehicle}
-              className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-red-600 hover:bg-red-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors ${!selectedVehicle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              <span className="truncate">Eliminar</span>
-            </button>
-          </div>
-        </div>
         {/* Add Vehicle Modal */}
-        {isAddOpen && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
-            <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
-            <div
-              className="relative z-50 w-[512px] max-w-[96%] rounded-xl bg-white p-6"
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              <h1 className="text-[#111317] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 text-left pb-3 pt-1">
+        <R2MModal
+          isOpen={isAddOpen}
+          onClose={closeModal}
+          title="Crear Vehículo"
+          maxWidth="xl"
+          footer={
+            <div className="flex gap-3 justify-end">
+              <R2MButton onClick={closeModal} variant="ghost" size="md">
+                Cancelar
+              </R2MButton>
+              <R2MButton
+                onClick={createVehicle}
+                disabled={
+                  !(
+                    company.trim() &&
+                    /^[A-Z]{3}-\d{3}$/.test(plate) &&
+                    /^\d+$/.test(capacity)
+                  )
+                }
+                loading={loading}
+                variant="secondary"
+                size="md"
+                icon="ri-add-circle-line"
+                iconPosition="left"
+              >
                 Crear Vehículo
-              </h1>
-              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                    Compañía
-                  </p>
-                  <select
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    onBlur={validateCompany}
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
-                  >
-                    <option value="" disabled>
-                      {loadingCompanies
-                        ? 'Cargando...'
-                        : 'Seleccione una compañía'}
-                    </option>
-                    {companies.map((comp) => (
-                      <option key={comp.id} value={comp.id}>
-                        {comp.name}{' '}
-                        {comp.short_name ? `(${comp.short_name})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.company && (
-                    <p className="text-red-600 text-sm mt-2">
-                      {errors.company}
-                    </p>
-                  )}
-                </label>
-              </div>
+              </R2MButton>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <div>
+              <label className="flex flex-col">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Compañía
+                </p>
+                <R2MSelect
+                  value={company}
+                  onChange={setCompany}
+                  options={companies.map((comp) => ({
+                    value: comp.id,
+                    label: `${comp.name}${comp.short_name ? ` (${comp.short_name})` : ''}`,
+                  }))}
+                  placeholder="Seleccione una compañía"
+                  icon="ri-building-line"
+                  loading={loadingCompanies}
+                  error={errors.company}
+                  onBlur={validateCompany}
+                />
+              </label>
+            </div>
 
-              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                    Placa
-                  </p>
-                  <input
-                    value={plate}
-                    onChange={(e) => {
-                      const formatted = formatPlate(e.target.value);
-                      setPlate(formatted);
-                    }}
-                    onBlur={validatePlate}
-                    maxLength={7}
-                    placeholder="ABC-123"
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
-                  />
-                  {errors.plate && (
-                    <p className="text-red-600 text-sm mt-2">
-                      {errors.plate === 'Placa no válida'
-                        ? 'Placa no válida. Debe tener 3 letras, guion y 3 dígitos (ej: ABC-123).'
-                        : errors.plate}
-                    </p>
-                  )}
-                </label>
-              </div>
+            <div>
+              <label className="flex flex-col">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Placa
+                </p>
+                <R2MInput
+                  type="text"
+                  value={plate}
+                  onValueChange={(value) => {
+                    const formatted = formatPlate(value);
+                    setPlate(formatted);
+                  }}
+                  placeholder="ABC-123"
+                  icon="ri-car-line"
+                  maxLength={7}
+                  error={
+                    errors.plate === 'Placa no válida'
+                      ? 'Placa no válida. Debe tener 3 letras, guion y 3 dígitos (ej: ABC-123).'
+                      : errors.plate
+                  }
+                  onBlur={validatePlate}
+                />
+              </label>
+            </div>
 
-              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                    Capacidad
-                  </p>
-                  <input
-                    value={capacity}
-                    onChange={(e) =>
-                      setCapacity(e.target.value.replace(/[^0-9]/g, ''))
-                    }
-                    onBlur={validateCapacity}
-                    placeholder="Ingrese Capacidad"
-                    inputMode="numeric"
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border border-[#dcdfe5] bg-white focus:border-[#dcdfe5] h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal"
-                  />
-                  {errors.capacity && (
-                    <p className="text-red-600 text-sm mt-2">
-                      {errors.capacity === 'Capacity must be numeric'
-                        ? 'La capacidad debe ser numérica.'
-                        : errors.capacity}
-                    </p>
-                  )}
-                </label>
-              </div>
+            <div>
+              <label className="flex flex-col">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Capacidad
+                </p>
+                <R2MInput
+                  type="number"
+                  value={capacity}
+                  onValueChange={(value) =>
+                    setCapacity(value.replace(/[^0-9]/g, ''))
+                  }
+                  placeholder="Ingrese la capacidad de pasajeros"
+                  icon="ri-group-line"
+                  error={
+                    errors.capacity === 'Capacity must be numeric'
+                      ? 'La capacidad debe ser numérica.'
+                      : errors.capacity
+                  }
+                  onBlur={validateCapacity}
+                />
+              </label>
+            </div>
 
-              <div className="flex px-4 py-3">
-                <div className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#f0f2f4] p-1">
-                  {(
-                    [
-                      { label: 'Disponible', value: 'AVAILABLE' },
-                      { label: 'En Servicio', value: 'IN_SERVICE' },
-                      { label: 'Mantenimiento', value: 'MAINTENANCE' },
-                      { label: 'Fuera de Servicio', value: 'OUT_OF_SERVICE' },
-                    ] as const
-                  ).map((s) => {
-                    return (
-                      <label
-                        key={s.value}
-                        className={`flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-xl px-2 text-sm font-medium leading-normal ${status === s.value ? 'bg-white shadow-[0_0_4px_rgba(0,0,0,0.1)] text-[#111317]' : 'text-[#646f87]'}`}
-                      >
-                        <span className="truncate">{s.label}</span>
-                        <input
-                          type="radio"
-                          name="vehicle-status"
-                          className="invisible w-0"
-                          value={s.value}
-                          checked={status === s.value}
-                          onChange={() => setStatus(s.value)}
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex justify-stretch">
-                <div className="flex flex-1 gap-3 flex-wrap px-4 py-3 justify-end">
-                  <button
-                    onClick={closeModal}
-                    className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-bold leading-normal tracking-[0.015em]"
-                  >
-                    <span className="truncate">Cancelar</span>
-                  </button>
-                  <button
-                    onClick={createVehicle}
-                    disabled={
-                      !(
-                        company.trim() &&
-                        /^[A-Z]{3}-\d{3}$/.test(plate) &&
-                        /^\d+$/.test(capacity)
-                      )
-                    }
-                    className={`flex min-w-[84px] max-w-[480px] items-center justify-center overflow-hidden rounded-xl h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] ${company.trim() && /^[A-Z]{3}-\d{3}$/.test(plate) && /^\d+$/.test(capacity) ? colorClasses.btnSecondary : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'}`}
-                  >
-                    <span className="truncate">
-                      {loading ? 'Creando...' : 'Crear Vehículo'}
-                    </span>
-                  </button>
-                </div>
-              </div>
+            <div>
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Estado
+              </p>
+              <R2MFilterSwitcher
+                options={[
+                  {
+                    id: 'AVAILABLE',
+                    label: 'Disponible',
+                    icon: 'ri-checkbox-circle-line',
+                  },
+                  {
+                    id: 'IN_SERVICE',
+                    label: 'En Servicio',
+                    icon: 'ri-steering-2-line',
+                  },
+                  {
+                    id: 'MAINTENANCE',
+                    label: 'Mantenimiento',
+                    icon: 'ri-tools-line',
+                  },
+                  {
+                    id: 'OUT_OF_SERVICE',
+                    label: 'Fuera de Servicio',
+                    icon: 'ri-close-circle-line',
+                  },
+                ]}
+                activeFilter={status}
+                onFilterChange={(filter) => setStatus(filter as VehicleStatus)}
+                allowDeselect={false}
+              />
             </div>
           </div>
-        )}
+        </R2MModal>
 
-        {/* Right column: Vehicles list */}
-        <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+        {/* Vehicles list */}
+        <div className="layout-content-container flex flex-col flex-1 max-w-7xl mx-auto w-full">
+          {/* Barra de búsqueda */}
           <div className="px-4 py-3 pt-5">
-            <label className="flex flex-col min-w-40 h-12 w-full">
-              <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
-                <div className="text-[#646f87] flex border-none bg-[#f0f2f4] items-center justify-center pl-4 rounded-l-xl border-r-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24px"
-                    height="24px"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
-                  </svg>
-                </div>
-                <input
-                  placeholder="Buscar vehículos"
-                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border-none bg-[#f0f2f4] focus:border-none h-full placeholder:text-[#646f87] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1); // Reset to first page when searching
-                  }}
-                />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <i className="ri-search-line text-xl text-[#97A3B1]"></i>
               </div>
-            </label>
+              <input
+                placeholder="Buscar vehículos por placa..."
+                className={`w-full pl-12 pr-4 py-3 rounded-xl border border-[#dcdfe5] ${colorClasses.textPrimary} placeholder:text-[#97A3B1] focus:outline-none focus:ring-2 focus:ring-[#1E56A0] focus:border-transparent transition-all`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Vehicles table */}
-          <div className="px-4 py-3 [container-type:inline-size]">
-            <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
-              <table className="flex-1">
-                <thead>
-                  <tr className="bg-white">
-                    <th className="table-veh-120 px-4 py-3 text-left text-[#111317] w-[120px] text-sm font-medium leading-normal">
-                      Placa
-                    </th>
-                    <th className="table-veh-240 px-4 py-3 text-left text-[#111317] w-[100px] text-sm font-medium leading-normal">
-                      Estado
-                    </th>
-                    <th className="table-veh-360 px-4 py-3 text-left text-[#111317] w-[180px] text-sm font-medium leading-normal">
-                      Ubicación
-                    </th>
-                    <th className="table-veh-480 px-4 py-3 text-left text-[#111317] w-[100px] text-sm font-medium leading-normal">
-                      Velocidad
-                    </th>
-                    <th className="table-veh-600 px-4 py-3 text-left text-[#111317] w-[140px] text-sm font-medium leading-normal">
-                      Última Act. GPS
-                    </th>
-                    <th className="table-veh-720 px-4 py-3 text-left text-[#111317] w-[140px] text-sm font-medium leading-normal">
-                      Ruta Activa
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingVehicles ? (
-                    <tr>
-                      <td colSpan={6} className="h-[400px] p-0">
-                        <GlobalLoader />
-                      </td>
-                    </tr>
-                  ) : vehicles.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        No hay vehículos disponibles
-                      </td>
-                    </tr>
-                  ) : filteredVehicles.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        No se encontraron vehículos
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredVehicles
-                      .slice(
-                        (currentPage - 1) * rowsPerPage,
-                        currentPage * rowsPerPage,
-                      )
-                      .map((vehicle) => {
-                        const statusText =
-                          vehicle.status === 'AVAILABLE'
-                            ? 'Disponible'
-                            : vehicle.status === 'IN_SERVICE'
-                              ? 'En Servicio'
-                              : vehicle.status === 'MAINTENANCE'
-                                ? 'Mantenimiento'
-                                : 'Fuera de Servicio';
-
-                        const locationText = vehicle.location_json
-                          ? `${vehicle.location_json.lat.toFixed(4)}, ${vehicle.location_json.lng.toFixed(4)}`
-                          : 'N/A';
-
-                        const speedText =
-                          vehicle.speed_kph !== null
-                            ? `${vehicle.speed_kph.toFixed(1)} km/h`
-                            : 'N/A';
-
-                        // Calcular tiempo relativo
-                        const getTimeAgo = (dateString: string | null) => {
-                          if (!dateString) return 'N/A';
-
-                          const now = new Date();
-                          const past = new Date(dateString);
-                          const diffMs = now.getTime() - past.getTime();
-                          const diffSeconds = Math.floor(diffMs / 1000);
-                          const diffMinutes = Math.floor(diffSeconds / 60);
-                          const diffHours = Math.floor(diffMinutes / 60);
-                          const diffDays = Math.floor(diffHours / 24);
-                          const diffMonths = Math.floor(diffDays / 30);
-                          const diffYears = Math.floor(diffDays / 365);
-
-                          if (diffYears > 0)
-                            return `hace ${diffYears} año${diffYears > 1 ? 's' : ''}`;
-                          if (diffMonths > 0)
-                            return `hace ${diffMonths} mes${diffMonths > 1 ? 'es' : ''}`;
-                          if (diffDays > 0)
-                            return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-                          if (diffHours > 0)
-                            return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-                          if (diffMinutes > 0) return `hace ${diffMinutes} min`;
-                          if (diffSeconds > 0) return `hace ${diffSeconds} seg`;
-                          return 'justo ahora';
-                        };
-
-                        const lastUpdateText = getTimeAgo(vehicle.vp_at);
-
-                        return (
-                          <tr
-                            key={vehicle.id}
-                            className={`border-t border-t-[#dcdfe5] cursor-pointer hover:bg-[#f0f2f4] ${selectedVehicle?.id === vehicle.id ? 'bg-[#e8edf3]' : ''}`}
-                            onClick={() => setSelectedVehicle(vehicle)}
-                          >
-                            {/* Placa */}
-                            <td className="table-veh-120 h-[72px] px-4 py-2 w-[120px] text-[#111317] text-sm font-medium leading-normal">
-                              {vehicle.plate}
-                            </td>
-                            {/* Estado */}
-                            <td className="table-veh-240 h-[72px] px-4 py-2 w-[100px] text-sm font-normal leading-normal">
-                              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
-                                <span className="truncate">{statusText}</span>
-                              </button>
-                            </td>
-                            {/* Ubicación */}
-                            <td className="table-veh-360 h-[72px] px-4 py-2 w-[180px] text-[#646f87] text-sm font-normal leading-normal">
-                              {locationText}
-                            </td>
-                            {/* Velocidad */}
-                            <td className="table-veh-480 h-[72px] px-4 py-2 w-[100px] text-[#646f87] text-sm font-normal leading-normal">
-                              {speedText}
-                            </td>
-                            {/* Última Actualización GPS */}
-                            <td className="table-veh-600 h-[72px] px-4 py-2 w-[140px] text-[#646f87] text-sm font-normal leading-normal">
-                              {lastUpdateText}
-                            </td>
-                            {/* Ruta Activa */}
-                            <td className="table-veh-720 h-[72px] px-4 py-2 w-[140px] text-[#646f87] text-sm font-normal leading-normal">
-                              {vehicle.active_route_variant_id ? 'Sí' : 'No'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination controls */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[#dcdfe5]">
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-[#646f87]">
-                  Filas por página:
-                </span>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="h-8 px-2 rounded-lg border border-[#dcdfe5] bg-white text-sm text-[#111317] cursor-pointer"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={15}>15</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-[#646f87]">
-                  {filteredVehicles.length === 0
-                    ? '0 de 0'
-                    : `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filteredVehicles.length)} de ${filteredVehicles.length}`}
-                </span>
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) =>
-                      Math.min(
-                        Math.ceil(filteredVehicles.length / rowsPerPage),
-                        prev + 1,
-                      ),
-                    )
-                  }
-                  disabled={
-                    currentPage >=
-                    Math.ceil(filteredVehicles.length / rowsPerPage)
-                  }
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <style>{`
-                @container(max-width:120px){.table-veh-120{display:none}}
-                @container(max-width:240px){.table-veh-240{display:none}}
-                @container(max-width:360px){.table-veh-360{display:none}}
-                @container(max-width:480px){.table-veh-480{display:none}}
-                @container(max-width:600px){.table-veh-600{display:none}}
-                @container(max-width:720px){.table-veh-720{display:none}}
-              `}</style>
+          <div className="px-4 py-3">
+            <R2MTable
+              data={filteredVehicles}
+              columns={tableColumns}
+              loading={loadingVehicles}
+              emptyMessage={
+                searchQuery
+                  ? 'No se encontraron vehículos con ese criterio'
+                  : 'No hay vehículos disponibles'
+              }
+              getRowKey={(vehicle) => vehicle.id}
+              defaultRowsPerPage={5}
+              rowsPerPageOptions={[5, 10, 15, 20]}
+              actions={renderActions}
+            />
           </div>
         </div>
       </div>
+
+      {/* Modal de Detalles del Vehículo */}
+      {isDetailsOpen && selectedVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/40"
+            onClick={() => setIsDetailsOpen(false)}
+          />
+          <div
+            className="relative z-50 bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-[#111317]">
+                Detalles del Vehículo
+              </h2>
+              <button
+                onClick={() => setIsDetailsOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] text-[#646f87] transition-colors"
+              >
+                <i className="ri-close-line text-xl"></i>
+              </button>
+            </div>
+
+            <R2MDetailDisplay
+              items={getVehicleDetailItems(selectedVehicle)}
+              loading={false}
+              emptyMessage="No hay detalles disponibles"
+            />
+
+            <div className="mt-6 pt-6 border-t border-[#dcdfe5]">
+              <div className="flex gap-3 justify-end">
+                {selectedVehicle?.active_route_variant_id ? (
+                  <>
+                    <R2MButton
+                      variant="primary"
+                      icon="ri-route-line"
+                      onClick={() => {
+                        setIsDetailsOpen(false);
+                        openRouteModal();
+                      }}
+                    >
+                      Cambiar Ruta
+                    </R2MButton>
+                    <R2MButton
+                      variant="warning"
+                      icon="ri-close-circle-line"
+                      loading={assigningRoute}
+                      onClick={async () => {
+                        setIsDetailsOpen(false);
+                        await handleRemoveRoute();
+                      }}
+                    >
+                      Remover Ruta
+                    </R2MButton>
+                  </>
+                ) : (
+                  <R2MButton
+                    variant="success"
+                    icon="ri-add-circle-line"
+                    onClick={() => {
+                      setIsDetailsOpen(false);
+                      openRouteModal();
+                    }}
+                  >
+                    Asignar Ruta
+                  </R2MButton>
+                )}
+                <R2MButton
+                  variant="danger"
+                  icon="ri-delete-bin-line"
+                  onClick={() => {
+                    setIsDetailsOpen(false);
+                    openDeleteModal(selectedVehicle);
+                  }}
+                >
+                  Eliminar
+                </R2MButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Confirmación de Eliminación */}
       {isDeleteOpen && vehicleToDelete && (
@@ -1119,7 +1031,7 @@ export default function VehiclesPage() {
             onClick={() => !loading && closeDeleteModal()}
           />
           <div
-            className="relative z-50 bg-white rounded-lg p-6 max-w-md w-full mx-4"
+            className="relative z-50 bg-white rounded-lg p-6 max-w-lg w-full mx-4"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <h2
@@ -1133,20 +1045,25 @@ export default function VehiclesPage() {
               deshacer.
             </p>
             <div className="flex gap-3 justify-end">
-              <button
+              <R2MButton
                 onClick={() => !loading && closeDeleteModal()}
                 disabled={loading}
-                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSurface} rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                variant="ghost"
+                size="md"
               >
                 Cancelar
-              </button>
-              <button
+              </R2MButton>
+              <R2MButton
                 onClick={confirmDelete}
                 disabled={loading}
-                className={`px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                loading={loading}
+                variant="danger"
+                size="md"
+                icon="ri-delete-bin-line"
+                iconPosition="left"
               >
-                {loading ? 'Eliminando...' : 'Eliminar'}
-              </button>
+                Eliminar
+              </R2MButton>
             </div>
           </div>
         </div>
@@ -1160,109 +1077,140 @@ export default function VehiclesPage() {
             onClick={() => !assigningRoute && closeRouteModal()}
           />
           <div
-            className="relative z-50 bg-white rounded-lg p-6 max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto"
-            style={{ fontFamily: 'Manrope, "Noto Sans", sans-serif' }}
+            className="relative z-50 bg-white rounded-lg p-6 max-w-5xl w-full mx-4 my-4"
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <h2 className="text-xl font-bold text-[#111317] mb-4">
-              {selectedVehicle.active_route_variant_id
-                ? 'Cambiar Ruta'
-                : 'Asignar Ruta'}
-            </h2>
-            <p className="text-[#646f87] mb-4">
-              Vehículo: <strong>{selectedVehicle.plate}</strong>
-            </p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-[#111317]">
+                  {selectedVehicle.active_route_variant_id
+                    ? 'Cambiar Ruta'
+                    : 'Asignar Ruta'}
+                </h2>
+                <p className="text-[#97A3B1] text-sm mt-1">
+                  Vehículo:{' '}
+                  <span className="font-medium text-[#111317]">
+                    {selectedVehicle.plate}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={() => !assigningRoute && closeRouteModal()}
+                disabled={assigningRoute}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] text-[#646f87] transition-colors ${assigningRoute ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <i className="ri-close-line text-xl"></i>
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               {/* Selector de Ruta */}
               <div>
-                <label className="block text-sm font-medium text-[#111317] mb-2">
-                  Selecciona una Ruta
+                <label className="flex flex-col">
+                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                    Selecciona una Ruta
+                  </p>
+                  <R2MSelect
+                    value={selectedRoute?.id || ''}
+                    onChange={(value) => {
+                      const route = routes.find((r) => r.id === value);
+                      setSelectedRoute(route || null);
+                      setSelectedVariant(null);
+                      setRouteVariants([]);
+                      if (route) {
+                        loadVariantsForRoute(route.id);
+                      }
+                    }}
+                    options={routes.map((route) => ({
+                      value: route.id,
+                      label: `${route.code} - ${route.name}`,
+                    }))}
+                    placeholder="Seleccione una ruta"
+                    icon="ri-route-line"
+                    loading={loadingRoutes}
+                    disabled={loadingRoutes}
+                  />
                 </label>
-                <select
-                  value={selectedRoute?.id || ''}
-                  onChange={(e) => {
-                    const route = routes.find((r) => r.id === e.target.value);
-                    setSelectedRoute(route || null);
-                    setSelectedVariant(null);
-                    setRouteVariants([]);
-                    if (route) {
-                      loadVariantsForRoute(route.id);
-                    }
-                  }}
-                  disabled={loadingRoutes}
-                  className="w-full px-3 py-2 border border-[#dcdfe5] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">
-                    {loadingRoutes
-                      ? 'Cargando rutas...'
-                      : 'Seleccione una ruta'}
-                  </option>
-                  {routes.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.code} - {route.name}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Selector de Variante */}
               <div>
-                <label className="block text-sm font-medium text-[#111317] mb-2">
-                  Selecciona una Variante
-                </label>
-                <select
-                  value={selectedVariant?.variant_id || ''}
-                  onChange={(e) => {
-                    const variant = routeVariants.find(
-                      (v) => v.variant_id === e.target.value,
-                    );
-                    setSelectedVariant(variant || null);
-                  }}
-                  disabled={!selectedRoute || loadingVariants}
-                  className="w-full px-3 py-2 border border-[#dcdfe5] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">
-                    {loadingVariants
-                      ? 'Cargando variantes...'
-                      : selectedRoute
+                <label className="flex flex-col">
+                  <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                    Selecciona una Variante
+                  </p>
+                  <R2MSelect
+                    value={selectedVariant?.variant_id || ''}
+                    onChange={(value) => {
+                      const variant = routeVariants.find(
+                        (v) => v.variant_id === value,
+                      );
+                      setSelectedVariant(variant || null);
+                    }}
+                    options={routeVariants.map((variant) => ({
+                      value: variant.variant_id,
+                      label: `Variante ${variant.variant_id.substring(0, 8)} (${variant.length_m_json ? `${(variant.length_m_json / 1000).toFixed(2)} km` : 'N/A'})`,
+                    }))}
+                    placeholder={
+                      selectedRoute
                         ? 'Seleccione una variante'
-                        : 'Primero seleccione una ruta'}
-                  </option>
-                  {routeVariants.map((variant) => (
-                    <option key={variant.variant_id} value={variant.variant_id}>
-                      Variante {variant.variant_id.substring(0, 8)} (
-                      {variant.length_m_json
-                        ? `${(variant.length_m_json / 1000).toFixed(2)} km`
-                        : 'N/A'}
-                      )
-                    </option>
-                  ))}
-                </select>
+                        : 'Primero seleccione una ruta'
+                    }
+                    icon="ri-git-branch-line"
+                    loading={loadingVariants}
+                    disabled={!selectedRoute || loadingVariants}
+                  />
+                </label>
               </div>
             </div>
 
             {/* Mapa de la Variante Seleccionada */}
-            {selectedVariant && (
-              <div className="mb-4">
+            <div className="mb-6">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Vista Previa de la Ruta
+              </p>
+              {selectedVariant ? (
                 <RouteMapPreview variant={selectedVariant} />
-              </div>
-            )}
+              ) : (
+                <div className="h-[300px] rounded-xl border-2 border-dashed border-[#dcdfe5] bg-[#F6F6F6] flex items-center justify-center">
+                  <div className="text-center">
+                    <i className="ri-map-2-line text-5xl text-[#97A3B1] mb-3"></i>
+                    <p className="text-[#97A3B1] text-base font-medium">
+                      {!selectedRoute
+                        ? 'Selecciona una ruta y variante para ver el mapa'
+                        : !selectedVariant
+                          ? 'Selecciona una variante para ver el mapa'
+                          : 'No hay datos de mapa disponibles'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => !assigningRoute && closeRouteModal()}
-                disabled={assigningRoute}
-                className={`px-4 py-2 text-sm font-medium bg-[#f0f2f4] hover:bg-[#e8edf3] text-[#111317] rounded-lg transition-colors ${assigningRoute ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleAssignRoute}
-                disabled={!selectedVariant || assigningRoute}
-                className={`px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${!selectedVariant || assigningRoute ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {assigningRoute ? 'Asignando...' : 'Asignar Ruta'}
-              </button>
+            <div className="mt-6 pt-4 border-t border-[#dcdfe5]">
+              <div className="flex gap-3 justify-end">
+                <R2MButton
+                  onClick={() => !assigningRoute && closeRouteModal()}
+                  disabled={assigningRoute}
+                  variant="ghost"
+                  size="md"
+                >
+                  Cancelar
+                </R2MButton>
+                <R2MButton
+                  onClick={handleAssignRoute}
+                  disabled={!selectedVariant || assigningRoute}
+                  loading={assigningRoute}
+                  variant="primary"
+                  size="md"
+                  icon="ri-save-line"
+                  iconPosition="left"
+                >
+                  {selectedVehicle.active_route_variant_id
+                    ? 'Cambiar Ruta'
+                    : 'Asignar Ruta'}
+                </R2MButton>
+              </div>
             </div>
           </div>
         </div>
@@ -1349,8 +1297,9 @@ function RouteMapPreview({ variant }: { variant: RouteVariant }) {
             'line-cap': 'round',
           },
           paint: {
-            'line-color': '#1980e6',
-            'line-width': 4,
+            'line-color': '#1E56A0',
+            'line-width': 5,
+            'line-opacity': 0.8,
           },
         });
 
@@ -1382,8 +1331,9 @@ function RouteMapPreview({ variant }: { variant: RouteVariant }) {
             'line-cap': 'round',
           },
           paint: {
-            'line-color': '#1980e6',
-            'line-width': 4,
+            'line-color': '#1E56A0',
+            'line-width': 5,
+            'line-opacity': 0.8,
           },
         });
 
@@ -1401,14 +1351,9 @@ function RouteMapPreview({ variant }: { variant: RouteVariant }) {
   }, [variant]);
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-[#111317] mb-2">
-        Vista Previa de la Ruta
-      </label>
-      <div
-        ref={mapContainer}
-        className="w-full h-[400px] rounded-lg border border-[#dcdfe5]"
-      />
-    </div>
+    <div
+      ref={mapContainer}
+      className="w-full h-[300px] rounded-xl border border-[#dcdfe5] shadow-sm overflow-hidden"
+    />
   );
 }
