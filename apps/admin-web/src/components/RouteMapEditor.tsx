@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -22,70 +22,8 @@ export default function RouteMapEditor({
   const [path, setPath] = useState<Coordinate[]>(initialPath);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Función para agregar marcador
-  const addMarker = (point: Coordinate, index: number) => {
-    if (!map.current) return;
-
-    // Crear elemento del marcador con número
-    const el = document.createElement('div');
-    el.className = 'route-marker';
-    el.style.cssText = `
-      background-color: #1980e6;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 3px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      font-size: 14px;
-      cursor: pointer;
-    `;
-    el.textContent = (index + 1).toString();
-
-    const marker = new maplibregl.Marker({ element: el, draggable: true })
-      .setLngLat([point.lng, point.lat])
-      .addTo(map.current);
-
-    // Manejar arrastre del marcador
-    marker.on('dragend', () => {
-      const lngLat = marker.getLngLat();
-      setPath((prevPath) => {
-        const newPath = [...prevPath];
-        // Encontrar el índice actual del marcador
-        const currentIndex = markersRef.current.indexOf(marker);
-        if (currentIndex !== -1) {
-          newPath[currentIndex] = { lat: lngLat.lat, lng: lngLat.lng };
-          onPathChange(newPath);
-        }
-        return newPath;
-      });
-    });
-
-    // Click en marcador para eliminarlo
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-
-      // Obtener el índice actual del marcador en el array
-      const currentIndex = markersRef.current.indexOf(marker);
-      if (currentIndex === -1) return;
-
-      // Eliminar el punto directamente sin confirmación
-      setPath((prevPath) => {
-        const newPath = prevPath.filter((_, i) => i !== currentIndex);
-        onPathChange(newPath);
-        return newPath;
-      });
-    });
-
-    markersRef.current.push(marker);
-  };
-
   // Función para actualizar la línea
-  const updateLine = (currentPath: Coordinate[]) => {
+  const updateLine = useCallback((currentPath: Coordinate[]) => {
     if (!map.current || currentPath.length < 2) {
       // Remover línea si hay menos de 2 puntos
       if (map.current?.getSource('route')) {
@@ -138,11 +76,75 @@ export default function RouteMapEditor({
         paint: {
           'line-color': '#1980e6',
           'line-width': 4,
-          'line-opacity': 0.8,
         },
       });
     }
-  };
+  }, []);
+
+  // Función para agregar marcador
+  const addMarker = useCallback(
+    (point: Coordinate, index: number) => {
+      if (!map.current) return;
+
+      // Crear elemento del marcador con número
+      const el = document.createElement('div');
+      el.className = 'route-marker';
+      el.style.cssText = `
+      background-color: #1980e6;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+    `;
+      el.textContent = (index + 1).toString();
+
+      const marker = new maplibregl.Marker({ element: el, draggable: true })
+        .setLngLat([point.lng, point.lat])
+        .addTo(map.current);
+
+      // Manejar arrastre del marcador
+      marker.on('dragend', () => {
+        const lngLat = marker.getLngLat();
+        setPath((prevPath) => {
+          const newPath = [...prevPath];
+          // Encontrar el índice actual del marcador
+          const currentIndex = markersRef.current.indexOf(marker);
+          if (currentIndex !== -1) {
+            newPath[currentIndex] = { lat: lngLat.lat, lng: lngLat.lng };
+            onPathChange(newPath);
+          }
+          return newPath;
+        });
+      });
+
+      // Click en marcador para eliminarlo
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        // Obtener el índice actual del marcador en el array
+        const currentIndex = markersRef.current.indexOf(marker);
+        if (currentIndex === -1) return;
+
+        // Eliminar el punto directamente sin confirmación
+        setPath((prevPath) => {
+          const newPath = prevPath.filter((_, i) => i !== currentIndex);
+          onPathChange(newPath);
+          return newPath;
+        });
+      });
+
+      markersRef.current.push(marker);
+    },
+    [onPathChange],
+  );
 
   // Limpiar ruta
   const clearPath = () => {
@@ -244,6 +246,7 @@ export default function RouteMapEditor({
       map.current = null;
       setMapLoaded(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Efecto para actualizar marcadores y línea cuando cambia el path
@@ -264,7 +267,7 @@ export default function RouteMapEditor({
 
     // Actualizar línea
     updateLine(path);
-  }, [path, mapLoaded]);
+  }, [path, mapLoaded, addMarker, updateLine]);
 
   return (
     <div className="flex flex-col gap-3">

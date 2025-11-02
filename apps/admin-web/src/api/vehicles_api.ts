@@ -390,15 +390,22 @@ export async function getRoutes(): Promise<Route[]> {
   // Remover duplicados agrupando por route_id
   const uniqueRoutes = Array.from(
     new Map(
-      data.map((item: any) => [
-        item.route_id,
-        {
-          id: item.route_id,
-          code: item.route_code,
-          name: item.route_name,
-          active: item.route_active,
-        },
-      ]),
+      data.map(
+        (item: {
+          route_id: string;
+          route_code: string;
+          route_name: string;
+          route_active: boolean;
+        }) => [
+          item.route_id,
+          {
+            id: item.route_id,
+            code: item.route_code,
+            name: item.route_name,
+            active: item.route_active,
+          },
+        ],
+      ),
     ).values(),
   ) as Route[];
 

@@ -67,6 +67,7 @@ export default function VehiclesPage() {
   // Cargar vehículos al montar el componente
   useEffect(() => {
     loadVehicles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadVehicles() {
@@ -108,6 +109,7 @@ export default function VehiclesPage() {
     if (isAddOpen) {
       loadCompanies();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAddOpen]);
 
   // Cargar rutas cuando se abre el modal de rutas
@@ -115,6 +117,7 @@ export default function VehiclesPage() {
     if (isRouteModalOpen) {
       loadRoutesForAssignment();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRouteModalOpen]);
 
   async function loadRoutesForAssignment() {

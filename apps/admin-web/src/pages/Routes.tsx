@@ -57,6 +57,7 @@ export default function RoutesPage() {
   // Cargar rutas al montar el componente
   useEffect(() => {
     loadRoutes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadRoutes() {
@@ -84,6 +85,7 @@ export default function RoutesPage() {
       setVariants([]);
       setSelectedVariant(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRoute]);
 
   async function loadVariants(routeId: string) {
