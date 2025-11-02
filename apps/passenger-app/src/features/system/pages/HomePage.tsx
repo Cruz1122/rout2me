@@ -9,19 +9,22 @@ import {
   useIonViewWillEnter,
 } from '@ionic/react';
 import {
-  RiFocus3Line,
   RiAddLine,
   RiSubtractLine,
   RiCompassLine,
   RiDeleteBinLine,
+  RiFocus3Line,
 } from 'react-icons/ri';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import R2MSearchOverlay from '../../routes/components/R2MSearchOverlay';
 import R2MMapInfoCard from '../../routes/components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
+import ErrorNotification from '../components/ErrorNotification';
+import useErrorNotification from '../hooks/useErrorNotification';
 import { useMapResize } from '../../../shared/hooks/useMapResize';
 import { useRouteDrawing } from '../../routes/hooks/useRouteDrawing';
 import { useBusMapping } from '../../routes/hooks/useBusMapping';
+import { useUserLocationMarker } from '../hooks/useUserLocationMarker';
 import { processRouteWithCoordinates } from '../../routes/services/mapMatchingService';
 import { mapTileCacheService } from '../../routes/services/mapTileCacheService';
 import {
@@ -37,12 +40,17 @@ export default function HomePage() {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<MlMap | null>(null);
   const currentMarker = useRef<maplibregl.Marker | null>(null);
-  const userLocationMarker = useRef<maplibregl.Marker | null>(null);
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
-  const watchIdRef = useRef<number | null>(null);
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [shouldInitMap, setShouldInitMap] = useState(false);
+  const { error, showError, clearError } = useErrorNotification();
+
+  // Hook para gestionar el marcador de ubicación del usuario
+  const { centerOnUserLocation } = useUserLocationMarker(mapInstance, {
+    autoUpdate: true,
+    updateInterval: 10000, // Actualizar cada 10 segundos
+  });
   interface RouteFromNavigation {
     id: string;
     code: string;
@@ -251,106 +259,24 @@ export default function HomePage() {
     ],
   );
 
-  // Función para crear el marcador de ubicación con efecto de pulso
-  const createLocationMarkerElement = useCallback((): HTMLElement => {
-    const element = document.createElement('div');
-
-    const markerContainer = document.createElement('div');
-    markerContainer.style.cssText = `
-      background: #0EA5E9;
-      border: 4px solid #ffffff;
-      border-radius: 50%;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      position: relative;
-      animation: locationPulse 2s infinite;
-    `;
-
-    // Crear keyframes para la animación pulse
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes locationPulse {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.1); opacity: 0.8; }
-        100% { transform: scale(1); opacity: 1; }
-      }
-    `;
-
-    // Crear el ícono de ubicación (punto blanco en el centro)
-    const icon = document.createElement('div');
-    icon.style.cssText = `
-      background: white;
-      border-radius: 50%;
-      width: 12px;
-      height: 12px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    `;
-
-    markerContainer.appendChild(icon);
-    element.appendChild(style);
-    element.appendChild(markerContainer);
-
-    return element;
-  }, []);
-
-  // Cleanup del marcador de ubicación cuando se desmonte el componente
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-      if (userLocationMarker.current) {
-        userLocationMarker.current.remove();
-        userLocationMarker.current = null;
-      }
-    };
-  }, []);
+  // El hook useUserLocationMarker maneja automáticamente la actualización del marcador
 
   const handleLocationRequest = useCallback(() => {
-    if (!mapInstance.current || !userLocationMarker.current) return;
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-
-          // Mover el mapa a la ubicación actual
-          mapInstance.current?.easeTo({
-            center: [longitude, latitude],
-            zoom: 16,
-            duration: 800,
-          });
-        },
-        (error) => {
-          if (error.code === 1) {
-            alert(
-              'Por favor, permite el acceso a tu ubicación para usar esta función.',
-            );
-          } else if (error.code === 2) {
-            alert(
-              'No se pudo obtener tu ubicación. Verifica que el GPS esté activado.',
-            );
-          } else if (error.code === 3) {
-            alert(
-              'El tiempo para obtener tu ubicación se agotó. Por favor, intenta nuevamente.',
-            );
-          }
-        },
-        {
-          enableHighAccuracy: false,
-          maximumAge: 60000,
-        },
-      );
+    if (!mapInstance.current) {
+      console.warn('Mapa no está listo');
+      return;
     }
-  }, []);
+
+    if (!navigator.geolocation) {
+      showError('Tu navegador no soporta geolocalización');
+      return;
+    }
+
+    console.log('📍 Solicitando ubicación y centrando mapa...');
+
+    // Usar el hook para centrar en la ubicación del usuario
+    centerOnUserLocation(16);
+  }, [showError, centerOnUserLocation]);
 
   const handleZoomIn = useCallback(() => {
     if (!mapInstance.current) return;
@@ -378,7 +304,7 @@ export default function HomePage() {
       currentMarker.current.remove();
       currentMarker.current = null;
     }
-    // Nota: NO eliminar userLocationMarker.current aquí
+    // El marcador de ubicación del usuario se mantiene en el mapa
 
     // Feedback visual con vibración si está disponible
     if (navigator.vibrate) {
@@ -548,44 +474,6 @@ export default function HomePage() {
 
     map.on('load', () => {
       setIsMapLoading(false);
-
-      // Iniciar watch position para actualizaciones continuas
-      if (navigator.geolocation && !watchIdRef.current) {
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-
-            // Crear el marcador solo cuando tengamos una ubicación válida
-            if (!userLocationMarker.current) {
-              const markerElement = createLocationMarkerElement();
-              userLocationMarker.current = new maplibregl.Marker({
-                element: markerElement,
-                anchor: 'center',
-              })
-                .setLngLat([longitude, latitude])
-                .addTo(map);
-
-              // Centrar el mapa en la ubicación del usuario
-              map.easeTo({
-                center: [longitude, latitude],
-                zoom: 16,
-                duration: 1000,
-              });
-            } else {
-              // Actualizar posición del marcador existente
-              userLocationMarker.current.setLngLat([longitude, latitude]);
-            }
-          },
-          () => {
-            // Error silencioso
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 30000,
-          },
-        );
-      }
     });
 
     map.on('idle', () => {
@@ -608,7 +496,7 @@ export default function HomePage() {
         mapInstance.current = null;
       }
     };
-  }, [shouldInitMap, createLocationMarkerElement]);
+  }, [shouldInitMap]);
 
   // Manejar ruta que viene desde RoutesPage
   useIonViewWillEnter(() => {
@@ -720,6 +608,9 @@ export default function HomePage() {
         }, 2000);
 
         setSelectedItem(searchItem);
+
+        // NO re-renderizar el marcador - mantener el marcador existente intacto
+        // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
       } catch {
         // Error silencioso
         // Fallback: usar coordenadas originales
@@ -752,6 +643,9 @@ export default function HomePage() {
         await loadBusesForRoute(searchItem.id);
 
         setSelectedItem(searchItem);
+
+        // NO re-renderizar el marcador - mantener el marcador existente intacto
+        // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
       } finally {
         setIsMapLoading(false);
         setRouteFromNavigation(null); // Limpiar después de procesar
@@ -869,6 +763,9 @@ export default function HomePage() {
             duration: 1500,
           });
         }
+
+        // NO re-renderizar el marcador - mantener el marcador existente intacto
+        // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
       } catch {
         // Error silencioso
       } finally {
@@ -937,7 +834,8 @@ export default function HomePage() {
             onClick={handleZoomIn}
             className="w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
-                       hover:scale-105 active:scale-95 shadow-lg"
+                       hover:scale-105 active:scale-95 shadow-lg
+                       opacity-40 hover:opacity-100"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
               border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
@@ -954,7 +852,8 @@ export default function HomePage() {
             onClick={handleZoomOut}
             className="w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
-                       hover:scale-105 active:scale-95 shadow-lg"
+                       hover:scale-105 active:scale-95 shadow-lg
+                       opacity-40 hover:opacity-100"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
               border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
@@ -974,7 +873,7 @@ export default function HomePage() {
             className={`w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
                        hover:scale-105 active:scale-95 shadow-lg select-none
-                       ${isDraggingCompass ? 'cursor-grabbing scale-105' : 'cursor-pointer'}`}
+                       ${isDraggingCompass ? 'cursor-grabbing scale-105 opacity-100' : 'cursor-pointer opacity-40 hover:opacity-100'}`}
             style={{
               backgroundColor: isDraggingCompass
                 ? 'rgba(30, 86, 160, 0.95)'
@@ -1000,7 +899,8 @@ export default function HomePage() {
             onClick={handleLocationRequest}
             className="w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-200
-                       hover:scale-105 active:scale-95 shadow-lg"
+                       hover:scale-105 active:scale-95 shadow-lg
+                       opacity-40 hover:opacity-100"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
               border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
@@ -1019,7 +919,7 @@ export default function HomePage() {
             className={`w-12 h-12 rounded-full backdrop-blur-lg 
                        flex items-center justify-center transition-all duration-300 ease-out
                        hover:scale-105 active:scale-95 shadow-lg
-                       ${isClearingRoutes ? 'scale-95' : 'cursor-pointer'}
+                       ${isClearingRoutes ? 'scale-95 opacity-100' : 'cursor-pointer opacity-40 hover:opacity-100'}
                        disabled:cursor-not-allowed`}
             style={{
               backgroundColor: isClearingRoutes
@@ -1060,6 +960,7 @@ export default function HomePage() {
           }}
         />
       </IonContent>
+      <ErrorNotification error={error} onClose={clearError} />
     </IonPage>
   );
 }

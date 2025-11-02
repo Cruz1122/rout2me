@@ -206,7 +206,7 @@ export default function LoginPage() {
                 <R2MTextLink
                   variant="secondary"
                   size="small"
-                  onClick={() => console.log('Forgot password clicked')}
+                  onClick={() => router.push('/forgot-password', 'forward')}
                 >
                   Olvidé mi contraseña
                 </R2MTextLink>

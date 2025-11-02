@@ -387,7 +387,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       const padding = hasInfoCard
         ? {
             top: 50,
-            bottom: 380, // 80px (posición) + 250px (altura card) + 50px (margen extra)
+            bottom: 280, // 80px (posición) + 250px (altura card) - 50px (reducción de desplazamiento)
             left: 50,
             right: 50,
           }

@@ -222,6 +222,119 @@ export async function loginUser(
 }
 
 /**
+ * Solicita un enlace de recuperación de contraseña
+ */
+export async function recoverPassword(email: string): Promise<void> {
+  if (!AUTH_URL || !SERVICE_ROLE_KEY) {
+    throw new Error(
+      'Configuración de autenticación faltante. Verifica las variables de entorno VITE_BACKEND_AUTH_URL y VITE_SERVICE_ROLE_KEY',
+    );
+  }
+
+  try {
+    const response = await fetch(`${AUTH_URL}/recover`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message ||
+          `Error en la recuperación de contraseña: ${response.status}`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Error desconocido durante la recuperación de contraseña');
+  }
+}
+
+/**
+ * Actualiza la contraseña usando el token de recuperación
+ */
+export async function updatePasswordWithToken(
+  accessToken: string,
+  newPassword: string,
+): Promise<void> {
+  if (!AUTH_URL || !SERVICE_ROLE_KEY) {
+    throw new Error(
+      'Configuración de autenticación faltante. Verifica las variables de entorno VITE_BACKEND_AUTH_URL y VITE_SERVICE_ROLE_KEY',
+    );
+  }
+
+  console.log(
+    '🔐 updatePasswordWithToken - Iniciando actualización de contraseña',
+  );
+  console.log('🔐 URL:', `${AUTH_URL}/user`);
+  console.log('🔐 Token:', accessToken.substring(0, 20) + '...');
+
+  try {
+    const response = await fetch(`${AUTH_URL}/user`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ password: newPassword }),
+    });
+
+    console.log('🔐 Response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Error response:', errorData);
+
+      // Traducir mensajes comunes de error al español
+      let errorMessage =
+        errorData.message || errorData.msg || errorData.error_description;
+
+      if (errorMessage) {
+        // Traducir mensajes específicos
+        if (
+          errorMessage
+            .toLowerCase()
+            .includes('new password should be different')
+        ) {
+          errorMessage = 'La nueva contraseña debe ser diferente a la anterior';
+        } else if (
+          errorMessage.toLowerCase().includes('password') &&
+          errorMessage.toLowerCase().includes('weak')
+        ) {
+          errorMessage =
+            'La contraseña es muy débil. Debe tener al menos 6 caracteres';
+        } else if (
+          errorMessage.toLowerCase().includes('invalid') ||
+          errorMessage.toLowerCase().includes('expired')
+        ) {
+          errorMessage = 'El enlace de recuperación ha expirado o es inválido';
+        }
+      }
+
+      throw new Error(
+        errorMessage || `Error al actualizar la contraseña: ${response.status}`,
+      );
+    }
+
+    console.log('✅ Contraseña actualizada exitosamente');
+  } catch (error) {
+    console.error('❌ Error al actualizar contraseña:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Error desconocido al actualizar la contraseña');
+  }
+}
+
+/**
  * Valida la configuración de autenticación
  */
 export function validateAuthConfig(): void {
