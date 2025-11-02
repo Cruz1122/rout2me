@@ -130,6 +130,7 @@ export default function HomePage() {
   }, [vehicles]);
 
   // Cargar datos iniciales
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const initializeData = async () => {
       const myVehicles = await loadVehicles(); // Cargar primero los vehículos de mi org
@@ -146,7 +147,7 @@ export default function HomePage() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [loadBusPositions]);
+  }, []);
 
   const loadVehicles = async () => {
     try {
