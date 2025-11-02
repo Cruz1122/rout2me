@@ -6,26 +6,37 @@ import {
   updateRoute as updateRouteApi,
 } from '../api/routes_api';
 import type { Route } from '../api/routes_api';
-import GlobalLoader from '../components/GlobalLoader';
 import PageHeader from '../components/PageHeader';
 import {
   getRouteVariants,
   createRouteVariant as createRouteVariantApi,
   updateRouteVariant as updateRouteVariantApi,
   deleteRouteVariant as deleteRouteVariantApi,
+  type RouteVariant,
+  type Coordinate,
 } from '../api/route_variants_api';
-import type { RouteVariant } from '../api/route_variants_api';
 import { colorClasses } from '../styles/colors';
 import RouteMapEditor from '../components/RouteMapEditor';
-import type { Coordinate } from '../api/route_variants_api';
+import R2MButton from '../components/R2MButton';
+import R2MModal from '../components/R2MModal';
+import R2MTable, { type R2MTableColumn } from '../components/R2MTable';
+import R2MActionIconButton from '../components/R2MActionIconButton';
+import R2MInput from '../components/R2MInput';
+import R2MDetailDisplay, {
+  type DetailItem,
+} from '../components/R2MDetailDisplay';
+import R2MCheckbox from '../components/R2MCheckbox';
+import R2MSearchInput from '../components/R2MSearchInput';
 
 export default function RoutesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isVariantAddOpen, setIsVariantAddOpen] = useState(false);
   const [isVariantEditOpen, setIsVariantEditOpen] = useState(false);
   const [isVariantDeleteOpen, setIsVariantDeleteOpen] = useState(false);
+  const [isVariantsModalOpen, setIsVariantsModalOpen] = useState(false);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [active, setActive] = useState(true);
@@ -44,8 +55,6 @@ export default function RoutesPage() {
   const [selectedVariant, setSelectedVariant] = useState<RouteVariant | null>(
     null,
   );
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<{
     type: 'success' | 'error';
@@ -79,16 +88,13 @@ export default function RoutesPage() {
     }
   }
 
-  // Cargar variantes cuando cambia la ruta seleccionada
+  // Cargar variantes cuando se abre el modal de variantes
   useEffect(() => {
-    if (selectedRoute) {
+    if (isVariantsModalOpen && selectedRoute) {
       loadVariants(selectedRoute.id);
-    } else {
-      setVariants([]);
-      setSelectedVariant(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRoute]);
+  }, [isVariantsModalOpen, selectedRoute]);
 
   async function loadVariants(routeId: string) {
     try {
@@ -389,6 +395,143 @@ export default function RoutesPage() {
     );
   });
 
+  // Generar items de detalle para la ruta seleccionada
+  function getRouteDetailItems(route: Route | null): DetailItem[] {
+    if (!route) return [];
+
+    return [
+      {
+        label: 'ID de la Ruta',
+        value: route.id,
+        type: 'id',
+        maxLength: 20,
+        copyable: true,
+      },
+      {
+        label: 'Código',
+        value: route.code,
+        type: 'text',
+      },
+      {
+        label: 'Nombre',
+        value: route.name,
+        type: 'text',
+      },
+      {
+        label: 'Estado',
+        value: route.active ? 'Activa' : 'Inactiva',
+        type: 'status',
+      },
+      {
+        label: 'Fecha de Creación',
+        value: route.created_at
+          ? new Date(route.created_at).toLocaleString('es-ES', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : 'N/A',
+        type: 'time',
+      },
+    ];
+  }
+
+  // Definir columnas de la tabla
+  const tableColumns: R2MTableColumn<Route>[] = [
+    {
+      key: 'code',
+      header: 'Código',
+      sortable: true,
+      width: '120px',
+      render: (route) => (
+        <span className={`font-medium ${colorClasses.textPrimary}`}>
+          {route.code}
+        </span>
+      ),
+    },
+    {
+      key: 'name',
+      header: 'Nombre',
+      sortable: true,
+      width: '280px',
+      render: (route) => <span className="text-[#97A3B1]">{route.name}</span>,
+    },
+    {
+      key: 'active',
+      header: 'Estado',
+      sortable: true,
+      width: '120px',
+      render: (route) => (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${colorClasses.bgSurface} ${colorClasses.textPrimary}`}
+        >
+          {route.active ? 'Activa' : 'Inactiva'}
+        </span>
+      ),
+    },
+    {
+      key: 'created_at',
+      header: 'Fecha de Creación',
+      sortable: true,
+      width: '180px',
+      render: (route) => (
+        <span className="text-[#97A3B1]">
+          {route.created_at
+            ? new Date(route.created_at).toLocaleDateString('es-ES')
+            : 'N/A'}
+        </span>
+      ),
+    },
+  ];
+
+  // Renderizar botones de acciones para cada ruta
+  const renderActions = (route: Route) => (
+    <>
+      <R2MActionIconButton
+        icon="ri-eye-line"
+        label="Ver detalles"
+        variant="info"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedRoute(route);
+          setIsDetailsOpen(true);
+        }}
+      />
+      <R2MActionIconButton
+        icon="ri-git-branch-line"
+        label="Ver variantes"
+        variant="success"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedRoute(route);
+          setIsVariantsModalOpen(true);
+        }}
+      />
+      <R2MActionIconButton
+        icon="ri-edit-line"
+        label="Editar ruta"
+        variant="warning"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedRoute(route);
+          openEditModal();
+        }}
+      />
+      <R2MActionIconButton
+        icon="ri-delete-bin-line"
+        label="Eliminar ruta"
+        variant="danger"
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedRoute(route);
+          setIsDeleteOpen(true);
+        }}
+      />
+    </>
+  );
+
   return (
     <>
       {/* Toast */}
@@ -453,12 +596,14 @@ export default function RoutesPage() {
                 {toast.message}
               </div>
             </div>
-            <button
-              className="ml-3 text-sm underline text-gray-500"
+            <R2MButton
               onClick={() => setToast(null)}
+              variant="ghost"
+              size="sm"
+              className="!h-auto !px-0 !py-0 text-sm underline text-gray-500"
             >
               Cerrar
-            </button>
+            </R2MButton>
           </div>
         </div>
       )}
@@ -466,753 +611,506 @@ export default function RoutesPage() {
       <PageHeader
         title="Rutas"
         action={
-          <button
+          <R2MButton
             onClick={() => setIsAddOpen(true)}
-            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
+            variant="surface"
+            size="sm"
+            icon="ri-add-line"
+            iconPosition="left"
           >
-            {loading ? (
-              <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
-            ) : (
-              <span className="mr-2">+</span>
-            )}
-            <span className="truncate">Nueva Ruta</span>
-          </button>
+            Nueva Ruta
+          </R2MButton>
         }
       />
 
       <div className="gap-1 px-6 flex flex-1 justify-center py-5">
-        {/* Left column: Route details */}
-        <div className="layout-content-container flex flex-col w-80">
-          <h2 className="text-[#111317] tracking-light text-[22px] font-bold leading-tight px-4 pb-3 pt-5">
-            Detalles de la Ruta
-          </h2>
-
-          <div className="p-4 grid grid-cols-[20%_1fr] gap-x-6">
-            {selectedRoute ? (
-              <>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    ID
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedRoute.id}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Código
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedRoute.code}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Nombre
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedRoute.name}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Estado
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedRoute.active ? 'Activa' : 'Inactiva'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Fecha de Creación
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedRoute.created_at
-                      ? new Date(selectedRoute.created_at).toLocaleString(
-                          'es-ES',
-                          {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          },
-                        )
-                      : 'N/A'}
-                  </p>
-                </div>
-              </>
-            ) : loadingRoutes ? (
-              <div className="col-span-2">
-                <GlobalLoader />
-              </div>
-            ) : (
-              <div className="col-span-2 text-center py-8">
-                <p className="text-[#646f87] text-sm">
-                  Selecciona una ruta para ver sus detalles
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons */}
-          {selectedRoute && (
-            <div className="flex gap-3 px-4 pb-4">
-              <button
-                onClick={openEditModal}
-                className={`flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 ${colorClasses.btnPrimary} text-white text-sm font-bold leading-normal tracking-[0.015em] hover:opacity-90 transition-opacity`}
-              >
-                Editar Ruta
-              </button>
-              <button
-                onClick={() => setIsDeleteOpen(true)}
-                className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-red-600 hover:bg-red-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors"
-              >
-                Eliminar Ruta
-              </button>
-            </div>
-          )}
-
-          {/* Variantes de la Ruta */}
-          {selectedRoute && (
-            <>
-              <div className="flex flex-wrap justify-between gap-3 p-4 border-t border-[#dcdfe5] mt-4">
-                <p className="text-[#111317] tracking-light text-xl font-bold leading-tight">
-                  Variantes
-                </p>
-                <button
-                  onClick={openVariantAddModal}
-                  className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-3 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal hover:bg-[#e5e7eb]"
-                >
-                  + Nueva Variante
-                </button>
-              </div>
-
-              <div className="px-4 pb-4 max-h-96 overflow-y-auto">
-                {loadingVariants ? (
-                  <div className="h-[200px]">
-                    <GlobalLoader />
-                  </div>
-                ) : variants.length === 0 ? (
-                  <div className="text-center py-4">
-                    <p className="text-[#646f87] text-sm">
-                      No hay variantes para esta ruta
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {variants.map((variant) => (
-                      <div
-                        key={variant.id}
-                        onClick={() => setSelectedVariant(variant)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedVariant?.id === variant.id
-                            ? 'bg-[#e8edf3] border-[#1980e6]'
-                            : 'bg-white border-[#dcdfe5] hover:bg-[#f0f2f4]'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="text-[#111317] text-sm font-medium">
-                            Variante #{variants.indexOf(variant) + 1}
-                          </p>
-                          <span className="text-xs text-[#646f87] bg-[#f0f2f4] px-2 py-1 rounded">
-                            {variant.path.length} puntos
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#646f87]">
-                          Distancia:{' '}
-                          {variant.length_m_json
-                            ? `${(variant.length_m_json / 1000).toFixed(2)} km`
-                            : 'N/A'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Botones de acción para variante seleccionada */}
-              {selectedVariant && (
-                <div className="flex gap-2 px-4 pb-4">
-                  <button
-                    onClick={openVariantEditModal}
-                    className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-9 px-3 bg-[#1980e6] text-white text-sm font-medium leading-normal hover:bg-[#1567c2]"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => setIsVariantDeleteOpen(true)}
-                    className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-9 px-3 bg-red-600 hover:bg-red-700 text-white text-sm font-medium leading-normal"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Right column: Routes list */}
-        <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+        {/* Routes list - Full width */}
+        <div className="layout-content-container flex flex-col max-w-7xl mx-auto w-full">
+          {/* Barra de búsqueda */}
           <div className="px-4 py-3 pt-5">
-            <label className="flex flex-col min-w-40 h-12 w-full">
-              <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
-                <div className="text-[#646f87] flex border-none bg-[#f0f2f4] items-center justify-center pl-4 rounded-l-xl border-r-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24px"
-                    height="24px"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
-                  </svg>
-                </div>
-                <input
-                  placeholder="Buscar rutas"
-                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border-none bg-[#f0f2f4] focus:border-none h-full placeholder:text-[#646f87] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1); // Reset to first page when searching
-                  }}
-                />
-              </div>
-            </label>
+            <R2MSearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Buscar rutas por código o nombre..."
+            />
           </div>
 
           {/* Routes table */}
-          <div className="px-4 py-3 [container-type:inline-size]">
-            <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
-              <table className="flex-1">
-                <thead>
-                  <tr className="bg-white">
-                    <th className="table-route-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Código
-                    </th>
-                    <th className="table-route-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Nombre
-                    </th>
-                    <th className="table-route-360 px-4 py-3 text-left text-[#111317] w-60 text-sm font-medium leading-normal">
-                      Estado
-                    </th>
-                    <th className="table-route-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Fecha de Creación
-                    </th>
-                    <th className="table-route-600 px-4 py-3 text-left text-[#111317] w-60 text-[#646f87] text-sm font-medium leading-normal"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingRoutes ? (
-                    <tr>
-                      <td colSpan={5} className="h-[400px] p-0">
-                        <GlobalLoader />
-                      </td>
-                    </tr>
-                  ) : routes.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        No hay rutas disponibles
-                      </td>
-                    </tr>
-                  ) : filteredRoutes.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        No se encontraron rutas
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredRoutes
-                      .slice(
-                        (currentPage - 1) * rowsPerPage,
-                        currentPage * rowsPerPage,
-                      )
-                      .map((route) => {
-                        return (
-                          <tr
-                            key={route.id}
-                            className={`border-t border-t-[#dcdfe5] cursor-pointer hover:bg-[#f0f2f4] ${selectedRoute?.id === route.id ? 'bg-[#e8edf3]' : ''}`}
-                            onClick={() => setSelectedRoute(route)}
-                          >
-                            {/* Código */}
-                            <td className="table-route-120 h-[72px] px-4 py-2 w-[400px] text-[#111317] text-sm font-medium leading-normal">
-                              {route.code}
-                            </td>
-                            {/* Nombre */}
-                            <td className="table-route-240 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {route.name}
-                            </td>
-                            {/* Estado */}
-                            <td className="table-route-360 h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal">
-                              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
-                                <span className="truncate">
-                                  {route.active ? 'Activa' : 'Inactiva'}
-                                </span>
-                              </button>
-                            </td>
-                            {/* Fecha de Creación */}
-                            <td className="table-route-480 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {route.created_at
-                                ? new Date(route.created_at).toLocaleDateString(
-                                    'es-ES',
-                                  )
-                                : 'N/A'}
-                            </td>
-                            {/* Empty column for consistency */}
-                            <td className="table-route-600 h-[72px] px-4 py-2 w-60"></td>
-                          </tr>
-                        );
-                      })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination controls */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[#dcdfe5]">
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-[#646f87]">
-                  Filas por página:
-                </span>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="h-8 px-2 rounded-lg border border-[#dcdfe5] bg-white text-sm text-[#111317] cursor-pointer"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={15}>15</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-[#646f87]">
-                  {filteredRoutes.length === 0
-                    ? '0 de 0'
-                    : `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filteredRoutes.length)} de ${filteredRoutes.length}`}
-                </span>
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) =>
-                      Math.min(
-                        Math.ceil(filteredRoutes.length / rowsPerPage),
-                        prev + 1,
-                      ),
-                    )
-                  }
-                  disabled={
-                    currentPage >=
-                    Math.ceil(filteredRoutes.length / rowsPerPage)
-                  }
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+          <div className="px-4 py-3">
+            <R2MTable
+              data={filteredRoutes}
+              columns={tableColumns}
+              loading={loadingRoutes}
+              emptyMessage={
+                searchQuery
+                  ? 'No se encontraron rutas con ese criterio'
+                  : 'No hay rutas disponibles'
+              }
+              getRowKey={(route) => route.id}
+              defaultRowsPerPage={5}
+              rowsPerPageOptions={[5, 10, 15, 20]}
+              actions={renderActions}
+            />
           </div>
         </div>
       </div>
 
       {/* Modal: Agregar Ruta */}
-      {isAddOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="fixed inset-0 bg-black/40"
-            onClick={() => !loading && closeModal()}
-          />
-          <div className="relative z-50 bg-white rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-[#111317] text-xl font-bold mb-4">
-              Crear Nueva Ruta
-            </h2>
-
-            <div className="flex flex-col gap-4">
-              {/* Code */}
-              <label className="flex flex-col min-w-40 flex-1">
-                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                  Código *
-                </p>
-                <input
-                  type="text"
-                  placeholder="Ej: R001"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onBlur={validateCode}
-                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
-                    errors.code
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-[#dcdfe5] bg-white'
-                  }`}
-                />
-                {errors.code && (
-                  <p className="text-red-500 text-sm mt-1">{errors.code}</p>
-                )}
-              </label>
-
-              {/* Name */}
-              <label className="flex flex-col min-w-40 flex-1">
-                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                  Nombre *
-                </p>
-                <input
-                  type="text"
-                  placeholder="Ej: Ruta Norte"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={validateName}
-                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
-                    errors.name
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-[#dcdfe5] bg-white'
-                  }`}
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </label>
-
-              {/* Active */}
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={(e) => setActive(e.target.checked)}
-                  className="w-5 h-5 rounded border-[#dcdfe5] text-[#1980e6] focus:ring-[#1980e6]"
-                />
-                <span className="text-[#111317] text-base font-medium">
-                  Ruta activa
-                </span>
-              </label>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => !loading && closeModal()}
-                disabled={loading}
-                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={createRoute}
-                disabled={
-                  loading ||
-                  !code.trim() ||
-                  !name.trim() ||
-                  Object.keys(errors).length > 0
-                }
-                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
+      <R2MModal
+        isOpen={isAddOpen}
+        onClose={closeModal}
+        title="Crear Nueva Ruta"
+        maxWidth="md"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton onClick={closeModal} variant="ghost" size="md">
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={createRoute}
+              disabled={
+                !(
                   code.trim() &&
                   name.trim() &&
-                  Object.keys(errors).length === 0 &&
-                  !loading
-                    ? colorClasses.btnSecondary
-                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
-                }`}
-              >
-                {loading ? 'Creando...' : 'Crear Ruta'}
-              </button>
-            </div>
+                  Object.keys(errors).length === 0
+                )
+              }
+              loading={loading}
+              variant="secondary"
+              size="md"
+              icon="ri-add-circle-line"
+              iconPosition="left"
+            >
+              Crear Ruta
+            </R2MButton>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="flex flex-col">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Código *
+              </p>
+              <R2MInput
+                type="text"
+                value={code}
+                onValueChange={setCode}
+                placeholder="Ej: R001"
+                icon="ri-hashtag"
+                error={errors.code}
+                onBlur={validateCode}
+              />
+            </label>
+          </div>
+
+          <div>
+            <label className="flex flex-col">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Nombre *
+              </p>
+              <R2MInput
+                type="text"
+                value={name}
+                onValueChange={setName}
+                placeholder="Ej: Ruta Norte"
+                icon="ri-route-line"
+                error={errors.name}
+                onBlur={validateName}
+              />
+            </label>
+          </div>
+
+          <div>
+            <R2MCheckbox
+              checked={active}
+              onChange={setActive}
+              label="Ruta activa"
+              helperText="Las rutas activas están disponibles para asignar a vehículos"
+            />
           </div>
         </div>
-      )}
+      </R2MModal>
 
       {/* Modal de Edición */}
-      {isEditOpen && selectedRoute && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[#111317] text-xl font-bold">Editar Ruta</h2>
-              <button
-                onClick={() => !loading && closeEditModal()}
-                disabled={loading}
-                className="text-[#646f87] hover:text-[#111317]"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  viewBox="0 0 256 256"
-                >
-                  <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <label className="flex flex-col gap-2">
-                <span className="text-[#111317] text-sm font-medium">
-                  Código *
-                </span>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onBlur={validateCode}
-                  placeholder="Ej: R001"
-                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
-                />
-                {errors.code && (
-                  <p className="text-red-500 text-sm mt-1">{errors.code}</p>
-                )}
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-[#111317] text-sm font-medium">
-                  Nombre *
-                </span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={validateName}
-                  placeholder="Ej: Ruta Norte"
-                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </label>
-
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={(e) => setActive(e.target.checked)}
-                  className="w-5 h-5 rounded border-[#dcdfe5] text-[#1980e6] focus:ring-[#1980e6]"
-                />
-                <span className="text-[#111317] text-sm font-medium">
-                  Ruta activa
-                </span>
-              </label>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => !loading && closeEditModal()}
-                disabled={loading}
-                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={updateRoute}
-                disabled={
-                  loading ||
-                  !code.trim() ||
-                  !name.trim() ||
-                  Object.keys(errors).length > 0
-                }
-                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
+      <R2MModal
+        isOpen={isEditOpen}
+        onClose={closeEditModal}
+        title="Editar Ruta"
+        maxWidth="md"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton onClick={closeEditModal} variant="ghost" size="md">
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={updateRoute}
+              disabled={
+                !(
                   code.trim() &&
                   name.trim() &&
-                  Object.keys(errors).length === 0 &&
-                  !loading
-                    ? colorClasses.btnSecondary
-                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
-                }`}
-              >
-                {loading ? 'Actualizando...' : 'Actualizar Ruta'}
-              </button>
-            </div>
+                  Object.keys(errors).length === 0
+                )
+              }
+              loading={loading}
+              variant="secondary"
+              size="md"
+              icon="ri-save-line"
+              iconPosition="left"
+            >
+              Actualizar Ruta
+            </R2MButton>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="flex flex-col">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Código *
+              </p>
+              <R2MInput
+                type="text"
+                value={code}
+                onValueChange={setCode}
+                placeholder="Ej: R001"
+                icon="ri-hashtag"
+                error={errors.code}
+                onBlur={validateCode}
+              />
+            </label>
+          </div>
+
+          <div>
+            <label className="flex flex-col">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Nombre *
+              </p>
+              <R2MInput
+                type="text"
+                value={name}
+                onValueChange={setName}
+                placeholder="Ej: Ruta Norte"
+                icon="ri-route-line"
+                error={errors.name}
+                onBlur={validateName}
+              />
+            </label>
+          </div>
+
+          <div>
+            <R2MCheckbox
+              checked={active}
+              onChange={setActive}
+              label="Ruta activa"
+              helperText="Las rutas activas están disponibles para asignar a vehículos"
+            />
           </div>
         </div>
-      )}
+      </R2MModal>
 
       {/* Modal de Confirmación de Eliminación */}
-      {isDeleteOpen && selectedRoute && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-            <h3
-              className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}
+      <R2MModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        title="Eliminar Ruta"
+        maxWidth="sm"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={loading}
+              variant="ghost"
+              size="md"
             >
-              Eliminar Ruta
-            </h3>
-            <p className={`${colorClasses.textTerciary} mb-6`}>
-              ¿Estás seguro de que deseas eliminar la ruta{' '}
-              <strong>{selectedRoute.name}</strong>? Esta acción no se puede
-              deshacer.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setIsDeleteOpen(false)}
-                disabled={loading}
-                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSurface} rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={loading}
-                className={`px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {loading ? 'Eliminando...' : 'Eliminar'}
-              </button>
-            </div>
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={confirmDelete}
+              disabled={loading}
+              loading={loading}
+              variant="danger"
+              size="md"
+              icon="ri-delete-bin-line"
+              iconPosition="left"
+            >
+              Eliminar
+            </R2MButton>
           </div>
+        }
+      >
+        <p className={`${colorClasses.textTerciary}`}>
+          ¿Estás seguro de que deseas eliminar la ruta{' '}
+          <strong>{selectedRoute?.name}</strong>? Esta acción no se puede
+          deshacer.
+        </p>
+      </R2MModal>
+
+      {/* Modal de Detalles de la Ruta */}
+      <R2MModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title="Detalles de la Ruta"
+        maxWidth="lg"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton
+              onClick={() => {
+                setIsDetailsOpen(false);
+                if (selectedRoute) {
+                  openEditModal();
+                }
+              }}
+              variant="primary"
+              size="md"
+              icon="ri-edit-line"
+              iconPosition="left"
+            >
+              Editar
+            </R2MButton>
+            <R2MButton
+              onClick={() => {
+                setIsDetailsOpen(false);
+                setIsDeleteOpen(true);
+              }}
+              variant="danger"
+              size="md"
+              icon="ri-delete-bin-line"
+              iconPosition="left"
+            >
+              Eliminar
+            </R2MButton>
+          </div>
+        }
+      >
+        <R2MDetailDisplay
+          items={getRouteDetailItems(selectedRoute)}
+          loading={false}
+          emptyMessage="No hay detalles disponibles"
+        />
+      </R2MModal>
+
+      {/* Modal de Variantes */}
+      <R2MModal
+        isOpen={isVariantsModalOpen}
+        onClose={() => {
+          setIsVariantsModalOpen(false);
+          setSelectedVariant(null);
+        }}
+        title={`Variantes de ${selectedRoute?.code || 'la Ruta'}`}
+        maxWidth="xl"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton
+              onClick={() => {
+                setIsVariantsModalOpen(false);
+                setSelectedVariant(null);
+              }}
+              variant="ghost"
+              size="md"
+            >
+              Cerrar
+            </R2MButton>
+            <R2MButton
+              onClick={() => {
+                openVariantAddModal();
+              }}
+              variant="secondary"
+              size="md"
+              icon="ri-add-line"
+              iconPosition="left"
+            >
+              Nueva Variante
+            </R2MButton>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {loadingVariants ? (
+            <div className="h-[200px] flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1980e6]"></div>
+            </div>
+          ) : variants.length === 0 ? (
+            <div className="text-center py-8">
+              <i className="ri-git-branch-line text-5xl text-[#97A3B1] mb-3 block"></i>
+              <p className="text-[#646f87] text-base font-medium">
+                No hay variantes para esta ruta
+              </p>
+              <p className="text-[#97A3B1] text-sm mt-2">
+                Crea una nueva variante para comenzar
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {variants.map((variant, index) => (
+                <div
+                  key={variant.id}
+                  className="p-4 rounded-lg border transition-all bg-white border-[#dcdfe5] hover:border-[#97A3B1] hover:shadow-sm"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h4 className="text-[#111317] text-base font-semibold">
+                        Variante #{index + 1}
+                      </h4>
+                      <p className="text-xs text-[#646f87] mt-1">
+                        ID: {variant.id.substring(0, 8)}...
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <R2MActionIconButton
+                        icon="ri-edit-line"
+                        label="Editar variante"
+                        variant="info"
+                        onClick={() => {
+                          setSelectedVariant(variant);
+                          openVariantEditModal();
+                        }}
+                      />
+                      <R2MActionIconButton
+                        icon="ri-delete-bin-line"
+                        label="Eliminar variante"
+                        variant="danger"
+                        onClick={() => {
+                          setSelectedVariant(variant);
+                          setIsVariantDeleteOpen(true);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-[#646f87] mb-1">Puntos</p>
+                      <p className="text-sm font-medium text-[#111317]">
+                        {variant.path.length} puntos
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#646f87] mb-1">Distancia</p>
+                      <p className="text-sm font-medium text-[#111317]">
+                        {variant.length_m_json
+                          ? `${(variant.length_m_json / 1000).toFixed(2)} km`
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </R2MModal>
 
       {/* Modal: Agregar Variante */}
-      {isVariantAddOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/40"
-            onClick={() => !loading && closeVariantAddModal()}
-          />
-          <div className="relative z-50 bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-[#111317] text-xl font-bold mb-4">
-              Crear Nueva Variante
-            </h2>
-
-            <div className="mb-6">
-              <RouteMapEditor initialPath={mapPath} onPathChange={setMapPath} />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => !loading && closeVariantAddModal()}
-                disabled={loading}
-                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={createVariant}
-                disabled={loading || mapPath.length < 2}
-                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
-                  mapPath.length >= 2 && !loading
-                    ? colorClasses.btnSecondary
-                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
-                }`}
-              >
-                {loading ? 'Creando...' : 'Crear Variante'}
-              </button>
-            </div>
+      <R2MModal
+        isOpen={isVariantAddOpen}
+        onClose={closeVariantAddModal}
+        title="Crear Nueva Variante"
+        maxWidth="2xl"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton onClick={closeVariantAddModal} variant="ghost" size="md">
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={createVariant}
+              disabled={mapPath.length < 2}
+              loading={loading}
+              variant="secondary"
+              size="md"
+              icon="ri-add-circle-line"
+              iconPosition="left"
+            >
+              Crear Variante
+            </R2MButton>
           </div>
+        }
+      >
+        <div className="mb-2">
+          <p className="text-sm text-[#646f87] mb-4">
+            Marca al menos 2 puntos en el mapa para crear la variante de la
+            ruta.
+          </p>
+          <RouteMapEditor
+            initialPath={mapPath}
+            onPathChange={setMapPath}
+            height={350}
+          />
         </div>
-      )}
+      </R2MModal>
 
       {/* Modal: Editar Variante */}
-      {isVariantEditOpen && selectedVariant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-4xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[#111317] text-xl font-bold">
-                Editar Variante
-              </h2>
-              <button
-                onClick={() => !loading && closeVariantEditModal()}
-                disabled={loading}
-                className="text-[#646f87] hover:text-[#111317]"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  viewBox="0 0 256 256"
-                >
-                  <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="mb-6">
-              <RouteMapEditor initialPath={mapPath} onPathChange={setMapPath} />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => !loading && closeVariantEditModal()}
-                disabled={loading}
-                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={updateVariant}
-                disabled={loading || mapPath.length < 2}
-                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
-                  mapPath.length >= 2 && !loading
-                    ? colorClasses.btnSecondary
-                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
-                }`}
-              >
-                {loading ? 'Actualizando...' : 'Actualizar Variante'}
-              </button>
-            </div>
+      <R2MModal
+        isOpen={isVariantEditOpen}
+        onClose={closeVariantEditModal}
+        title="Editar Variante"
+        maxWidth="2xl"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton
+              onClick={closeVariantEditModal}
+              variant="ghost"
+              size="md"
+            >
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={updateVariant}
+              disabled={mapPath.length < 2}
+              loading={loading}
+              variant="secondary"
+              size="md"
+              icon="ri-save-line"
+              iconPosition="left"
+            >
+              Actualizar Variante
+            </R2MButton>
           </div>
+        }
+      >
+        <div className="mb-2">
+          <RouteMapEditor
+            initialPath={mapPath}
+            onPathChange={setMapPath}
+            height={350}
+          />
         </div>
-      )}
+      </R2MModal>
 
       {/* Modal: Eliminar Variante */}
-      {isVariantDeleteOpen && selectedVariant && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-            <h3
-              className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}
+      <R2MModal
+        isOpen={isVariantDeleteOpen}
+        onClose={() => setIsVariantDeleteOpen(false)}
+        title="Eliminar Variante"
+        maxWidth="sm"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton
+              onClick={() => setIsVariantDeleteOpen(false)}
+              disabled={loading}
+              variant="ghost"
+              size="md"
             >
-              Eliminar Variante
-            </h3>
-            <p className={`${colorClasses.textTerciary} mb-6`}>
-              ¿Estás seguro de que deseas eliminar esta variante? Esta acción no
-              se puede deshacer.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setIsVariantDeleteOpen(false)}
-                disabled={loading}
-                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSurface} rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDeleteVariant}
-                disabled={loading}
-                className={`px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {loading ? 'Eliminando...' : 'Eliminar'}
-              </button>
-            </div>
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={confirmDeleteVariant}
+              disabled={loading}
+              loading={loading}
+              variant="danger"
+              size="md"
+              icon="ri-delete-bin-line"
+              iconPosition="left"
+            >
+              Eliminar
+            </R2MButton>
           </div>
-        </div>
-      )}
+        }
+      >
+        <p className={`${colorClasses.textTerciary}`}>
+          ¿Estás seguro de que deseas eliminar esta variante? Esta acción no se
+          puede deshacer.
+        </p>
+      </R2MModal>
     </>
   );
 }

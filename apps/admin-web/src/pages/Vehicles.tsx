@@ -31,6 +31,7 @@ import R2MModal from '../components/R2MModal';
 import R2MFilterSwitcher from '../components/R2MFilterSwitcher';
 import R2MInput from '../components/R2MInput';
 import R2MSelect from '../components/R2MSelect';
+import R2MSearchInput from '../components/R2MSearchInput';
 
 // Función para calcular tiempo relativo
 function getTimeAgo(dateString: string | null): string {
@@ -907,17 +908,11 @@ export default function VehiclesPage() {
         <div className="layout-content-container flex flex-col flex-1 max-w-7xl mx-auto w-full">
           {/* Barra de búsqueda */}
           <div className="px-4 py-3 pt-5">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                <i className="ri-search-line text-xl text-[#97A3B1]"></i>
-              </div>
-              <input
-                placeholder="Buscar vehículos por placa..."
-                className={`w-full pl-12 pr-4 py-3 rounded-xl border border-[#dcdfe5] ${colorClasses.textPrimary} placeholder:text-[#97A3B1] focus:outline-none focus:ring-2 focus:ring-[#1E56A0] focus:border-transparent transition-all`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <R2MSearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Buscar vehículos por placa..."
+            />
           </div>
 
           {/* Vehicles table */}

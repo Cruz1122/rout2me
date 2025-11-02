@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { colorClasses } from '../styles/colors';
+import R2MFilterSwitcher from './R2MFilterSwitcher';
 
 export type SortDirection = 'asc' | 'desc' | null;
 
@@ -112,7 +113,7 @@ export default function R2MTable<T>({
                 {columns.map((column) => (
                   <th
                     key={column.key}
-                    className={`px-4 py-3 text-left ${colorClasses.textPrimary} text-sm font-semibold ${
+                    className={`px-4 py-3 text-center ${colorClasses.textPrimary} text-sm font-semibold ${
                       column.sortable
                         ? 'cursor-pointer select-none hover:bg-[#c0d4e6]'
                         : ''
@@ -120,7 +121,7 @@ export default function R2MTable<T>({
                     style={{ width: column.width }}
                     onClick={() => column.sortable && handleSort(column.key)}
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       <span>{column.header}</span>
                       {column.sortable && renderSortIcon(column.key)}
                     </div>
@@ -170,7 +171,7 @@ export default function R2MTable<T>({
                     {columns.map((column) => (
                       <td
                         key={`${getRowKey(item)}-${column.key}`}
-                        className={`px-4 py-3 text-sm ${column.className || ''}`}
+                        className={`px-4 py-3 text-sm text-center ${column.className || ''}`}
                       >
                         {column.render
                           ? column.render(item)
@@ -197,23 +198,21 @@ export default function R2MTable<T>({
 
       {/* Paginación */}
       {!loading && paginatedData.length > 0 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[#dcdfe5]">
+        <div className="flex items-center justify-between px-4 py-3 my-3 border-t border-[#dcdfe5]">
           <div className="flex items-center gap-3">
             <span className="text-sm text-[#97A3B1]">Filas por página:</span>
-            <select
-              value={rowsPerPage}
-              onChange={(e) => {
-                setRowsPerPage(Number(e.target.value));
+            <R2MFilterSwitcher
+              options={rowsPerPageOptions.map((option) => ({
+                id: String(option),
+                label: String(option),
+              }))}
+              activeFilter={String(rowsPerPage)}
+              onFilterChange={(filter) => {
+                setRowsPerPage(Number(filter));
                 setCurrentPage(1);
               }}
-              className={`h-8 px-2 rounded-lg border border-[#dcdfe5] bg-white text-sm ${colorClasses.textPrimary} cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1E56A0]`}
-            >
-              {rowsPerPageOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              allowDeselect={false}
+            />
           </div>
 
           <div className="flex items-center gap-2">

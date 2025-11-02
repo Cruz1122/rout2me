@@ -10,11 +10,13 @@ interface Coordinate {
 interface RouteMapEditorProps {
   initialPath?: Coordinate[];
   onPathChange: (path: Coordinate[]) => void;
+  height?: number;
 }
 
 export default function RouteMapEditor({
   initialPath = [],
   onPathChange,
+  height = 500,
 }: RouteMapEditorProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -310,8 +312,8 @@ export default function RouteMapEditor({
 
       <div
         ref={mapContainer}
-        className="w-full h-[500px] rounded-xl border border-[#dcdfe5] overflow-hidden bg-gray-100"
-        style={{ minHeight: '500px' }}
+        className="w-full rounded-xl border border-[#dcdfe5] overflow-hidden bg-gray-100"
+        style={{ height: `${height}px`, minHeight: `${height}px` }}
       />
 
       {path.length > 0 && (

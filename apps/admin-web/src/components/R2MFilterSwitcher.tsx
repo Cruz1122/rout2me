@@ -45,7 +45,7 @@ export default function R2MFilterSwitcher<T extends string>({
             <span className="truncate">{filter.label}</span>
             <input
               type="radio"
-              className="invisible w-0"
+              className="sr-only"
               checked={isSelected}
               onChange={() => handleClick(filter.id)}
             />

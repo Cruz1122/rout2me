@@ -6,14 +6,24 @@ import {
   updateUser as updateUserApi,
 } from '../api/users_api';
 import type { User } from '../api/users_api';
-import { colorClasses } from '../styles/colors';
-import GlobalLoader from '../components/GlobalLoader';
+import R2MTable from '../components/R2MTable';
+import R2MModal from '../components/R2MModal';
+import R2MButton from '../components/R2MButton';
+import R2MInput from '../components/R2MInput';
+import R2MActionIconButton from '../components/R2MActionIconButton';
+import R2MDetailDisplay from '../components/R2MDetailDisplay';
+import R2MSearchInput from '../components/R2MSearchInput';
 import PageHeader from '../components/PageHeader';
+import { colorClasses } from '../styles/colors';
 
 export default function UsersPage() {
-  const [isAddOpen, setIsAddOpen] = useState(false);
+  // Modals state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -24,13 +34,14 @@ export default function UsersPage() {
     name?: string;
     phone?: string;
   }>({});
+
+  // Data state
   const [loading, setLoading] = useState(false);
-  const [loadingUsers, setLoadingUsers] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Toast state
   const [toast, setToast] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -40,36 +51,45 @@ export default function UsersPage() {
   const toastHideTimerRef = useRef<number | null>(null);
   const toastEntryTimerRef = useRef<number | null>(null);
 
-  // Cargar usuarios al montar el componente
+  // Load users on mount
   useEffect(() => {
     loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadUsers() {
     try {
-      setLoadingUsers(true);
+      setLoading(true);
       const data = await getUsers();
       setUsers(data);
-      // Seleccionar el primer usuario por defecto
-      if (data.length > 0 && !selectedUser) {
-        setSelectedUser(data[0]);
-      }
     } catch (error) {
       console.error('Error loading users:', error);
       showToast('error', 'Error al cargar los usuarios');
     } finally {
-      setLoadingUsers(false);
+      setLoading(false);
     }
   }
 
-  function closeModal() {
-    setIsAddOpen(false);
+  function closeCreateModal() {
+    setIsCreateOpen(false);
     setErrors({});
     setEmail('');
     setPassword('');
     setName('');
     setPhone('');
+  }
+
+  function closeEditModal() {
+    setIsEditOpen(false);
+    setErrors({});
+    setEmail('');
+    setPassword('');
+    setName('');
+    setPhone('');
+  }
+
+  function closeDetailsModal() {
+    setIsDetailsOpen(false);
+    setSelectedUser(null);
   }
 
   useEffect(() => {
@@ -110,8 +130,8 @@ export default function UsersPage() {
     }, 20);
   }
 
-  function createUser() {
-    // validate
+  async function createUser() {
+    // Validate
     const newErrors: {
       email?: string;
       password?: string;
@@ -137,29 +157,26 @@ export default function UsersPage() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    // call API
-    setLoading(true);
-    createUserApi({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        name,
-        phone,
-      },
-    })
-      .then((res) => {
-        console.log('created', res);
-        showToast('success', 'Usuario creado correctamente.');
-        // Recargar la lista de usuarios
-        loadUsers();
-        closeModal();
-      })
-      .catch((err) => {
-        console.error('create failed', err);
-        showToast('error', 'Error al crear el usuario.');
-      })
-      .finally(() => setLoading(false));
+    try {
+      setLoading(true);
+      await createUserApi({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          name,
+          phone,
+        },
+      });
+      showToast('success', 'Usuario creado correctamente');
+      loadUsers();
+      closeCreateModal();
+    } catch (err) {
+      console.error('create failed', err);
+      showToast('error', 'Error al crear el usuario');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // Validation on blur handlers
@@ -221,30 +238,25 @@ export default function UsersPage() {
       });
   }
 
-  function openEditModal() {
-    if (!selectedUser) return;
-    // Cargar los datos del usuario seleccionado
-    setEmail(selectedUser.email);
-    setName(selectedUser.name);
-    setPhone(selectedUser.phone);
-    setPassword(''); // No mostrar la contraseña actual
+  function openEditModal(user: User) {
+    setSelectedUser(user);
+    setEmail(user.email);
+    setName(user.name);
+    setPhone(user.phone);
+    setPassword('');
     setErrors({});
     setIsEditOpen(true);
   }
 
-  function closeEditModal() {
-    setIsEditOpen(false);
-    setEmail('');
-    setPassword('');
-    setName('');
-    setPhone('');
-    setErrors({});
+  function openDetailsModal(user: User) {
+    setSelectedUser(user);
+    setIsDetailsOpen(true);
   }
 
-  function updateUser() {
+  async function updateUser() {
     if (!selectedUser) return;
 
-    // validate (password opcional en edición)
+    // Validate (password optional in edit)
     const newErrors: {
       email?: string;
       password?: string;
@@ -269,66 +281,156 @@ export default function UsersPage() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    setLoading(true);
-
-    // Preparar payload de actualización
-    const updatePayload: {
-      email?: string;
-      password?: string;
-      user_metadata?: {
-        name: string;
-        phone: string;
+    try {
+      setLoading(true);
+      const updatePayload: {
+        email?: string;
+        password?: string;
+        user_metadata?: {
+          name: string;
+          phone: string;
+        };
+      } = {
+        email,
+        user_metadata: {
+          name,
+          phone,
+        },
       };
-    } = {
-      email,
-      user_metadata: {
-        name,
-        phone,
-      },
-    };
 
-    // Solo incluir password si se proporciona
-    if (password.trim()) {
-      updatePayload.password = password;
+      if (password.trim()) {
+        updatePayload.password = password;
+      }
+
+      await updateUserApi(selectedUser.id, updatePayload);
+      showToast('success', 'Usuario actualizado correctamente');
+      loadUsers();
+      closeEditModal();
+    } catch (err) {
+      console.error('update failed', err);
+      showToast('error', 'Error al actualizar el usuario');
+    } finally {
+      setLoading(false);
     }
-
-    updateUserApi(selectedUser.id, updatePayload)
-      .then(() => {
-        showToast('success', 'Usuario actualizado correctamente');
-        loadUsers();
-        closeEditModal();
-      })
-      .catch((err: unknown) => {
-        console.error('update failed', err);
-        showToast('error', 'Error al actualizar el usuario');
-      })
-      .finally(() => setLoading(false));
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!selectedUser) return;
 
-    setLoading(true);
-    deleteUserApi(selectedUser.id)
-      .then(() => {
-        showToast('success', 'Usuario eliminado correctamente');
-        setSelectedUser(null);
-        setIsDeleteOpen(false);
-        loadUsers();
-      })
-      .catch((err: unknown) => {
-        console.error('delete failed', err);
-        showToast('error', 'Error al eliminar el usuario');
-      })
-      .finally(() => setLoading(false));
+    try {
+      setLoading(true);
+      await deleteUserApi(selectedUser.id);
+      showToast('success', 'Usuario eliminado correctamente');
+      setIsDeleteOpen(false);
+      setSelectedUser(null);
+      loadUsers();
+    } catch (err) {
+      console.error('delete failed', err);
+      showToast('error', 'Error al eliminar el usuario');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Table columns definition
+  const tableColumns = [
+    {
+      key: 'name',
+      header: 'Nombre',
+      sortable: true,
+      width: '200px',
+      render: (user: User) => (
+        <span className={`font-medium ${colorClasses.textPrimary}`}>
+          {user.name || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      sortable: true,
+      width: '250px',
+      render: (user: User) => (
+        <span className="text-[#97A3B1]">{user.email}</span>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Rol',
+      sortable: true,
+      width: '150px',
+      render: (user: User) => (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${colorClasses.bgSurface} ${colorClasses.textPrimary}`}
+        >
+          {getRoleText(user.role)}
+        </span>
+      ),
+    },
+    {
+      key: 'phone',
+      header: 'Teléfono',
+      sortable: false,
+      width: '150px',
+      render: (user: User) => (
+        <span className="text-[#97A3B1]">{user.phone || 'N/A'}</span>
+      ),
+    },
+    {
+      key: 'email_confirmed_at',
+      header: 'Verificado',
+      sortable: false,
+      width: '120px',
+      render: (user: User) => (
+        <span className="text-[#97A3B1]">
+          {user.email_confirmed_at ? 'Sí' : 'No'}
+        </span>
+      ),
+    },
+  ];
+
+  // Render actions for each row
+  const renderActions = (user: User) => (
+    <div className="flex gap-2">
+      <R2MActionIconButton
+        icon="ri-eye-line"
+        label="Ver detalles"
+        variant="info"
+        onClick={() => openDetailsModal(user)}
+      />
+      <R2MActionIconButton
+        icon="ri-edit-line"
+        label="Editar usuario"
+        variant="warning"
+        onClick={() => openEditModal(user)}
+      />
+      <R2MActionIconButton
+        icon="ri-delete-bin-line"
+        label="Eliminar usuario"
+        variant="danger"
+        onClick={() => {
+          setSelectedUser(user);
+          setIsDeleteOpen(true);
+        }}
+      />
+    </div>
+  );
+
+  // Format user role text
+  function getRoleText(role: string | undefined): string {
+    if (role === 'admin') return 'Administrador';
+    if (role === 'driver') return 'Conductor';
+    if (role === 'passenger') return 'Pasajero';
+    return 'Usuario';
   }
 
   // Filter users based on search query
   const filteredUsers = users.filter((user) => {
     const query = searchQuery.toLowerCase();
     return (
-      user.name.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query)
+      user.email.toLowerCase().includes(query) ||
+      (user.name && user.name.toLowerCase().includes(query)) ||
+      (user.phone && user.phone.toLowerCase().includes(query))
     );
   });
 
@@ -409,636 +511,307 @@ export default function UsersPage() {
       <PageHeader
         title="Usuarios"
         action={
-          <button
-            onClick={() => setIsAddOpen(true)}
-            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal"
+          <R2MButton
+            onClick={() => setIsCreateOpen(true)}
+            variant="surface"
+            size="sm"
+            icon="ri-add-line"
+            iconPosition="left"
           >
-            {loading ? (
-              <span className="animate-spin border-2 border-black/20 border-t-black w-3 h-3 rounded-full mr-2" />
-            ) : (
-              <span className="mr-2">+</span>
-            )}
-            <span className="truncate">Nuevo Usuario</span>
-          </button>
+            Nuevo Usuario
+          </R2MButton>
         }
       />
 
-      <div className="gap-1 px-6 flex flex-1 justify-center py-5">
-        {/* Left column: User details */}
-        <div className="layout-content-container flex flex-col w-80">
-          <h2 className="text-[#111317] tracking-light text-[22px] font-bold leading-tight px-4 pb-3 pt-5">
-            Detalles del Usuario
-          </h2>
+      <div className="px-6 py-5">
+        {/* Search bar */}
+        <div className="px-4 pt-4 pb-3">
+          <R2MSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Buscar usuarios por nombre, email o teléfono..."
+          />
+        </div>
 
-          <div className="p-4 grid grid-cols-[20%_1fr] gap-x-6">
-            {selectedUser ? (
-              <>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    ID
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedUser.id}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Nombre
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedUser.name || 'N/A'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Email
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedUser.email}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Teléfono
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedUser.phone || 'N/A'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Rol
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedUser.role === 'admin'
-                      ? 'Administrador'
-                      : selectedUser.role === 'driver'
-                        ? 'Conductor'
-                        : selectedUser.role === 'supervisor'
-                          ? 'Supervisor'
-                          : 'Usuario'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Email Confirmado
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {selectedUser.email_confirmed_at ? 'Sí' : 'No'}
-                  </p>
-                </div>
-                <div className="col-span-2 grid grid-cols-subgrid border-t border-t-[#dcdfe5] py-5">
-                  <p className="text-[#646f87] text-sm font-normal leading-normal">
-                    Fecha de Creación
-                  </p>
-                  <p className="text-[#111317] text-sm font-normal leading-normal">
-                    {new Date(selectedUser.created_at).toLocaleString('es-ES', {
+        {/* Users table */}
+        <div className="px-4 py-3">
+          <R2MTable
+            columns={tableColumns}
+            data={filteredUsers}
+            getRowKey={(user) => user.id}
+            actions={renderActions}
+            loading={loading}
+            emptyMessage={
+              searchQuery
+                ? 'No se encontraron usuarios con ese criterio'
+                : 'No hay usuarios disponibles'
+            }
+            defaultRowsPerPage={5}
+            rowsPerPageOptions={[5, 10, 15, 20]}
+          />
+        </div>
+      </div>
+
+      {/* Details Modal */}
+      <R2MModal
+        isOpen={isDetailsOpen}
+        onClose={closeDetailsModal}
+        title="Detalles del Usuario"
+      >
+        {selectedUser && (
+          <>
+            <R2MDetailDisplay
+              items={[
+                { label: 'ID', value: selectedUser.id },
+                { label: 'Nombre', value: selectedUser.name || 'N/A' },
+                { label: 'Email', value: selectedUser.email },
+                { label: 'Teléfono', value: selectedUser.phone || 'N/A' },
+                {
+                  label: 'Rol',
+                  value: getRoleText(selectedUser.role),
+                },
+                {
+                  label: 'Email Confirmado',
+                  value: selectedUser.email_confirmed_at ? 'Sí' : 'No',
+                },
+                {
+                  label: 'Fecha de Creación',
+                  value: new Date(selectedUser.created_at).toLocaleString(
+                    'es-ES',
+                    {
                       year: 'numeric',
                       month: '2-digit',
                       day: '2-digit',
                       hour: '2-digit',
                       minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-              </>
-            ) : loadingUsers ? (
-              <div className="col-span-2">
-                <GlobalLoader />
-              </div>
-            ) : (
-              <div className="col-span-2 text-center py-8">
-                <p className="text-[#646f87] text-sm">
-                  Selecciona un usuario para ver sus detalles
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons */}
-          {selectedUser && (
-            <div className="flex gap-3 px-4 pb-4">
-              <button
-                onClick={openEditModal}
-                className={`flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 ${colorClasses.btnPrimary} text-white text-sm font-bold leading-normal tracking-[0.015em] hover:opacity-90 transition-opacity`}
+                    },
+                  ),
+                },
+              ]}
+            />
+            <div className="flex gap-3 mt-6">
+              <R2MButton
+                variant="warning"
+                onClick={() => {
+                  closeDetailsModal();
+                  openEditModal(selectedUser);
+                }}
+                size="md"
+                icon="ri-edit-line"
+                iconPosition="left"
+                className="flex-1"
               >
                 Editar Usuario
-              </button>
-              <button
-                onClick={() => setIsDeleteOpen(true)}
-                className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-red-600 hover:bg-red-700 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors"
+              </R2MButton>
+              <R2MButton
+                variant="danger"
+                onClick={() => {
+                  closeDetailsModal();
+                  setIsDeleteOpen(true);
+                }}
+                size="md"
+                icon="ri-delete-bin-line"
+                iconPosition="left"
+                className="flex-1"
               >
                 Eliminar Usuario
-              </button>
+              </R2MButton>
             </div>
-          )}
-        </div>
+          </>
+        )}
+      </R2MModal>
 
-        {/* Right column: Users list */}
-        <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
-          <div className="px-4 py-3 pt-5">
-            <label className="flex flex-col min-w-40 h-12 w-full">
-              <div className="flex w-full flex-1 items-stretch rounded-xl h-full">
-                <div className="text-[#646f87] flex border-none bg-[#f0f2f4] items-center justify-center pl-4 rounded-l-xl border-r-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24px"
-                    height="24px"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
-                  </svg>
-                </div>
-                <input
-                  placeholder="Buscar usuarios"
-                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border-none bg-[#f0f2f4] focus:border-none h-full placeholder:text-[#646f87] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1); // Reset to first page when searching
-                  }}
-                />
-              </div>
-            </label>
-          </div>
-
-          {/* Users table */}
-          <div className="px-4 py-3 [container-type:inline-size]">
-            <div className="flex overflow-hidden rounded-xl border border-[#dcdfe5] bg-white">
-              <table className="flex-1">
-                <thead>
-                  <tr className="bg-white">
-                    <th className="table-user-120 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Nombre
-                    </th>
-                    <th className="table-user-240 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Email
-                    </th>
-                    <th className="table-user-360 px-4 py-3 text-left text-[#111317] w-60 text-sm font-medium leading-normal">
-                      Rol
-                    </th>
-                    <th className="table-user-480 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Teléfono
-                    </th>
-                    <th className="table-user-600 px-4 py-3 text-left text-[#111317] w-[400px] text-sm font-medium leading-normal">
-                      Verificado
-                    </th>
-                    <th className="table-user-720 px-4 py-3 text-left text-[#111317] w-60 text-[#646f87] text-sm font-medium leading-normal"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingUsers ? (
-                    <tr>
-                      <td colSpan={6} className="h-[400px] p-0">
-                        <GlobalLoader />
-                      </td>
-                    </tr>
-                  ) : users.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        No hay usuarios disponibles
-                      </td>
-                    </tr>
-                  ) : filteredUsers.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="h-[72px] px-4 py-2 text-center text-[#646f87] text-sm"
-                      >
-                        No se encontraron usuarios
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredUsers
-                      .slice(
-                        (currentPage - 1) * rowsPerPage,
-                        currentPage * rowsPerPage,
-                      )
-                      .map((user) => {
-                        const roleText =
-                          user.role === 'admin'
-                            ? 'Administrador'
-                            : user.role === 'driver'
-                              ? 'Conductor'
-                              : user.role === 'supervisor'
-                                ? 'Supervisor'
-                                : 'Usuario';
-
-                        return (
-                          <tr
-                            key={user.id}
-                            className={`border-t border-t-[#dcdfe5] cursor-pointer hover:bg-[#f0f2f4] ${selectedUser?.id === user.id ? 'bg-[#e8edf3]' : ''}`}
-                            onClick={() => setSelectedUser(user)}
-                          >
-                            {/* Nombre */}
-                            <td className="table-user-120 h-[72px] px-4 py-2 w-[400px] text-[#111317] text-sm font-medium leading-normal">
-                              {user.name || 'Sin nombre'}
-                            </td>
-                            {/* Email */}
-                            <td className="table-user-240 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {user.email}
-                            </td>
-                            {/* Rol */}
-                            <td className="table-user-360 h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal">
-                              <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-8 px-4 bg-[#f0f2f4] text-[#111317] text-sm font-medium leading-normal w-full">
-                                <span className="truncate">{roleText}</span>
-                              </button>
-                            </td>
-                            {/* Teléfono */}
-                            <td className="table-user-480 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {user.phone || 'N/A'}
-                            </td>
-                            {/* Verificado */}
-                            <td className="table-user-600 h-[72px] px-4 py-2 w-[400px] text-[#646f87] text-sm font-normal leading-normal">
-                              {user.email_confirmed_at ? 'Sí' : 'No'}
-                            </td>
-                            {/* Empty column for consistency */}
-                            <td className="table-user-720 h-[72px] px-4 py-2 w-60"></td>
-                          </tr>
-                        );
-                      })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination controls */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[#dcdfe5]">
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-[#646f87]">
-                  Filas por página:
-                </span>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="h-8 px-2 rounded-lg border border-[#dcdfe5] bg-white text-sm text-[#111317] cursor-pointer"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={15}>15</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-[#646f87]">
-                  {filteredUsers.length === 0
-                    ? '0 de 0'
-                    : `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filteredUsers.length)} de ${filteredUsers.length}`}
-                </span>
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) =>
-                      Math.min(
-                        Math.ceil(filteredUsers.length / rowsPerPage),
-                        prev + 1,
-                      ),
-                    )
-                  }
-                  disabled={
-                    currentPage >= Math.ceil(filteredUsers.length / rowsPerPage)
-                  }
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f0f2f4] disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 256 256"
-                  >
-                    <path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal: Agregar Usuario */}
-      {isAddOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="fixed inset-0 bg-black/40"
-            onClick={() => !loading && closeModal()}
+      {/* Create User Modal */}
+      <R2MModal
+        isOpen={isCreateOpen}
+        onClose={closeCreateModal}
+        title="Crear Nuevo Usuario"
+      >
+        <div className="flex flex-col gap-4">
+          <R2MInput
+            type="email"
+            placeholder="correo@ejemplo.com"
+            value={email}
+            onValueChange={setEmail}
+            onBlur={validateEmail}
+            error={errors.email}
+            icon="ri-mail-line"
+            required
           />
-          <div className="relative z-50 bg-white rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-[#111317] text-xl font-bold mb-4">
-              Crear Nuevo Usuario
-            </h2>
-
-            <div className="flex flex-col gap-4">
-              {/* Email */}
-              <label className="flex flex-col min-w-40 flex-1">
-                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                  Email *
-                </p>
-                <input
-                  type="email"
-                  placeholder="correo@ejemplo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onBlur={validateEmail}
-                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
-                    errors.email
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-[#dcdfe5] bg-white'
-                  }`}
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                )}
-              </label>
-
-              {/* Password */}
-              <label className="flex flex-col min-w-40 flex-1">
-                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                  Contraseña *
-                </p>
-                <input
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onBlur={validatePassword}
-                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
-                    errors.password
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-[#dcdfe5] bg-white'
-                  }`}
-                />
-                {errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-                )}
-              </label>
-
-              {/* Name */}
-              <label className="flex flex-col min-w-40 flex-1">
-                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                  Nombre Completo *
-                </p>
-                <input
-                  type="text"
-                  placeholder="Juan Pérez"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={validateName}
-                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
-                    errors.name
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-[#dcdfe5] bg-white'
-                  }`}
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </label>
-
-              {/* Phone */}
-              <label className="flex flex-col min-w-40 flex-1">
-                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
-                  Teléfono *
-                </p>
-                <input
-                  type="tel"
-                  placeholder="+573001234567"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  onBlur={validatePhone}
-                  className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111317] focus:outline-0 focus:ring-0 border h-14 placeholder:text-[#646f87] p-[15px] text-base font-normal leading-normal ${
-                    errors.phone
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-[#dcdfe5] bg-white'
-                  }`}
-                />
-                {errors.phone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                )}
-              </label>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => !loading && closeModal()}
-                disabled={loading}
-                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={createUser}
-                disabled={
-                  loading ||
-                  !email.trim() ||
-                  !password.trim() ||
-                  !name.trim() ||
-                  !phone.trim() ||
-                  Object.keys(errors).length > 0
-                }
-                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
-                  email.trim() &&
-                  password.trim() &&
-                  name.trim() &&
-                  phone.trim() &&
-                  Object.keys(errors).length === 0 &&
-                  !loading
-                    ? colorClasses.btnSecondary
-                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
-                }`}
-              >
-                {loading ? 'Creando...' : 'Crear Usuario'}
-              </button>
-            </div>
-          </div>
+          <R2MInput
+            type="password"
+            placeholder="Contraseña (mínimo 6 caracteres)"
+            value={password}
+            onValueChange={setPassword}
+            onBlur={validatePassword}
+            error={errors.password}
+            icon="ri-lock-password-line"
+            required
+          />
+          <R2MInput
+            type="text"
+            placeholder="Nombre Completo"
+            value={name}
+            onValueChange={setName}
+            onBlur={validateName}
+            error={errors.name}
+            icon="ri-user-line"
+            required
+          />
+          <R2MInput
+            type="tel"
+            placeholder="Teléfono (+573001234567)"
+            value={phone}
+            onValueChange={setPhone}
+            onBlur={validatePhone}
+            error={errors.phone}
+            icon="ri-phone-line"
+            required
+          />
         </div>
-      )}
-
-      {/* Modal de Edición */}
-      {isEditOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[#111317] text-xl font-bold">
-                Editar Usuario
-              </h2>
-              <button
-                onClick={() => !loading && closeEditModal()}
-                disabled={loading}
-                className="text-[#646f87] hover:text-[#111317]"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  viewBox="0 0 256 256"
-                >
-                  <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <label className="flex flex-col gap-2">
-                <span className="text-[#111317] text-sm font-medium">
-                  Email *
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onBlur={validateEmail}
-                  placeholder="usuario@example.com"
-                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                )}
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-[#111317] text-sm font-medium">
-                  Nueva Contraseña (opcional)
-                </span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onBlur={validatePassword}
-                  placeholder="Dejar vacío para mantener actual"
-                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
-                />
-                {errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-                )}
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-[#111317] text-sm font-medium">
-                  Nombre *
-                </span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={validateName}
-                  placeholder="Juan Pérez"
-                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-[#111317] text-sm font-medium">
-                  Teléfono *
-                </span>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  onBlur={validatePhone}
-                  placeholder="+573001234567"
-                  className="h-12 px-4 rounded-xl border border-[#dcdfe5] focus:outline-none focus:border-[#1980e6] text-[#111317]"
-                />
-                {errors.phone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                )}
-              </label>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => !loading && closeEditModal()}
-                disabled={loading}
-                className={`flex-1 h-10 px-4 rounded-xl border border-[#dcdfe5] bg-white text-[#111317] text-sm font-bold ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f0f2f4]'}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={updateUser}
-                disabled={
-                  loading ||
-                  !email.trim() ||
-                  !name.trim() ||
-                  !phone.trim() ||
-                  Object.keys(errors).length > 0
-                }
-                className={`flex-1 h-10 px-4 rounded-xl text-sm font-bold ${
-                  email.trim() &&
-                  name.trim() &&
-                  phone.trim() &&
-                  Object.keys(errors).length === 0 &&
-                  !loading
-                    ? colorClasses.btnSecondary
-                    : 'bg-[#cbd5e1] text-white/70 cursor-not-allowed'
-                }`}
-              >
-                {loading ? 'Actualizando...' : 'Actualizar Usuario'}
-              </button>
-            </div>
-          </div>
+        <div className="flex gap-3 mt-6">
+          <R2MButton
+            variant="ghost"
+            onClick={closeCreateModal}
+            disabled={loading}
+            size="md"
+            className="flex-1"
+          >
+            Cancelar
+          </R2MButton>
+          <R2MButton
+            variant="secondary"
+            onClick={createUser}
+            disabled={
+              loading ||
+              !email.trim() ||
+              !password.trim() ||
+              !name.trim() ||
+              !phone.trim() ||
+              Object.keys(errors).length > 0
+            }
+            loading={loading}
+            size="md"
+            icon="ri-user-add-line"
+            iconPosition="left"
+            className="flex-1"
+          >
+            Crear Usuario
+          </R2MButton>
         </div>
-      )}
+      </R2MModal>
 
-      {/* Modal de Confirmación de Eliminación */}
-      {isDeleteOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-            <h3
-              className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}
-            >
-              Eliminar Usuario
-            </h3>
-            <p className={`${colorClasses.textTerciary} mb-6`}>
-              ¿Estás seguro de que deseas eliminar a{' '}
-              <strong>{selectedUser.name}</strong>? Esta acción no se puede
-              deshacer.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setIsDeleteOpen(false)}
-                disabled={loading}
-                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSurface} rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={loading}
-                className={`px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {loading ? 'Eliminando...' : 'Eliminar'}
-              </button>
-            </div>
-          </div>
+      {/* Edit User Modal */}
+      <R2MModal
+        isOpen={isEditOpen}
+        onClose={closeEditModal}
+        title="Editar Usuario"
+      >
+        <div className="flex flex-col gap-4">
+          <R2MInput
+            type="email"
+            placeholder="usuario@ejemplo.com"
+            value={email}
+            onValueChange={setEmail}
+            onBlur={validateEmail}
+            error={errors.email}
+            icon="ri-mail-line"
+            required
+          />
+          <R2MInput
+            type="password"
+            placeholder="Nueva contraseña (opcional)"
+            value={password}
+            onValueChange={setPassword}
+            onBlur={validatePassword}
+            error={errors.password}
+            icon="ri-lock-password-line"
+          />
+          <R2MInput
+            type="text"
+            placeholder="Nombre"
+            value={name}
+            onValueChange={setName}
+            onBlur={validateName}
+            error={errors.name}
+            icon="ri-user-line"
+            required
+          />
+          <R2MInput
+            type="tel"
+            placeholder="Teléfono (+573001234567)"
+            value={phone}
+            onValueChange={setPhone}
+            onBlur={validatePhone}
+            error={errors.phone}
+            icon="ri-phone-line"
+            required
+          />
         </div>
-      )}
+        <div className="flex gap-3 mt-6">
+          <R2MButton
+            variant="ghost"
+            onClick={closeEditModal}
+            disabled={loading}
+            size="md"
+            className="flex-1"
+          >
+            Cancelar
+          </R2MButton>
+          <R2MButton
+            variant="secondary"
+            onClick={updateUser}
+            disabled={
+              loading ||
+              !email.trim() ||
+              !name.trim() ||
+              !phone.trim() ||
+              Object.keys(errors).length > 0
+            }
+            loading={loading}
+            size="md"
+            icon="ri-save-line"
+            iconPosition="left"
+            className="flex-1"
+          >
+            Actualizar Usuario
+          </R2MButton>
+        </div>
+      </R2MModal>
+
+      {/* Delete Confirmation Modal */}
+      <R2MModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        title="Eliminar Usuario"
+      >
+        <p className="text-gray-700 mb-6">
+          ¿Estás seguro de que deseas eliminar a{' '}
+          <strong>{selectedUser?.name}</strong>? Esta acción no se puede
+          deshacer.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <R2MButton
+            variant="ghost"
+            onClick={() => setIsDeleteOpen(false)}
+            disabled={loading}
+            size="md"
+          >
+            Cancelar
+          </R2MButton>
+          <R2MButton
+            variant="danger"
+            onClick={confirmDelete}
+            disabled={loading}
+            loading={loading}
+            size="md"
+            icon="ri-delete-bin-line"
+            iconPosition="left"
+          >
+            Eliminar
+          </R2MButton>
+        </div>
+      </R2MModal>
     </>
   );
 }

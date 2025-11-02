@@ -15,6 +15,8 @@ import {
   RiLogoutBoxRLine,
   RiUserLine,
 } from 'react-icons/ri';
+import R2MModal from './R2MModal';
+import R2MButton from './R2MButton';
 
 export default function R2MSidebar() {
   const location = useLocation();
@@ -152,34 +154,36 @@ export default function R2MSidebar() {
       </div>
 
       {/* Modal de Confirmación de Logout */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[10000]">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-            <h3
-              className={`text-xl font-bold ${colorClasses.textPrimary} mb-4`}
+      <R2MModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Cerrar Sesión"
+        maxWidth="sm"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton
+              onClick={() => setShowLogoutModal(false)}
+              variant="ghost"
+              size="md"
+            >
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={confirmLogout}
+              variant="danger"
+              size="md"
+              icon="ri-logout-box-r-line"
+              iconPosition="left"
             >
               Cerrar Sesión
-            </h3>
-            <p className={`${colorClasses.textTerciary} mb-6`}>
-              ¿Estás seguro de que deseas cerrar sesión?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSurface} rounded-lg transition-colors`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmLogout}
-                className={`px-4 py-2 text-sm font-medium ${colorClasses.btnSecondary} rounded-lg transition-colors`}
-              >
-                Cerrar Sesión
-              </button>
-            </div>
+            </R2MButton>
           </div>
-        </div>
-      )}
+        }
+      >
+        <p className={colorClasses.textTerciary}>
+          ¿Estás seguro de que deseas cerrar sesión?
+        </p>
+      </R2MModal>
     </>
   );
 }
