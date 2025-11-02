@@ -146,7 +146,7 @@ export default function HomePage() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loadBusPositions]);
 
   const loadVehicles = async () => {
     try {
@@ -385,8 +385,6 @@ export default function HomePage() {
               companyMap,
               companyColorMap,
             );
-            const companyName =
-              companyMap.get(bus.companyId)?.name || 'Unknown';
 
             // Calcular offset lateral para rutas compartidas
             // Si hay múltiples compañías, distribuir las líneas lateralmente
@@ -474,14 +472,12 @@ export default function HomePage() {
     vehicleMarkers.current.clear();
 
     // Agregar marcadores para cada vehículo con posición
-    let markersAdded = 0;
     vehicles.forEach((vehicle) => {
       const position = busPositions.find((pos) => pos.bus_id === vehicle.id);
 
       if (!position || !position.location_json) return;
 
       const { lat, lng } = position.location_json;
-      markersAdded++;
 
       // Obtener color según la compañía (usar company_id de position, no de vehicle)
       const color = getCompanyColor(

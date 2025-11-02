@@ -74,19 +74,6 @@ function getAuthToken(): string | null {
   return localStorage.getItem('access_token');
 }
 
-// Helper para obtener el user_id del localStorage
-function getUserId(): string | null {
-  const userStr = localStorage.getItem('user');
-  if (!userStr) return null;
-
-  try {
-    const user = JSON.parse(userStr);
-    return user.id || null;
-  } catch {
-    return null;
-  }
-}
-
 // Obtener todas las compañías
 export async function getCompanies(): Promise<Company[]> {
   const token = getAuthToken();
@@ -138,10 +125,21 @@ export async function getVehicles(): Promise<Vehicle[]> {
   const vehicles = await res.json();
 
   // Asegurar que passenger_count tenga un valor por defecto de 0
-  return vehicles.map((vehicle: any) => ({
-    ...vehicle,
-    passenger_count: vehicle.passenger_count ?? 0,
-  }));
+  return vehicles.map(
+    (vehicle: {
+      id: string;
+      company_id: string;
+      plate: string;
+      capacity: number;
+      status: VehicleStatus;
+      created_at: string;
+      last_maintenance?: string;
+      passenger_count?: number;
+    }) => ({
+      ...vehicle,
+      passenger_count: vehicle.passenger_count ?? 0,
+    }),
+  );
 }
 
 // Obtener un vehículo por ID
@@ -175,7 +173,6 @@ export async function getVehicleById(id: string): Promise<Vehicle> {
 // Crear un nuevo vehículo
 export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
   const token = getAuthToken();
-  const userId = getUserId();
 
   if (!token) {
     throw new Error(
