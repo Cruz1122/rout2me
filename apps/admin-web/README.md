@@ -126,6 +126,36 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
   - **Validación de puntos**: Filtrado de puntos undefined o null antes de renderizar
   - **Espera de carga del mapa**: No renderiza elementos hasta que el mapa esté completamente cargado
   - **Prevención de errores**: Manejo robusto de estado asíncrono para evitar crashes
+- **Gestión de Paradas** (NUEVO):
+  - **Editor de Paradas Interactivo**: Modal con mapa completo para asignar paradas a variantes
+  - **Mapa con Map Matching**: Integración con Stadia Maps API para ajustar rutas a calles reales
+    - Endpoint `trace_route` con costing mode `bus`
+    - Renderizado optimizado de rutas ajustadas a la red vial
+    - Fallback automático a coordenadas originales si falla el map matching
+  - **Sistema de Marcadores Visuales**:
+    - Paradas asignadas: Círculos verdes numerados (1, 2, 3...) indicando el orden
+    - Paradas disponibles: Íconos grises de pin para paradas no asignadas
+    - Nueva parada: Marcador naranja al crear una parada nueva en el mapa
+  - **Sidebar de Dos Paneles**:
+    - Panel superior: Lista ordenable de paradas asignadas con drag & drop
+    - Panel inferior: Lista de paradas disponibles con búsqueda en tiempo real
+  - **Operaciones CRUD**:
+    - Asignar paradas existentes a la variante
+    - Reordenar paradas asignadas arrastrando
+    - Remover paradas de la variante
+    - Crear nuevas paradas haciendo click en el mapa
+  - **API Dedicada** (`stops_api.ts`):
+    - `getStops()`: Obtener todas las paradas del sistema
+    - `getStopsForVariant()`: Obtener paradas asignadas a una variante con orden
+    - `assignStopsToVariant()`: Asignar/actualizar paradas de una variante
+    - `createStop()`: Crear nueva parada con nombre y ubicación GPS
+    - Manejo automático de campos `location_json` en base de datos
+  - **Validaciones**:
+    - Verificación de coordenadas GPS válidas antes de renderizar
+    - Validación de nombre al crear paradas
+    - Confirmación antes de guardar cambios
+  - **Integración con Vista Agregada**: Uso de `v_route_variants_agg` para optimizar consultas
+  - **Botón de Acceso**: Disponible en cada variante de ruta con ícono de pin
 - **Detalles de Ruta**: Panel lateral mostrando
   - ID, código, nombre
   - Estado (activa/inactiva)
