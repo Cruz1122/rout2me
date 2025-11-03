@@ -285,7 +285,7 @@ export async function getCurrentSession() {
     }
 
     return session;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -310,9 +310,27 @@ export async function logoutUser(): Promise<void> {
 /**
  * Convierte una sesión de Supabase OAuth a AuthSession
  */
-export function convertSupabaseSessionToAuthSession(
-  supabaseSession: any,
-): AuthSession {
+export function convertSupabaseSessionToAuthSession(supabaseSession: {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+  expires_at?: number;
+  refresh_token: string;
+  user: {
+    id: string;
+    aud?: string;
+    role?: string;
+    email?: string;
+    user_metadata?: {
+      company_key?: string;
+      full_name?: string;
+      name?: string;
+      phone?: string;
+      avatar_url?: string;
+      picture?: string;
+    };
+  };
+}): AuthSession {
   return {
     access_token: supabaseSession.access_token,
     token_type: 'bearer',
@@ -323,7 +341,7 @@ export function convertSupabaseSessionToAuthSession(
       id: supabaseSession.user.id,
       aud: supabaseSession.user.aud || 'authenticated',
       role: supabaseSession.user.role || 'authenticated',
-      email: supabaseSession.user.email,
+      email: supabaseSession.user.email || '',
       user_metadata: {
         company_key: supabaseSession.user.user_metadata?.company_key || '',
         name:
@@ -514,7 +532,7 @@ export const authStorage = {
       if (!sessionData) return null;
 
       return JSON.parse(sessionData) as AuthSession;
-    } catch (error) {
+    } catch {
       this.clearSession(); // Limpiar datos corruptos
       return null;
     }

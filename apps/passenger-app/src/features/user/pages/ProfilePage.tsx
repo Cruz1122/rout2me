@@ -97,6 +97,12 @@ export default function ProfilePage() {
     console.log(`Acción de organización: ${action}`);
   };
 
+  const getRoleBadgeColor = (role: string): string => {
+    if (role === 'ADMIN') return '#10B981';
+    if (role === 'DRIVER') return '#3B82F6';
+    return '#6B7280';
+  };
+
   if (isLoading) {
     return (
       <IonPage>
@@ -220,25 +226,33 @@ export default function ProfilePage() {
             {hasOrganization ? (
               <div className="space-y-2">
                 {/* Con organización */}
-                <div className="mb-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <RiBuilding2Line
-                      size={20}
-                      style={{ color: 'var(--color-primary)' }}
-                    />
-                    <p
-                      className="text-base font-medium"
-                      style={{ color: 'var(--color-text)' }}
-                    >
-                      {organization.company_name}
-                    </p>
-                  </div>
-                  <p
-                    className="text-sm ml-7"
-                    style={{ color: 'var(--color-terciary)' }}
+                <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+                  {/* Badge de la organización */}
+                  <div
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                    style={{
+                      backgroundColor: 'var(--color-primary)',
+                      color: '#FFFFFF',
+                    }}
                   >
-                    Rol: {translateOrgRole(organization.org_role)}
-                  </p>
+                    <RiBuilding2Line size={16} />
+                    <span className="text-sm font-medium">
+                      {organization.company_name}
+                    </span>
+                  </div>
+
+                  {/* Badge del rol */}
+                  <div
+                    className="inline-flex items-center px-3 py-1.5 rounded-full"
+                    style={{
+                      backgroundColor: getRoleBadgeColor(organization.org_role),
+                      color: '#FFFFFF',
+                    }}
+                  >
+                    <span className="text-sm font-medium">
+                      {translateOrgRole(organization.org_role)}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Opciones según el rol */}

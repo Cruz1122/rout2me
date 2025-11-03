@@ -53,7 +53,7 @@ export async function saveAvatarToCache(
       reader.onerror = () => reject(new Error('Error reading blob'));
       reader.readAsDataURL(blob);
     });
-  } catch (error) {
+  } catch {
     // Silenciar errores de caché para no interrumpir la UX
   }
 }
