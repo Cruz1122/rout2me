@@ -1,6 +1,8 @@
 // Configuración de Supabase
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY =
+  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
 
 export type VehicleStatus =
   | 'AVAILABLE'
@@ -118,18 +120,15 @@ export async function getCompanies(): Promise<Company[]> {
 export async function getVehicles(): Promise<Vehicle[]> {
   const token = getAuthToken();
 
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc`,
-    {
-      method: 'GET',
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation',
-      },
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/v_bus_latest_positions`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
     },
-  );
+  });
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -317,17 +316,14 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
 export async function getBusPositions(): Promise<BusPosition[]> {
   const token = getAuthToken();
 
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc`,
-    {
-      method: 'GET',
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/v_bus_latest_positions`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
     },
-  );
+  });
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -347,8 +343,8 @@ export async function getRouteVariants(): Promise<RouteVariant[]> {
     {
       method: 'GET',
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
       },
     },
@@ -372,8 +368,8 @@ export async function getRoutes(): Promise<Route[]> {
     {
       method: 'GET',
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
       },
     },
@@ -423,8 +419,8 @@ export async function getRouteVariantsByRouteId(
     {
       method: 'GET',
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
       },
     },

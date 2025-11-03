@@ -53,15 +53,20 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Código Limpio**: Sin console.log en producción para mejor rendimiento
 
 ### Gestión de Vehículos
-- **Lista de Vehículos**: Visualización de todos los buses registrados con paginación
+- **Lista de Vehículos**: Visualización filtrada por compañía del usuario
+  - **Filtrado Automático**: Solo muestra vehículos de las compañías del usuario autenticado
   - Tabla con información GPS en tiempo real
   - Columnas: Placa, Estado, Ubicación (lat/lng), Velocidad (km/h), Última Actualización GPS, Ruta Activa
   - Tiempo relativo de última actualización (hace X seg/min/hora/día)
+- **Seguridad Multi-tenant**: Implementación de Row Level Security (RLS)
+  - Los vehículos se filtran por las compañías asociadas al usuario
+  - Carga inicial de compañías + filtrado de vehículos
+  - Mismo sistema de filtrado que LiveFleet para consistencia
 - **Crear Vehículo**: Modal con formulario validado
   - Formato automático de placa: ABC-123 (3 letras, guión, 3 números)
   - Validación de capacidad y modelo
   - Selección de estado del vehículo
-- **Asignación de Rutas a Vehículos** (NUEVO):
+- **Asignación de Rutas a Vehículos**:
   - **Modal de Selección de Ruta**: Interfaz en dos pasos
     1. Selección de ruta (dropdown con código + nombre)
     2. Selección de variante (dropdown con ID + distancia en km)
@@ -748,7 +753,37 @@ Sistema de notificaciones implementado con:
 
 Este proyecto es parte del curso de Soft III, Semestre VII, Universidad.
 
-## � Historial de Cambios
+## 📋 Historial de Cambios
+
+### 3 de Noviembre, 2025 - Implementación de Filtrado Multi-tenant en Vehículos
+
+#### ✨ Nuevas Características
+- **Filtrado por Compañía en Vehículos** (`/vehicles`)
+  - Implementación del mismo sistema de filtrado que LiveFleet
+  - Solo muestra vehículos de las compañías del usuario autenticado
+  - Carga inicial optimizada: primero compañías, luego vehículos filtrados
+  
+#### 🔧 Mejoras Técnicas
+- **Función `initializeData()`**: Carga secuencial de compañías y vehículos
+- **Función `loadVehicles()`**: Actualizada para recibir compañías como parámetro
+  - Filtrado por `company_id` usando Set para mejor performance
+  - Logging de estadísticas de filtrado (X de Y vehículos)
+- **Actualización Post-Operaciones**: Mantiene el filtro después de:
+  - Crear vehículo
+  - Eliminar vehículo
+  - Asignar ruta
+  - Remover ruta
+
+#### 🛡️ Seguridad Multi-tenant
+- **Row Level Security (RLS)**: Implementación consistente
+  - Vehículos filtrados por organización del usuario
+  - Mismo comportamiento en HomePage, LiveFleet y Vehicles
+  - Prevención de acceso a datos de otras compañías
+  
+#### 🎨 Mejoras de UX
+- **Transparencia**: Console logs informativos sobre filtrado
+- **Consistencia**: Mismo sistema en todas las vistas de vehículos
+- **Performance**: Uso de Set para búsquedas O(1) en lugar de arrays
 
 ### 30 de Octubre, 2025 - Sistema Completo de Gestión de Usuarios
 

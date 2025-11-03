@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -40,6 +41,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(false);
+  }, []);
+
+  // Escuchar eventos de autenticación de Supabase (para OAuth)
+  useEffect(() => {
+    // Intentar obtener la sesión actual inmediatamente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const user = session.user;
+        const newAccessToken = session.access_token;
+        const newRefreshToken = session.refresh_token;
+
+        const userObj = {
+          id: user.id,
+          email: user.email!,
+          name:
+            user.user_metadata?.name ||
+            user.user_metadata?.full_name ||
+            user.email,
+          phone: user.user_metadata?.phone || '',
+        };
+
+        // Guardar en estado
+        setAccessToken(newAccessToken);
+        setRefreshToken(newRefreshToken);
+        setUser(userObj);
+
+        // Guardar en localStorage
+        localStorage.setItem('access_token', newAccessToken);
+        localStorage.setItem('refresh_token', newRefreshToken);
+        localStorage.setItem('user', JSON.stringify(userObj));
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+          const user = session.user;
+          const newAccessToken = session.access_token;
+          const newRefreshToken = session.refresh_token;
+
+          const userObj = {
+            id: user.id,
+            email: user.email!,
+            name:
+              user.user_metadata?.name ||
+              user.user_metadata?.full_name ||
+              user.email,
+            phone: user.user_metadata?.phone || '',
+          };
+
+          // Guardar en estado
+          setAccessToken(newAccessToken);
+          setRefreshToken(newRefreshToken);
+          setUser(userObj);
+
+          // Guardar en localStorage
+          localStorage.setItem('access_token', newAccessToken);
+          localStorage.setItem('refresh_token', newRefreshToken);
+          localStorage.setItem('user', JSON.stringify(userObj));
+        } else if (event === 'SIGNED_OUT') {
+          // Limpiar estado
+          setAccessToken(null);
+          setRefreshToken(null);
+          setUser(null);
+
+          // Limpiar localStorage
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+        }
+      },
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const setAuth = (

@@ -41,6 +41,7 @@ export default function LiveFleet() {
   const routeLayerId = useRef<string | null>(null);
   const stopMarkers = useRef<maplibregl.Marker[]>([]);
   const vehiclesRef = useRef<Vehicle[]>([]); // Ref para mantener vehicles actualizado
+  const companiesRef = useRef<Company[]>([]); // Ref para mantener companies actualizado
   const [mapBearing, setMapBearing] = useState(0);
   const [isDraggingCompass, setIsDraggingCompass] = useState(false);
   const [dragStart, setDragStart] = useState<{
@@ -118,12 +119,17 @@ export default function LiveFleet() {
     vehiclesRef.current = vehicles;
   }, [vehicles]);
 
+  // Mantener la ref de companies sincronizada
+  useEffect(() => {
+    companiesRef.current = companies;
+  }, [companies]);
+
   useEffect(() => {
     const initializeData = async () => {
-      const myVehicles = await loadVehicles(); // Cargar primero los vehículos de mi org
-      await loadBusPositions(myVehicles); // Filtrar posiciones por mis vehículos
+      await loadCompanies(); // Cargar primero las compañías
       await loadRouteVariants();
-      await loadCompanies();
+      const myVehicles = await loadVehicles(); // Luego los vehículos de mi org
+      await loadBusPositions(myVehicles); // Filtrar posiciones por vehículos de mis compañías
     };
 
     initializeData();
@@ -156,42 +162,111 @@ export default function LiveFleet() {
   const loadBusPositions = useCallback(async (myVehicles?: Vehicle[]) => {
     try {
       const data = await getBusPositions();
-      console.log('All bus positions loaded:', data.length);
+      console.log('📍 [LiveFleet] Bus positions loaded from API:', data.length);
 
       // Usar los vehículos pasados como parámetro o los de la ref actualizada
       const vehiclesToFilter = myVehicles || vehiclesRef.current;
+      console.log(
+        '🚌 [LiveFleet] Vehicles to filter:',
+        vehiclesToFilter.length,
+      );
 
       if (vehiclesToFilter.length === 0) {
-        console.warn('No vehicles loaded yet, skipping position filter');
+        console.warn(
+          '⚠️ [LiveFleet] No vehicles loaded yet, but showing all positions from API',
+        );
+        // En lugar de retornar vacío, mostrar las posiciones que llegaron de la API
+        // porque la vista ya está filtrada por RLS
+        setBusPositions(data);
         return;
       }
 
-      const myBusIds = new Set(vehiclesToFilter.map((v) => v.id));
-      const filteredPositions = data.filter((pos) => myBusIds.has(pos.bus_id));
+      // Usar la ref actualizada de companies
+      const currentCompanies = companiesRef.current;
+      console.log('🏢 [LiveFleet] Companies:', currentCompanies.length);
 
-      console.log('Filtered bus positions (my org):', filteredPositions.length);
-      console.log('My bus IDs:', Array.from(myBusIds));
+      // Crear set de company_ids de las compañías a las que tengo acceso
+      const myCompanyIds = new Set(currentCompanies.map((c) => c.id));
+      console.log('🆔 [LiveFleet] My company IDs:', Array.from(myCompanyIds));
+
+      // Log para ver los company_id de los vehículos
+      console.log(
+        '🚍 [LiveFleet] Vehicles with their company_ids:',
+        vehiclesToFilter.map((v) => ({
+          id: v.id,
+          plate: v.plate,
+          company_id: v.company_id,
+        })),
+      );
+
+      // Filtrar solo vehículos que pertenecen a mis compañías
+      const vehiclesInMyCompanies = vehiclesToFilter.filter(
+        (v) => v.company_id && myCompanyIds.has(v.company_id),
+      );
+      console.log(
+        '✅ [LiveFleet] Vehicles in my companies:',
+        vehiclesInMyCompanies.length,
+      );
+
+      const myBusIds = new Set(vehiclesInMyCompanies.map((v) => v.id));
+      console.log('🚌 [LiveFleet] My bus IDs:', Array.from(myBusIds));
+
+      // Filtrar por vehículos de mis compañías
+      const filteredPositions = data.filter((pos) => myBusIds.has(pos.bus_id));
+      console.log(
+        '🎯 [LiveFleet] Filtered positions:',
+        filteredPositions.length,
+      );
+
       setBusPositions(filteredPositions);
     } catch (err) {
-      console.error('Error loading bus positions:', err);
+      console.error('❌ [LiveFleet] Error loading bus positions:', err);
     }
-  }, []); // Sin dependencias porque usa vehiclesRef
+  }, []); // Sin dependencias porque usa refs
 
   async function loadRouteVariants() {
     try {
       const routes = await getRouteVariants();
+      console.log(
+        '🛣️ [LiveFleet] Route variants loaded from API:',
+        routes.length,
+      );
+      console.log(
+        '🛣️ [LiveFleet] Route variant details:',
+        routes.map((r) => ({
+          route_id: r.route_id,
+          route_code: r.route_code,
+          route_name: r.route_name,
+          variant_id: r.variant_id,
+          has_path: r.path && r.path.length > 0,
+          path_points: r.path?.length || 0,
+          stops_count: r.stops?.length || 0,
+        })),
+      );
       setRouteVariants(routes);
     } catch (err) {
-      console.error('Error loading route variants:', err);
+      console.error('❌ [LiveFleet] Error loading route variants:', err);
     }
   }
 
   async function loadCompanies() {
     try {
       const companiesData = await getCompanies();
+      console.log(
+        '🏢 [LiveFleet] Companies loaded from API:',
+        companiesData.length,
+      );
+      console.log(
+        '🏢 [LiveFleet] Company details:',
+        companiesData.map((c) => ({
+          id: c.id,
+          name: c.name,
+          short_name: c.short_name,
+        })),
+      );
       setCompanies(companiesData);
     } catch (err) {
-      console.error('Error loading companies:', err);
+      console.error('❌ [LiveFleet] Error loading companies:', err);
     }
   }
 
@@ -523,13 +598,14 @@ export default function LiveFleet() {
         );
         if (route) {
           drawRouteOnMap(route);
-          return; // La función drawRouteOnMap ya ajusta la vista
+          // No return aquí, para que continúe y centre la vista
         }
+      } else {
+        // Si no tiene ruta activa, limpiar ruta anterior
+        clearRouteFromMap();
       }
 
-      // Si no tiene ruta activa, limpiar ruta anterior y centrar en el bus
-      clearRouteFromMap();
-
+      // Centrar en el bus y abrir popup
       if (mapInstance.current) {
         const { lat, lng } = position.location_json;
 
@@ -540,11 +616,16 @@ export default function LiveFleet() {
           duration: 1500,
         });
 
-        // Abrir el popup del marcador
-        const marker = vehicleMarkers.current.get(vehicle.id);
-        if (marker) {
-          marker.togglePopup();
-        }
+        // Abrir el popup del marcador usando setTimeout para asegurar que el marcador esté listo
+        setTimeout(() => {
+          const marker = vehicleMarkers.current.get(vehicle.id);
+          if (marker) {
+            const popup = marker.getPopup();
+            if (popup && !popup.isOpen()) {
+              marker.togglePopup();
+            }
+          }
+        }, 100);
       }
     },
     [busPositions, routeVariants, clearRouteFromMap, drawRouteOnMap],
@@ -552,7 +633,29 @@ export default function LiveFleet() {
 
   // Actualizar marcadores de vehículos cuando cambie la lista
   useEffect(() => {
-    if (!mapInstance.current) return;
+    if (!mapInstance.current) {
+      console.log('🗺️ [LiveFleet] Map not ready, skipping vehicle markers');
+      return;
+    }
+
+    console.log('🚗 [LiveFleet] Updating vehicle markers...');
+    console.log('🚗 [LiveFleet] Vehicles:', vehicles.length);
+    console.log('🚗 [LiveFleet] Bus positions:', busPositions.length);
+    console.log('🚗 [LiveFleet] Companies:', companies.length);
+
+    // DEBUG: Mostrar los IDs para comparar
+    if (vehicles.length > 0 && busPositions.length > 0) {
+      console.log(
+        '🔍 [LiveFleet] Vehicle IDs:',
+        vehicles.map((v) => v.id),
+      );
+      console.log(
+        '🔍 [LiveFleet] Bus Position IDs:',
+        busPositions.map((p) => p.bus_id),
+      );
+      console.log('🔍 [LiveFleet] First vehicle details:', vehicles[0]);
+      console.log('🔍 [LiveFleet] First position details:', busPositions[0]);
+    }
 
     // Limpiar marcadores existentes
     for (const marker of vehicleMarkers.current.values()) {
@@ -560,25 +663,36 @@ export default function LiveFleet() {
     }
     vehicleMarkers.current.clear();
 
-    // Agregar marcadores para todos los vehículos con sus posiciones reales
-    for (const vehicle of vehicles) {
-      // Buscar la posición del bus
-      const position = busPositions.find((pos) => pos.bus_id === vehicle.id);
+    let markersAdded = 0;
 
+    // IMPORTANTE: Iterar sobre busPositions directamente, no sobre vehicles
+    // porque busPositions tiene la información de location_json
+    for (const position of busPositions) {
       // Si no hay posición, no mostrar el marcador
-      if (!position?.location_json) continue;
+      if (!position.location_json) {
+        console.log(
+          `⚠️ [LiveFleet] Position for bus ${position.plate} has no location_json`,
+        );
+        continue;
+      }
 
       const { lat, lng } = position.location_json;
+      console.log(
+        `✅ [LiveFleet] Adding marker for ${position.plate} at [${lat}, ${lng}]`,
+      );
+
+      // Buscar el vehículo para obtener información adicional de estado
+      const vehicle = vehicles.find((v) => v.id === position.bus_id);
 
       // Crear elemento del marcador con color según estado
       const element = document.createElement('div');
-      const isSelected = selectedVehicleId === vehicle.id;
+      const isSelected = selectedVehicleId === position.bus_id;
       const color =
-        vehicle.status === 'AVAILABLE'
+        position.status === 'AVAILABLE'
           ? '#10b981'
-          : vehicle.status === 'IN_SERVICE'
+          : position.status === 'IN_SERVICE'
             ? '#3b82f6'
-            : vehicle.status === 'MAINTENANCE'
+            : position.status === 'MAINTENANCE'
               ? '#f59e0b'
               : '#ef4444';
 
@@ -612,7 +726,9 @@ export default function LiveFleet() {
 
       // Agregar evento de clic al marcador
       element.addEventListener('click', () => {
-        handleVehicleClick(vehicle);
+        if (vehicle) {
+          handleVehicleClick(vehicle);
+        }
       });
 
       // Buscar información de la compañía
@@ -624,9 +740,9 @@ export default function LiveFleet() {
       // Agregar popup con información del vehículo
       const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
           <div style="padding: 8px;">
-            <h3 style="margin: 0 0 4px 0; font-weight: bold;">${vehicle.plate}</h3>
+            <h3 style="margin: 0 0 4px 0; font-weight: bold;">${position.plate}</h3>
             <p style="margin: 0; font-size: 12px; color: #666;">Compañía: ${companyName}</p>
-            <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">${getVehicleDisplayStatus(vehicle.status)}</p>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">${getVehicleDisplayStatus(position.status)}</p>
             ${position.speed_kph !== undefined ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">Velocidad: ${position.speed_kph.toFixed(1)} km/h</p>` : ''}
           </div>
         `);
@@ -634,8 +750,11 @@ export default function LiveFleet() {
       marker.setPopup(popup);
 
       // Guardar referencia del marcador
-      vehicleMarkers.current.set(vehicle.id, marker);
+      vehicleMarkers.current.set(position.bus_id, marker);
+      markersAdded++;
     }
+
+    console.log(`✅ [LiveFleet] Added ${markersAdded} vehicle markers to map`);
   }, [
     vehicles,
     busPositions,
@@ -740,8 +859,14 @@ export default function LiveFleet() {
     };
   }, [isDraggingCompass, handleCompassMove, handleCompassEnd]);
 
+  // Filtrar vehículos por compañías a las que tengo acceso
+  const filteredVehicles = vehicles.filter((vehicle) => {
+    const myCompanyIds = new Set(companies.map((c) => c.id));
+    return vehicle.company_id && myCompanyIds.has(vehicle.company_id);
+  });
+
   // Ordenar vehículos: primero los que tienen ubicación, luego los que no
-  const sortedVehicles = [...vehicles].sort((a, b) => {
+  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
     const positionA = busPositions.find((pos) => pos.bus_id === a.id);
     const positionB = busPositions.find((pos) => pos.bus_id === b.id);
     const hasPositionA = positionA?.location_json ? 1 : 0;

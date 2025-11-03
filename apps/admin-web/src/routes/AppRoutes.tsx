@@ -11,8 +11,12 @@ const Vehicles = lazy(() => import('../pages/Vehicles'));
 const Users = lazy(() => import('../pages/Users'));
 const LiveFleet = lazy(() => import('../pages/LiveFleet'));
 const RoutesPage = lazy(() => import('../pages/Routes'));
+const ChangePassword = lazy(() => import('../pages/ChangePassword'));
 const SignIn = lazy(() => import('../pages/SignIn'));
 const SignUp = lazy(() => import('../pages/SignUp'));
+const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('../pages/ResetPassword'));
+const VerifyRecovery = lazy(() => import('../pages/VerifyRecovery'));
 const AuthCallback = lazy(() => import('../pages/AuthCallback'));
 const EmailVerified = lazy(() => import('../pages/EmailVerified'));
 const App = lazy(() => import('../App'));
@@ -23,7 +27,8 @@ const AppRoutes: React.FC = () => {
       <Suspense fallback={<GlobalLoader />}>
         <Layout>
           <Routes>
-            <Route path="/" element={<AuthCallback />} />
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route
               path="/home"
               element={
@@ -73,6 +78,14 @@ const AppRoutes: React.FC = () => {
               }
             />
             <Route
+              path="/change-password"
+              element={
+                <ProtectedRoute>
+                  <ChangePassword />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/signin"
               element={
                 <PublicRoute>
@@ -88,6 +101,17 @@ const AppRoutes: React.FC = () => {
                 </PublicRoute>
               }
             />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              }
+            />
+            <Route path="/verify-recovery" element={<VerifyRecovery />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/auth/confirm" element={<EmailVerified />} />
             <Route path="/email-verified" element={<EmailVerified />} />
             <Route path="*" element={<Navigate to="/signin" replace />} />
           </Routes>

@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||
   'https://rcdsqsvfxyfnrueoovpy.supabase.co';
@@ -9,3 +11,12 @@ export const supabaseConfig = {
   url: supabaseUrl,
   anonKey: supabaseAnonKey,
 };
+
+// Cliente de Supabase para OAuth y otras funcionalidades
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
