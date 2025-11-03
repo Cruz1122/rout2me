@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Stop, StopWithOrder } from '../api/stops_api';
@@ -223,6 +223,14 @@ export default function StopEditor({
     };
   }, [isCreatingStop]);
 
+  // Definir handleAddStop antes de usarlo en el useEffect
+  const handleAddStop = useCallback((stop: Stop) => {
+    setSelectedStops((prev) => {
+      if (prev.find((s) => s.id === stop.id)) return prev;
+      return [...prev, { ...stop, stop_order: prev.length + 1 }];
+    });
+  }, []);
+
   // Renderizar marcadores de paradas
   useEffect(() => {
     const map = mapInstance.current;
@@ -386,15 +394,7 @@ export default function StopEditor({
         .setLngLat([newStopLocation.lng, newStopLocation.lat])
         .addTo(mapInstance.current!);
     }
-  }, [selectedStops, allStops, newStopLocation, mapReady]);
-
-  const handleAddStop = (stop: Stop) => {
-    if (selectedStops.find((s) => s.id === stop.id)) return;
-    setSelectedStops([
-      ...selectedStops,
-      { ...stop, stop_order: selectedStops.length + 1 },
-    ]);
-  };
+  }, [selectedStops, allStops, newStopLocation, mapReady, handleAddStop]);
 
   const handleRemoveStop = (stopId: string) => {
     setSelectedStops(selectedStops.filter((s) => s.id !== stopId));

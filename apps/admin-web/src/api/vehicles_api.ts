@@ -118,8 +118,6 @@ export async function getCompanies(): Promise<Company[]> {
 
 // Obtener todos los vehículos con información extendida
 export async function getVehicles(): Promise<Vehicle[]> {
-  const token = getAuthToken();
-
   const res = await fetch(`${SUPABASE_URL}/rest/v1/v_bus_latest_positions`, {
     method: 'GET',
     headers: {
@@ -314,8 +312,6 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
 
 // Obtener las posiciones actuales de todos los buses
 export async function getBusPositions(): Promise<BusPosition[]> {
-  const token = getAuthToken();
-
   const res = await fetch(`${SUPABASE_URL}/rest/v1/v_bus_latest_positions`, {
     method: 'GET',
     headers: {
@@ -336,8 +332,6 @@ export async function getBusPositions(): Promise<BusPosition[]> {
 
 // Obtener las variantes de rutas con sus paradas
 export async function getRouteVariants(): Promise<RouteVariant[]> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active,variant_id,path,length_m_json,stops&order=route_code.asc,variant_id.asc`,
     {
@@ -361,8 +355,6 @@ export async function getRouteVariants(): Promise<RouteVariant[]> {
 
 // Obtener todas las rutas
 export async function getRoutes(): Promise<Route[]> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active&order=route_code.asc`,
     {
@@ -412,8 +404,6 @@ export async function getRoutes(): Promise<Route[]> {
 export async function getRouteVariantsByRouteId(
   routeId: string,
 ): Promise<RouteVariant[]> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active,variant_id,path,length_m_json,stops&route_id=eq.${routeId}&order=variant_id.asc`,
     {

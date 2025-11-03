@@ -116,7 +116,7 @@ export default function SignUp() {
     } else if (formData.password.length < 8) {
       newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
     } else if (
-      !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_\-])/.test(
+      !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-])/.test(
         formData.password,
       )
     ) {
@@ -183,6 +183,7 @@ export default function SignUp() {
       setLoading(true);
       try {
         // Excluir confirmPassword del objeto que se envía al backend
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { confirmPassword, ...signUpData } = formData;
         await signUp(signUpData);
         showToast(

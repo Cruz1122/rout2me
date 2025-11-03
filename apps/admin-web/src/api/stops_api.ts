@@ -3,18 +3,8 @@
  */
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const SUPABASE_SERVICE_ROLE_KEY =
   import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
-
-// Función helper para obtener el token de autenticación
-function getAuthToken(): string {
-  const token = localStorage.getItem('access_token');
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
-  return token;
-}
 
 // Tipos
 export type StopLocation = {
@@ -44,8 +34,6 @@ export type StopWithOrder = Stop & {
  * Obtener todas las paradas del sistema
  */
 export async function getStops(): Promise<Stop[]> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/stops?select=id,name,location_json&order=name.asc`,
     {
@@ -67,11 +55,13 @@ export async function getStops(): Promise<Stop[]> {
   const data = await res.json();
 
   // Mapear location_json a location
-  return data.map((stop: any) => ({
-    id: stop.id,
-    name: stop.name,
-    location: stop.location_json,
-  }));
+  return data.map(
+    (stop: { id: string; name: string; location_json: StopLocation }) => ({
+      id: stop.id,
+      name: stop.name,
+      location: stop.location_json,
+    }),
+  );
 }
 
 /**
@@ -81,8 +71,6 @@ export async function createStop(data: {
   name: string;
   location: StopLocation;
 }): Promise<Stop> {
-  const token = getAuthToken();
-
   // Mapear location a location_json para la base de datos
   const requestBody = {
     name: data.name,
@@ -125,8 +113,6 @@ export async function updateStop(
     location?: StopLocation;
   },
 ): Promise<Stop> {
-  const token = getAuthToken();
-
   const res = await fetch(`${SUPABASE_URL}/rest/v1/stops?id=eq.${stopId}`, {
     method: 'PATCH',
     headers: {
@@ -152,8 +138,6 @@ export async function updateStop(
  * Eliminar una parada
  */
 export async function deleteStop(stopId: string): Promise<void> {
-  const token = getAuthToken();
-
   const res = await fetch(`${SUPABASE_URL}/rest/v1/stops?id=eq.${stopId}`, {
     method: 'DELETE',
     headers: {
@@ -177,8 +161,6 @@ export async function deleteStop(stopId: string): Promise<void> {
 export async function getStopsForVariant(
   variantId: string,
 ): Promise<StopWithOrder[]> {
-  const token = getAuthToken();
-
   console.log('🔍 Getting stops for variant:', variantId);
 
   const res = await fetch(
@@ -211,15 +193,25 @@ export async function getStopsForVariant(
   console.log('✅ Stops from variant:', data[0].stops);
 
   // Mapear location_json a location y agregar stop_order
-  const stopsWithOrder = data[0].stops.map((stop: any, index: number) => {
-    console.log(`🔍 Processing stop ${index + 1}:`, stop);
-    return {
-      id: stop.id,
-      name: stop.name,
-      location: stop.location_json || stop.location, // Intentar ambos campos
-      stop_order: index + 1,
-    };
-  });
+  const stopsWithOrder = data[0].stops.map(
+    (
+      stop: {
+        id: string;
+        name: string;
+        location_json?: StopLocation;
+        location?: StopLocation;
+      },
+      index: number,
+    ) => {
+      console.log(`🔍 Processing stop ${index + 1}:`, stop);
+      return {
+        id: stop.id,
+        name: stop.name,
+        location: stop.location_json || stop.location, // Intentar ambos campos
+        stop_order: index + 1,
+      };
+    },
+  );
 
   console.log('✅ Stops with order:', stopsWithOrder);
   return stopsWithOrder;
@@ -234,8 +226,6 @@ export async function assignStopsToVariant(
   variantId: string,
   stopIds: string[],
 ): Promise<void> {
-  const token = getAuthToken();
-
   // Primero, eliminar todas las paradas existentes de esta variante
   const deleteRes = await fetch(
     `${SUPABASE_URL}/rest/v1/route_variant_stops?variant_id=eq.${variantId}`,
@@ -295,8 +285,6 @@ export async function removeStopFromVariant(
   variantId: string,
   stopId: string,
 ): Promise<void> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/route_variant_stops?variant_id=eq.${variantId}&stop_id=eq.${stopId}`,
     {

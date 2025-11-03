@@ -98,7 +98,7 @@ export default function ChangePassword() {
     } else if (formData.newPassword.length < 8) {
       newErrors.newPassword = 'La contraseña debe tener al menos 8 caracteres';
     } else if (
-      !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_\-])/.test(
+      !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-])/.test(
         formData.newPassword,
       )
     ) {
