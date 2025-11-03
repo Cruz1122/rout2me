@@ -14,6 +14,7 @@ import GlobalLoader from './features/system/components/GlobalLoader';
 import RouteGuard from './components/RouteGuard';
 import RecoveryRedirect from './features/auth/components/RecoveryRedirect';
 import { useActiveTab } from './features/system/hooks/useActiveTab';
+import OAuthHandler from './features/auth/components/OAuthHandler';
 
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
 const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
@@ -37,6 +38,9 @@ const ResetPasswordPage = lazy(
 );
 const ExpiredLinkPage = lazy(
   () => import('./features/auth/pages/ExpiredLinkPage'),
+);
+const ConfirmAccountPage = lazy(
+  () => import('./features/auth/pages/ConfirmAccountPage'),
 );
 const LocationPermissionPage = lazy(
   () => import('./features/system/pages/LocationPermissionPage'),
@@ -131,6 +135,7 @@ export default function App() {
   return (
     <IonApp>
       <IonReactRouter>
+        <OAuthHandler />
         <RecoveryRedirect />
         <IonRouterOutlet>
           <Route exact path="/location-permission">
@@ -171,6 +176,11 @@ export default function App() {
           <Route exact path="/expired-link">
             <Suspense fallback={<GlobalLoader />}>
               <ExpiredLinkPage />
+            </Suspense>
+          </Route>
+          <Route exact path="/auth/confirm">
+            <Suspense fallback={<GlobalLoader />}>
+              <ConfirmAccountPage />
             </Suspense>
           </Route>
           <Route exact path="/perfil/cerrar-sesion">

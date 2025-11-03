@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { authStorage, createAuthSession } from '../services/authService';
+import {
+  authStorage,
+  createAuthSession,
+  logoutUser,
+} from '../services/authService';
 import type { AuthSession, LoginResponse } from '../services/authService';
 
 /**
@@ -56,7 +60,6 @@ export function useAuth() {
       authStorage.saveSession(authSession);
       setSession(authSession);
       setIsAuthenticated(true);
-      console.log('Login exitoso:', authSession.user.user_metadata.name);
     } catch (error) {
       console.error('Error en login:', error);
       throw error;
@@ -64,16 +67,24 @@ export function useAuth() {
   }, []);
 
   /**
-   * Cierra sesión y limpia los datos
+   * Cierra sesión y limpia los datos (incluye sesiones OAuth de Supabase)
    */
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     try {
+      // Primero cerrar sesión en Supabase (OAuth o email/password)
+      await logoutUser();
+
+      // Luego limpiar localStorage
       authStorage.clearSession();
       setSession(null);
       setIsAuthenticated(false);
       console.log('Logout exitoso');
     } catch (error) {
       console.error('Error en logout:', error);
+      // Aún así limpiar el storage local
+      authStorage.clearSession();
+      setSession(null);
+      setIsAuthenticated(false);
     }
   }, []);
 

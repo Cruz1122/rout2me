@@ -14,8 +14,8 @@ export default function LogoutConfirmationPage() {
   const contentRef = useRef<HTMLDivElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
 
-  const handleConfirmLogout = () => {
-    logout();
+  const handleConfirmLogout = async () => {
+    await logout();
     router.push('/welcome', 'root', 'replace');
   };
 

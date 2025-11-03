@@ -130,14 +130,57 @@ export default function RegisterPage() {
   };
 
   const validatePassword = (value: string) => {
-    if (value.length > 0 && value.length < 6) {
+    if (value.length === 0) {
+      setFieldErrors({ ...fieldErrors, password: undefined });
+      return;
+    }
+
+    // Validar longitud mínima
+    if (value.length < 8) {
       setFieldErrors({
         ...fieldErrors,
-        password: 'La contraseña debe tener al menos 6 caracteres',
+        password: 'La contraseña debe tener al menos 8 caracteres',
       });
-    } else {
-      setFieldErrors({ ...fieldErrors, password: undefined });
+      return;
     }
+
+    // Validar que contenga minúsculas
+    if (!/[a-z]/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        password: 'La contraseña debe contener al menos una letra minúscula',
+      });
+      return;
+    }
+
+    // Validar que contenga mayúsculas
+    if (!/[A-Z]/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        password: 'La contraseña debe contener al menos una letra mayúscula',
+      });
+      return;
+    }
+
+    // Validar que contenga números
+    if (!/\d/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        password: 'La contraseña debe contener al menos un número',
+      });
+      return;
+    }
+
+    // Validar que contenga caracteres especiales
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|<>?,./`~]/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        password: 'La contraseña debe contener al menos un carácter especial',
+      });
+      return;
+    }
+
+    setFieldErrors({ ...fieldErrors, password: undefined });
   };
 
   const validateConfirmPassword = (value: string) => {
@@ -174,8 +217,20 @@ export default function RegisterPage() {
       errors.email = 'Ingresa un correo electrónico válido';
     }
 
-    if (password.length < 6) {
-      errors.password = 'La contraseña debe tener al menos 6 caracteres';
+    // Validaciones completas de contraseña
+    if (password.length < 8) {
+      errors.password = 'La contraseña debe tener al menos 8 caracteres';
+    } else if (!/[a-z]/.test(password)) {
+      errors.password =
+        'La contraseña debe contener al menos una letra minúscula';
+    } else if (!/[A-Z]/.test(password)) {
+      errors.password =
+        'La contraseña debe contener al menos una letra mayúscula';
+    } else if (!/\d/.test(password)) {
+      errors.password = 'La contraseña debe contener al menos un número';
+    } else if (!/[!@#$%^&*()_+\-=[\]{};':"\\|<>?,./`~]/.test(password)) {
+      errors.password =
+        'La contraseña debe contener al menos un carácter especial';
     }
 
     if (password !== confirmPassword) {
@@ -274,12 +329,8 @@ export default function RegisterPage() {
         signupData.org_key = companyData.organizationKey.join('');
       }
 
-      console.log('Register payload:', signupData);
-
       // Realizar el registro con el nuevo endpoint
       const response = await signupUser(signupData);
-
-      console.log('Registro exitoso:', response);
 
       // Verificar si el registro fue exitoso
       if (response.ok && response.email) {

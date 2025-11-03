@@ -65,6 +65,7 @@ export default function R2MSearchBar({
   const [fareMax, setFareMax] = useState<string>('');
   const [isFilterClosing, setIsFilterClosing] = useState(false);
   const [shouldRenderFilters, setShouldRenderFilters] = useState(false);
+  const [isClicking, setIsClicking] = useState(false);
 
   const openFilters = useCallback(() => {
     setShouldRenderFilters(true);
@@ -133,6 +134,14 @@ export default function R2MSearchBar({
     }
   };
 
+  const handleFilterMouseDown = () => {
+    setIsClicking(true);
+  };
+
+  const handleFilterMouseUp = () => {
+    setTimeout(() => setIsClicking(false), 150);
+  };
+
   const handleTypeChange = (type: FilterType | null) => {
     const newType = type || 'all';
     setSelectedType(newType);
@@ -171,6 +180,7 @@ export default function R2MSearchBar({
             boxShadow:
               '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             transform: isExpanded ? 'scale(1.02)' : 'scale(1)',
+            opacity: isFocused || value || isClicking ? 1 : 0.4,
           }}
         >
           {/* Search Icon - Animated */}
@@ -221,15 +231,20 @@ export default function R2MSearchBar({
           <button
             type="button"
             onClick={handleFilterToggle}
+            onMouseDown={handleFilterMouseDown}
+            onMouseUp={handleFilterMouseUp}
+            onTouchStart={handleFilterMouseDown}
+            onTouchEnd={handleFilterMouseUp}
             aria-label={showFilters ? 'Cerrar filtros' : 'Abrir filtros'}
-            className="absolute right-3 p-2 transition-all duration-300 ease-in-out focus:outline-none"
+            className="absolute right-3 p-2 transition-all duration-300 ease-in-out focus:outline-none active:scale-95"
             style={{
               transform: showFilters
                 ? 'rotate(180deg) scale(1.1)'
                 : 'rotate(0deg) scale(1)',
-              color: showFilters
-                ? 'rgb(var(--color-primary-rgb))'
-                : 'rgb(107, 114, 128)',
+              color:
+                showFilters || isClicking
+                  ? 'rgb(var(--color-primary-rgb))'
+                  : 'rgb(107, 114, 128)',
             }}
           >
             {showFilters ? (

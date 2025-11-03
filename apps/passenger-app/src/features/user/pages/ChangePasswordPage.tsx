@@ -38,32 +38,90 @@ export default function ChangePasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const validatePassword = (value: string) => {
-    if (value.length > 0 && value.length < 6) {
+    if (value.length === 0) {
+      setFieldErrors({ ...fieldErrors, newPassword: undefined });
+      return;
+    }
+
+    // Validar longitud mínima
+    if (value.length < 8) {
       setFieldErrors({
         ...fieldErrors,
-        newPassword: 'La contraseña debe tener al menos 6 caracteres',
+        newPassword: 'La contraseña debe tener al menos 8 caracteres',
       });
-    } else {
-      setFieldErrors({ ...fieldErrors, newPassword: undefined });
+      return;
     }
+
+    // Validar que contenga minúsculas
+    if (!/[a-z]/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        newPassword: 'La contraseña debe contener al menos una letra minúscula',
+      });
+      return;
+    }
+
+    // Validar que contenga mayúsculas
+    if (!/[A-Z]/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        newPassword: 'La contraseña debe contener al menos una letra mayúscula',
+      });
+      return;
+    }
+
+    // Validar que contenga números
+    if (!/\d/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        newPassword: 'La contraseña debe contener al menos un número',
+      });
+      return;
+    }
+
+    // Validar que contenga caracteres especiales
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|<>?,./`~]/.test(value)) {
+      setFieldErrors({
+        ...fieldErrors,
+        newPassword:
+          'La contraseña debe contener al menos un carácter especial',
+      });
+      return;
+    }
+
+    setFieldErrors({ ...fieldErrors, newPassword: undefined });
   };
 
   const validateConfirmPassword = (value: string) => {
-    if (value !== passwordData.newPassword) {
+    if (value === passwordData.newPassword) {
+      setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
+    } else {
       setFieldErrors({
         ...fieldErrors,
         confirmPassword: 'Las contraseñas no coinciden',
       });
-    } else {
-      setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
     }
   };
 
   const validateForm = (): boolean => {
     const errors: typeof fieldErrors = {};
 
-    if (passwordData.newPassword.length < 6) {
-      errors.newPassword = 'La contraseña debe tener al menos 6 caracteres';
+    // Validaciones completas de contraseña
+    if (passwordData.newPassword.length < 8) {
+      errors.newPassword = 'La contraseña debe tener al menos 8 caracteres';
+    } else if (!/[a-z]/.test(passwordData.newPassword)) {
+      errors.newPassword =
+        'La contraseña debe contener al menos una letra minúscula';
+    } else if (!/[A-Z]/.test(passwordData.newPassword)) {
+      errors.newPassword =
+        'La contraseña debe contener al menos una letra mayúscula';
+    } else if (!/\d/.test(passwordData.newPassword)) {
+      errors.newPassword = 'La contraseña debe contener al menos un número';
+    } else if (
+      !/[!@#$%^&*()_+\-=[\]{};':"\\|<>?,./`~]/.test(passwordData.newPassword)
+    ) {
+      errors.newPassword =
+        'La contraseña debe contener al menos un carácter especial';
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {

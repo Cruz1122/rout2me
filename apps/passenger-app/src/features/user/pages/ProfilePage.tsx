@@ -20,6 +20,7 @@ import {
 import R2MLoader from '../../../shared/components/R2MLoader';
 import R2MPageHeader from '../../../shared/components/R2MPageHeader';
 import R2MProfileButton from '../../../shared/components/R2MProfileButton';
+import R2MAvatar from '../../../shared/components/R2MAvatar';
 
 export default function ProfilePage() {
   const router = useIonRouter();
@@ -119,6 +120,8 @@ export default function ProfilePage() {
   const userName = userInfo.user_metadata?.name || 'Usuario';
   const userEmail = userInfo.email || '';
   const userSince = formatUserSinceDate(userInfo.created_at);
+  const avatarUrl =
+    userInfo.user_metadata?.avatar_url || userInfo.user_metadata?.picture;
 
   return (
     <IonPage>
@@ -136,15 +139,12 @@ export default function ProfilePage() {
           >
             <div className="flex items-center gap-4">
               {/* Avatar */}
-              <div
-                className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: 'var(--color-surface)' }}
-              >
-                <RiUser5Fill
-                  size={32}
-                  style={{ color: 'var(--color-terciary)' }}
-                />
-              </div>
+              <R2MAvatar
+                avatarUrl={avatarUrl}
+                userName={userName}
+                size={64}
+                iconSize={32}
+              />
 
               {/* Información del usuario */}
               <div className="flex-1 min-w-0">

@@ -11,13 +11,19 @@ import {
   RiMicrosoftLine,
   RiMicrosoftFill,
   RiArrowLeftLine,
+  RiLoaderLine,
 } from 'react-icons/ri';
 import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
 import ErrorNotification from '../../../features/system/components/ErrorNotification';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
-import { loginUser, validateAuthConfig } from '../services/authService';
+import {
+  loginUser,
+  validateAuthConfig,
+  loginWithGoogle,
+  loginWithMicrosoft,
+} from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 
 export default function LoginPage() {
@@ -27,6 +33,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
   const [hoveredProvider, setHoveredProvider] = useState<
     'google' | 'microsoft' | null
   >(null);
@@ -34,6 +42,13 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar que los campos no estén vacíos
+    if (!email.trim() || !password.trim()) {
+      handleError(new Error('Por favor, completa todos los campos'));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -46,11 +61,7 @@ export default function LoginPage() {
         password: password,
       };
 
-      console.log('Login attempt:', loginData);
-
       const response = await loginUser(loginData);
-
-      console.log('Login exitoso:', response);
 
       // Guardar sesión en localStorage usando el hook
       login(response);
@@ -65,14 +76,28 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    console.log('Google login clicked');
-    // Implementar lógica de autenticación con Google
+  const handleGoogleLogin = async () => {
+    try {
+      setIsGoogleLoading(true);
+      await loginWithGoogle();
+      // El usuario será redirigido automáticamente al callback de Google
+    } catch (error) {
+      console.error('Error en login con Google:', error);
+      handleError(error);
+      setIsGoogleLoading(false);
+    }
   };
 
-  const handleMicrosoftLogin = () => {
-    console.log('Microsoft login clicked');
-    // Implementar lógica de autenticación con Microsoft
+  const handleMicrosoftLogin = async () => {
+    try {
+      setIsMicrosoftLoading(true);
+      await loginWithMicrosoft();
+      // El usuario será redirigido automáticamente al callback de Microsoft
+    } catch (error) {
+      console.error('Error en login con Microsoft:', error);
+      handleError(error);
+      setIsMicrosoftLoading(false);
+    }
   };
 
   // Manejar el foco cuando la vista entra completamente
@@ -240,9 +265,10 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
+                  disabled={isGoogleLoading || isMicrosoftLoading}
                   onMouseEnter={() => setHoveredProvider('google')}
                   onMouseLeave={() => setHoveredProvider(null)}
-                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md"
+                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     borderRadius: '12px',
                     minHeight: '100px',
@@ -252,29 +278,39 @@ export default function LoginPage() {
                       hoveredProvider === 'google' ? '#EA4335' : '#e5e7eb',
                   }}
                 >
-                  <div
-                    className="mb-2 flex items-center justify-center relative"
-                    style={{ width: '32px', height: '32px' }}
-                  >
-                    <RiGoogleLine
-                      size={32}
-                      className={`absolute top-0 left-0 transition-all duration-300 ${
-                        hoveredProvider === 'google'
-                          ? 'opacity-0 scale-75'
-                          : 'opacity-100 scale-100'
-                      }`}
-                      style={{ color: 'var(--color-terciary)' }}
-                    />
-                    <RiGoogleFill
-                      size={32}
-                      className={`absolute top-0 left-0 transition-all duration-300 ${
-                        hoveredProvider === 'google'
-                          ? 'opacity-100 scale-100'
-                          : 'opacity-0 scale-75'
-                      }`}
-                      style={{ color: 'white' }}
-                    />
-                  </div>
+                  {isGoogleLoading ? (
+                    <div className="mb-2 flex items-center justify-center">
+                      <RiLoaderLine
+                        className="animate-spin"
+                        size={32}
+                        style={{ color: '#EA4335' }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="mb-2 flex items-center justify-center relative"
+                      style={{ width: '32px', height: '32px' }}
+                    >
+                      <RiGoogleLine
+                        size={32}
+                        className={`absolute top-0 left-0 transition-all duration-300 ${
+                          hoveredProvider === 'google'
+                            ? 'opacity-0 scale-75'
+                            : 'opacity-100 scale-100'
+                        }`}
+                        style={{ color: 'var(--color-terciary)' }}
+                      />
+                      <RiGoogleFill
+                        size={32}
+                        className={`absolute top-0 left-0 transition-all duration-300 ${
+                          hoveredProvider === 'google'
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-0 scale-75'
+                        }`}
+                        style={{ color: 'white' }}
+                      />
+                    </div>
+                  )}
                   <h3
                     className="font-semibold text-center transition-colors duration-300"
                     style={{
@@ -282,7 +318,7 @@ export default function LoginPage() {
                       color: hoveredProvider === 'google' ? 'white' : '#1f2937',
                     }}
                   >
-                    Google
+                    {isGoogleLoading ? 'Cargando...' : 'Google'}
                   </h3>
                 </button>
 
@@ -290,9 +326,10 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleMicrosoftLogin}
+                  disabled={isGoogleLoading || isMicrosoftLoading}
                   onMouseEnter={() => setHoveredProvider('microsoft')}
                   onMouseLeave={() => setHoveredProvider(null)}
-                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md"
+                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     borderRadius: '12px',
                     minHeight: '100px',
@@ -302,29 +339,39 @@ export default function LoginPage() {
                       hoveredProvider === 'microsoft' ? '#00A4EF' : '#e5e7eb',
                   }}
                 >
-                  <div
-                    className="mb-2 flex items-center justify-center relative"
-                    style={{ width: '32px', height: '32px' }}
-                  >
-                    <RiMicrosoftLine
-                      size={32}
-                      className={`absolute top-0 left-0 transition-all duration-300 ${
-                        hoveredProvider === 'microsoft'
-                          ? 'opacity-0 scale-75'
-                          : 'opacity-100 scale-100'
-                      }`}
-                      style={{ color: 'var(--color-terciary)' }}
-                    />
-                    <RiMicrosoftFill
-                      size={32}
-                      className={`absolute top-0 left-0 transition-all duration-300 ${
-                        hoveredProvider === 'microsoft'
-                          ? 'opacity-100 scale-100'
-                          : 'opacity-0 scale-75'
-                      }`}
-                      style={{ color: 'white' }}
-                    />
-                  </div>
+                  {isMicrosoftLoading ? (
+                    <div className="mb-2 flex items-center justify-center">
+                      <RiLoaderLine
+                        className="animate-spin"
+                        size={32}
+                        style={{ color: '#00A4EF' }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="mb-2 flex items-center justify-center relative"
+                      style={{ width: '32px', height: '32px' }}
+                    >
+                      <RiMicrosoftLine
+                        size={32}
+                        className={`absolute top-0 left-0 transition-all duration-300 ${
+                          hoveredProvider === 'microsoft'
+                            ? 'opacity-0 scale-75'
+                            : 'opacity-100 scale-100'
+                        }`}
+                        style={{ color: 'var(--color-terciary)' }}
+                      />
+                      <RiMicrosoftFill
+                        size={32}
+                        className={`absolute top-0 left-0 transition-all duration-300 ${
+                          hoveredProvider === 'microsoft'
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-0 scale-75'
+                        }`}
+                        style={{ color: 'white' }}
+                      />
+                    </div>
+                  )}
                   <h3
                     className="font-semibold text-center transition-colors duration-300"
                     style={{
@@ -333,7 +380,7 @@ export default function LoginPage() {
                         hoveredProvider === 'microsoft' ? 'white' : '#1f2937',
                     }}
                   >
-                    Microsoft
+                    {isMicrosoftLoading ? 'Cargando...' : 'Microsoft'}
                   </h3>
                 </button>
               </div>

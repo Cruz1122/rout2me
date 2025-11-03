@@ -1,3 +1,5 @@
+import { supabase } from '../../../config/supabaseClient';
+
 // Servicio de autenticación para Supabase
 export interface SignupRequest {
   email: string;
@@ -52,6 +54,9 @@ export interface LoginResponse {
       phone: string;
       phone_verified: boolean;
       sub: string;
+      avatar_url?: string;
+      picture?: string;
+      full_name?: string;
     };
     identities: Array<{
       identity_id: string;
@@ -95,6 +100,7 @@ export interface AuthSession {
       company_key: string;
       name: string;
       phone: string;
+      avatar_url?: string;
     };
   };
 }
@@ -214,6 +220,128 @@ export async function loginUser(
 }
 
 /**
+ * Inicia sesión con Google usando OAuth de Supabase
+ */
+export async function loginWithGoogle(): Promise<void> {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${globalThis.location.origin}/inicio`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Error al iniciar sesión con Google');
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Error desconocido al iniciar sesión con Google');
+  }
+}
+
+/**
+ * Inicia sesión con Azure Microsoft usando OAuth de Supabase
+ */
+export async function loginWithMicrosoft(): Promise<void> {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        redirectTo: `${globalThis.location.origin}/inicio`,
+        scopes: 'email profile openid',
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Error al iniciar sesión con Microsoft');
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Error desconocido al iniciar sesión con Microsoft');
+  }
+}
+
+/**
+ * Obtiene la sesión actual de Supabase
+ */
+export async function getCurrentSession() {
+  try {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      return null;
+    }
+
+    return session;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Cierra la sesión actual de Supabase (OAuth y email/password)
+ */
+export async function logoutUser(): Promise<void> {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new Error(error.message || 'Error al cerrar sesión');
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Error desconocido al cerrar sesión');
+  }
+}
+
+/**
+ * Convierte una sesión de Supabase OAuth a AuthSession
+ */
+export function convertSupabaseSessionToAuthSession(
+  supabaseSession: any,
+): AuthSession {
+  return {
+    access_token: supabaseSession.access_token,
+    token_type: 'bearer',
+    expires_in: supabaseSession.expires_in || 3600,
+    expires_at: supabaseSession.expires_at || Date.now() / 1000 + 3600,
+    refresh_token: supabaseSession.refresh_token,
+    user: {
+      id: supabaseSession.user.id,
+      aud: supabaseSession.user.aud || 'authenticated',
+      role: supabaseSession.user.role || 'authenticated',
+      email: supabaseSession.user.email,
+      user_metadata: {
+        company_key: supabaseSession.user.user_metadata?.company_key || '',
+        name:
+          supabaseSession.user.user_metadata?.full_name ||
+          supabaseSession.user.user_metadata?.name ||
+          supabaseSession.user.email?.split('@')[0] ||
+          'Usuario',
+        phone: supabaseSession.user.user_metadata?.phone || '',
+        avatar_url:
+          supabaseSession.user.user_metadata?.avatar_url ||
+          supabaseSession.user.user_metadata?.picture ||
+          undefined,
+      },
+    },
+  };
+}
+
+/**
  * Solicita un enlace de recuperación de contraseña
  */
 export async function recoverPassword(email: string): Promise<void> {
@@ -262,12 +390,6 @@ export async function updatePasswordWithToken(
     );
   }
 
-  console.log(
-    '🔐 updatePasswordWithToken - Iniciando actualización de contraseña',
-  );
-  console.log('🔐 URL:', `${AUTH_URL}/user`);
-  console.log('🔐 Token:', accessToken.substring(0, 20) + '...');
-
   try {
     const response = await fetch(`${AUTH_URL}/user`, {
       method: 'PUT',
@@ -279,11 +401,8 @@ export async function updatePasswordWithToken(
       body: JSON.stringify({ password: newPassword }),
     });
 
-    console.log('🔐 Response status:', response.status);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Error response:', errorData);
 
       // Traducir mensajes comunes de error al español
       let errorMessage =
@@ -315,10 +434,7 @@ export async function updatePasswordWithToken(
         errorMessage || `Error al actualizar la contraseña: ${response.status}`,
       );
     }
-
-    console.log('✅ Contraseña actualizada exitosamente');
   } catch (error) {
-    console.error('❌ Error al actualizar contraseña:', error);
     if (error instanceof Error) {
       throw error;
     }
@@ -362,6 +478,7 @@ export function createAuthSession(loginResponse: LoginResponse): AuthSession {
         company_key: loginResponse.user.user_metadata.company_key,
         name: loginResponse.user.user_metadata.name,
         phone: loginResponse.user.user_metadata.phone,
+        avatar_url: loginResponse.user.user_metadata.avatar_url,
       },
     },
   };
@@ -382,7 +499,6 @@ export const authStorage = {
     try {
       localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
       localStorage.setItem(this.TIMESTAMP_KEY, Date.now().toString());
-      console.log('Sesión guardada exitosamente');
     } catch (error) {
       console.error('Error guardando sesión:', error);
       throw new Error('No se pudo guardar la sesión');
@@ -399,7 +515,6 @@ export const authStorage = {
 
       return JSON.parse(sessionData) as AuthSession;
     } catch (error) {
-      console.error('Error obteniendo sesión:', error);
       this.clearSession(); // Limpiar datos corruptos
       return null;
     }
@@ -416,7 +531,6 @@ export const authStorage = {
     const isValid = session.expires_at > now;
 
     if (!isValid) {
-      console.log('Sesión expirada, limpiando...');
       this.clearSession();
     }
 
@@ -430,7 +544,6 @@ export const authStorage = {
     try {
       localStorage.removeItem(this.SESSION_KEY);
       localStorage.removeItem(this.TIMESTAMP_KEY);
-      console.log('Sesión limpiada');
     } catch (error) {
       console.error('Error limpiando sesión:', error);
     }

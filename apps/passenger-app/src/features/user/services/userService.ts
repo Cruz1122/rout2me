@@ -22,6 +22,9 @@ export interface UserResponse {
     phone: string;
     phone_verified: boolean;
     sub: string;
+    avatar_url?: string;
+    picture?: string;
+    full_name?: string;
   };
   identities: Array<{
     identity_id: string;
@@ -35,6 +38,9 @@ export interface UserResponse {
       phone: string;
       phone_verified: boolean;
       sub: string;
+      avatar_url?: string;
+      picture?: string;
+      full_name?: string;
     };
     provider: string;
     last_sign_in_at: string;
