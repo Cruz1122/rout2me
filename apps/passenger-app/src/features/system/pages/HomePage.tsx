@@ -43,7 +43,6 @@ export default function HomePage() {
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
-  const [shouldInitMap, setShouldInitMap] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   const { error, showError, clearError } = useErrorNotification();
 
@@ -400,28 +399,9 @@ export default function HomePage() {
     };
   }, [isDraggingCompass, handleCompassMove, handleCompassEnd]);
 
-  // Lazy loading: inicializar solo cuando el contenedor sea visible
+  // Inicialización del mapa - optimizado para carga rápida
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setShouldInitMap(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 },
-    );
-
-    observer.observe(mapRef.current);
-
-    return () => observer.disconnect();
-  }, []);
-
-  // Inicialización del mapa con tiles vectoriales
-  useEffect(() => {
-    if (!mapRef.current || mapInstance.current || !shouldInitMap) return;
 
     const map = new maplibregl.Map({
       container: mapRef.current,
@@ -475,29 +455,31 @@ export default function HomePage() {
       setIsMapLoading(false);
       setIsMapReady(true); // Marcar el mapa como listo para activar el marcador
 
-      // Centrar mapa en ubicación del usuario al cargar
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            if (mapInstance.current) {
-              mapInstance.current.flyTo({
-                center: [longitude, latitude],
-                zoom: 15,
-                duration: 1500,
-              });
-            }
-          },
-          () => {
-            // Si falla, mantener ubicación por defecto (Manizales)
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0,
-          },
-        );
-      }
+      // Mover geolocalización a DESPUÉS de render (no bloqueante)
+      setTimeout(() => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords;
+              if (mapInstance.current) {
+                mapInstance.current.flyTo({
+                  center: [longitude, latitude],
+                  zoom: 15,
+                  duration: 1500,
+                });
+              }
+            },
+            () => {
+              // Si falla, mantener ubicación por defecto (Manizales)
+            },
+            {
+              enableHighAccuracy: false, // Cambiar a false para más velocidad inicial
+              timeout: 3000, // Reducir timeout
+              maximumAge: 30000, // Permitir caché de ubicación
+            },
+          );
+        }
+      }, 100); // Delay para no bloquear el render inicial
     });
 
     map.on('idle', () => {
@@ -520,7 +502,7 @@ export default function HomePage() {
         mapInstance.current = null;
       }
     };
-  }, [shouldInitMap]);
+  }, []); // Inicialización inmediata sin dependencias
 
   // Manejar ruta que viene desde RoutesPage
   useIonViewWillEnter(() => {
