@@ -10,17 +10,26 @@ import {
   RiFeedbackLine,
   RiLockPasswordLine,
   RiLogoutBoxRLine,
+  RiBuilding2Line,
+  RiUserAddLine,
+  RiBusLine,
+  RiTeamLine,
+  RiUserUnfollowLine,
+  RiMailSendLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../auth/hooks/useAuth';
 import {
   getUserInfo,
   formatUserSinceDate,
+  getPrimaryOrganization,
+  translateOrgRole,
   type UserResponse,
 } from '../services/userService';
 import R2MLoader from '../../../shared/components/R2MLoader';
 import R2MPageHeader from '../../../shared/components/R2MPageHeader';
 import R2MProfileButton from '../../../shared/components/R2MProfileButton';
 import R2MAvatar from '../../../shared/components/R2MAvatar';
+import OrganizationBadge from '../components/OrganizationBadge';
 
 export default function ProfilePage() {
   const router = useIonRouter();
@@ -83,6 +92,11 @@ export default function ProfilePage() {
     console.log(`Navegando a soporte: ${support}`);
   };
 
+  const handleOrganizationClick = (action: string) => {
+    // Placeholder para funcionalidad futura
+    console.log(`Acción de organización: ${action}`);
+  };
+
   if (isLoading) {
     return (
       <IonPage>
@@ -122,6 +136,8 @@ export default function ProfilePage() {
   const userSince = formatUserSinceDate(userInfo.created_at);
   const avatarUrl =
     userInfo.user_metadata?.avatar_url || userInfo.user_metadata?.picture;
+  const organization = getPrimaryOrganization(userInfo);
+  const hasOrganization = organization !== null;
 
   return (
     <IonPage>
@@ -144,6 +160,9 @@ export default function ProfilePage() {
                 userName={userName}
                 size={64}
                 iconSize={32}
+                badge={
+                  hasOrganization ? <OrganizationBadge size={20} /> : undefined
+                }
               />
 
               {/* Información del usuario */}
@@ -180,6 +199,117 @@ export default function ProfilePage() {
                 <RiPencilLine size={20} />
               </button>
             </div>
+          </div>
+
+          {/* Sección: Organización */}
+          <div
+            className="rounded-2xl p-4 shadow-sm"
+            style={{
+              backgroundColor: '#FFFFFF',
+              boxShadow:
+                '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+            }}
+          >
+            <p
+              className="text-base font-semibold mb-1"
+              style={{ color: 'var(--color-text)' }}
+            >
+              Organización
+            </p>
+
+            {hasOrganization ? (
+              <div className="space-y-2">
+                {/* Con organización */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <RiBuilding2Line
+                      size={20}
+                      style={{ color: 'var(--color-primary)' }}
+                    />
+                    <p
+                      className="text-base font-medium"
+                      style={{ color: 'var(--color-text)' }}
+                    >
+                      {organization.company_name}
+                    </p>
+                  </div>
+                  <p
+                    className="text-sm ml-7"
+                    style={{ color: 'var(--color-terciary)' }}
+                  >
+                    Rol: {translateOrgRole(organization.org_role)}
+                  </p>
+                </div>
+
+                {/* Opciones según el rol */}
+                {organization.org_role === 'USER' && (
+                  <>
+                    <R2MProfileButton
+                      icon={<RiMailSendLine size={20} />}
+                      title="Solicitar permisos"
+                      description="Solicitar nuevo rol al administrador"
+                      onClick={() => handleOrganizationClick('request-role')}
+                    />
+                    <R2MProfileButton
+                      icon={<RiUserUnfollowLine size={20} />}
+                      title="Abandonar organización"
+                      onClick={() => handleOrganizationClick('leave')}
+                      variant="danger"
+                    />
+                  </>
+                )}
+
+                {organization.org_role === 'DRIVER' && (
+                  <>
+                    <R2MProfileButton
+                      icon={<RiBusLine size={20} />}
+                      title="Gestionar buses"
+                      description="Administrar tus vehículos asignados"
+                      onClick={() => handleOrganizationClick('manage-buses')}
+                    />
+                    <R2MProfileButton
+                      icon={<RiUserUnfollowLine size={20} />}
+                      title="Abandonar organización"
+                      onClick={() => handleOrganizationClick('leave')}
+                      variant="danger"
+                    />
+                  </>
+                )}
+
+                {organization.org_role === 'ADMIN' && (
+                  <>
+                    <R2MProfileButton
+                      icon={<RiTeamLine size={20} />}
+                      title="Gestionar miembros"
+                      description="Administrar usuarios de la organización"
+                      onClick={() => handleOrganizationClick('manage-members')}
+                    />
+                    <R2MProfileButton
+                      icon={<RiUserUnfollowLine size={20} />}
+                      title="Abandonar organización"
+                      onClick={() => handleOrganizationClick('leave')}
+                      variant="danger"
+                    />
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Sin organización */}
+                <p
+                  className="text-sm mb-2"
+                  style={{ color: 'var(--color-terciary)' }}
+                >
+                  No perteneces a ninguna organización
+                </p>
+                <R2MProfileButton
+                  icon={<RiUserAddLine size={20} />}
+                  title="Unirse a una organización"
+                  description="Ingresa el código de la organización"
+                  onClick={() => handleOrganizationClick('join')}
+                />
+              </div>
+            )}
           </div>
 
           {/* Sección: Configuración */}

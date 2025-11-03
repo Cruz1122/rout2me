@@ -7,10 +7,11 @@ import {
 } from '../services/avatarCacheService';
 
 interface R2MAvatarProps {
-  avatarUrl?: string | null;
-  userName?: string;
-  size?: number;
-  iconSize?: number;
+  readonly avatarUrl?: string | null;
+  readonly userName?: string;
+  readonly size?: number;
+  readonly iconSize?: number;
+  readonly badge?: React.ReactNode;
 }
 
 /**
@@ -21,6 +22,7 @@ export default function R2MAvatar({
   userName = 'Usuario',
   size = 64,
   iconSize = 32,
+  badge,
 }: R2MAvatarProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
@@ -77,26 +79,40 @@ export default function R2MAvatar({
 
   return (
     <div
-      className="flex-shrink-0 rounded-full flex items-center justify-center overflow-hidden"
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        backgroundColor:
-          imageSrc && !hasError ? 'transparent' : 'var(--color-surface)',
-      }}
+      className="relative flex-shrink-0"
+      style={{ width: `${size}px`, height: `${size}px` }}
     >
-      {imageSrc && !hasError && !isLoading ? (
-        <img
-          src={imageSrc}
-          alt={userName}
-          className="w-full h-full object-cover"
-          onError={() => setHasError(true)}
-        />
-      ) : (
-        <RiUser5Fill
-          size={iconSize}
-          style={{ color: 'var(--color-terciary)' }}
-        />
+      <div
+        className="rounded-full flex items-center justify-center overflow-hidden w-full h-full"
+        style={{
+          backgroundColor:
+            imageSrc && !hasError ? 'transparent' : 'var(--color-surface)',
+        }}
+      >
+        {imageSrc && !hasError && !isLoading ? (
+          <img
+            src={imageSrc}
+            alt={userName}
+            className="w-full h-full object-cover"
+            onError={() => setHasError(true)}
+          />
+        ) : (
+          <RiUser5Fill
+            size={iconSize}
+            style={{ color: 'var(--color-terciary)' }}
+          />
+        )}
+      </div>
+      {badge && (
+        <div
+          className="absolute"
+          style={{
+            bottom: 0,
+            right: 0,
+          }}
+        >
+          {badge}
+        </div>
       )}
     </div>
   );

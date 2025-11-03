@@ -1,5 +1,14 @@
 // Servicio para obtener información del usuario
 
+export type OrgRole = 'USER' | 'DRIVER' | 'ADMIN';
+
+export interface Organization {
+  company_id: string;
+  company_name: string;
+  org_role: OrgRole;
+  short_name: string;
+}
+
 export interface UserResponse {
   id: string;
   aud: string;
@@ -25,6 +34,9 @@ export interface UserResponse {
     avatar_url?: string;
     picture?: string;
     full_name?: string;
+    orgs?: Organization[];
+    primary_company_id?: string | null;
+    is_superadmin?: boolean;
   };
   identities: Array<{
     identity_id: string;
@@ -41,6 +53,9 @@ export interface UserResponse {
       avatar_url?: string;
       picture?: string;
       full_name?: string;
+      orgs?: Organization[];
+      primary_company_id?: string | null;
+      is_superadmin?: boolean;
     };
     provider: string;
     last_sign_in_at: string;
@@ -205,4 +220,39 @@ export function formatUserSinceDate(dateString: string): string {
   } catch {
     return 'Usuario desde fecha desconocida';
   }
+}
+
+/**
+ * Obtiene la organización principal del usuario
+ */
+export function getPrimaryOrganization(
+  userInfo: UserResponse,
+): Organization | null {
+  const orgs = userInfo.user_metadata?.orgs;
+  if (!orgs || orgs.length === 0) {
+    return null;
+  }
+
+  const primaryCompanyId = userInfo.user_metadata?.primary_company_id;
+  if (primaryCompanyId) {
+    const primaryOrg = orgs.find((org) => org.company_id === primaryCompanyId);
+    if (primaryOrg) {
+      return primaryOrg;
+    }
+  }
+
+  // Si no hay primary_company_id o no se encuentra, devolver la primera organización
+  return orgs[0];
+}
+
+/**
+ * Traduce el rol de la organización al español
+ */
+export function translateOrgRole(role: OrgRole): string {
+  const translations: Record<OrgRole, string> = {
+    USER: 'Usuario',
+    DRIVER: 'Conductor',
+    ADMIN: 'Administrador',
+  };
+  return translations[role] || role;
 }
