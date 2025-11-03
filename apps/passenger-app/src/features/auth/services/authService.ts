@@ -2,53 +2,19 @@
 export interface SignupRequest {
   email: string;
   password: string;
-  data: {
-    name: string;
-    phone: string;
-    company_key: string;
-  };
+  name: string;
+  phone?: string;
+  org_key?: string;
 }
 
 export interface SignupResponse {
-  id: string;
-  aud: string;
-  role: string;
-  email: string;
-  phone: string;
-  confirmation_sent_at: string;
-  app_metadata: {
-    provider: string;
-    providers: string[];
-  };
-  user_metadata: {
-    email: string;
-    email_verified: boolean;
-    name: string;
-    phone: string;
-    phone_verified: boolean;
-    sub: string;
-  };
-  identities: Array<{
-    identity_id: string;
-    id: string;
-    user_id: string;
-    identity_data: {
-      email: string;
-      email_verified: boolean;
-      name: string;
-      phone: string;
-      phone_verified: boolean;
-      sub: string;
-    };
-    provider: string;
-    last_sign_in_at: string;
-    created_at: string;
-    updated_at: string;
-    email: string;
-  }>;
-  created_at: string;
-  updated_at: string;
-  is_anonymous: boolean;
+  ok: boolean;
+  user_id?: string;
+  email?: string;
+  company_id?: string;
+  email_sent?: boolean;
+  confirm_via?: string;
+  error?: string;
 }
 
 export interface LoginRequest {
@@ -139,40 +105,56 @@ export interface AuthError {
 }
 
 const AUTH_URL = import.meta.env.VITE_BACKEND_AUTH_URL;
+const FUNCTIONS_URL = import.meta.env.VITE_BACKEND_FUNCTIONS_URL;
+const ANON_KEY = import.meta.env.VITE_ANON_KEY;
 const SERVICE_ROLE_KEY = import.meta.env.VITE_SERVICE_ROLE_KEY;
 
 /**
- * Realiza el registro de un nuevo usuario en Supabase
+ * Realiza el registro de un nuevo usuario usando el endpoint de Cloud Functions
  */
 export async function signupUser(
   signupData: SignupRequest,
 ): Promise<SignupResponse> {
-  if (!AUTH_URL || !SERVICE_ROLE_KEY) {
+  if (!FUNCTIONS_URL || !ANON_KEY) {
     throw new Error(
-      'Configuración de autenticación faltante. Verifica las variables de entorno VITE_BACKEND_AUTH_URL y VITE_SERVICE_ROLE_KEY',
+      'Configuración de autenticación faltante. Verifica las variables de entorno VITE_BACKEND_FUNCTIONS_URL y VITE_ANON_KEY',
     );
   }
 
   try {
-    const response = await fetch(`${AUTH_URL}/signup`, {
+    const response = await fetch(`${FUNCTIONS_URL}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${ANON_KEY}`,
       },
       body: JSON.stringify(signupData),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Error en el registro: ${response.status}`,
-      );
+    const responseData = await response.json();
+
+    // Manejar respuestas de error del servidor
+    if (!response.ok || !responseData.ok) {
+      const errorCode = responseData.error;
+
+      // Traducir códigos de error a mensajes amigables
+      if (errorCode === 'invalid_org_key') {
+        throw new Error(
+          'La clave de organización es inválida. Verifica que sea correcta.',
+        );
+      } else if (errorCode === 'email_exists') {
+        throw new Error(
+          'Este correo electrónico ya está registrado. Intenta iniciar sesión o usa otro correo.',
+        );
+      } else {
+        throw new Error(
+          errorCode || `Error en el registro: ${response.status}`,
+        );
+      }
     }
 
-    const userData = await response.json();
-    return userData;
+    return responseData;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -206,8 +188,18 @@ export async function loginUser(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+
+      // Manejar errores específicos de login
+      if (errorData.error_code === 'invalid_credentials') {
+        throw new Error(
+          'Correo electrónico o contraseña incorrectos. Por favor, verifica tus credenciales.',
+        );
+      }
+
       throw new Error(
-        errorData.message || `Error en el login: ${response.status}`,
+        errorData.message ||
+          errorData.msg ||
+          `Error en el login: ${response.status}`,
       );
     }
 
@@ -338,7 +330,12 @@ export async function updatePasswordWithToken(
  * Valida la configuración de autenticación
  */
 export function validateAuthConfig(): void {
-  const requiredEnvVars = ['VITE_BACKEND_AUTH_URL', 'VITE_SERVICE_ROLE_KEY'];
+  const requiredEnvVars = [
+    'VITE_BACKEND_AUTH_URL',
+    'VITE_BACKEND_FUNCTIONS_URL',
+    'VITE_ANON_KEY',
+    'VITE_SERVICE_ROLE_KEY',
+  ];
   const missing = requiredEnvVars.filter((envVar) => !import.meta.env[envVar]);
 
   if (missing.length > 0) {

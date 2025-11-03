@@ -251,31 +251,44 @@ export default function RegisterPage() {
       // Validar configuración de autenticación
       validateAuthConfig();
 
-      // Construir el payload según el formato de Supabase
+      // Construir el payload según el nuevo formato del endpoint
       const phoneNumbers = personalData.phone.replaceAll(/\D/g, '');
-      const signupData = {
+      const signupData: {
+        email: string;
+        password: string;
+        name: string;
+        phone?: string;
+        org_key?: string;
+      } = {
         email: personalData.email,
         password: personalData.password,
-        data: {
-          name: personalData.name,
-          phone: personalData.phone ? `+57${phoneNumbers}` : '',
-          company_key:
-            accountPurpose === 'organization'
-              ? companyData.organizationKey.join('')
-              : '',
-        },
+        name: personalData.name,
       };
+
+      // Agregar campos opcionales solo si tienen valor
+      if (personalData.phone) {
+        signupData.phone = `+57${phoneNumbers}`;
+      }
+
+      if (accountPurpose === 'organization') {
+        signupData.org_key = companyData.organizationKey.join('');
+      }
 
       console.log('Register payload:', signupData);
 
-      // Realizar el registro con Supabase
+      // Realizar el registro con el nuevo endpoint
       const response = await signupUser(signupData);
 
       console.log('Registro exitoso:', response);
 
-      // Mostrar vista de confirmación
-      setRegisteredEmail(response.email);
-      setShowConfirmation(true);
+      // Verificar si el registro fue exitoso
+      if (response.ok && response.email) {
+        // Mostrar vista de confirmación
+        setRegisteredEmail(response.email);
+        setShowConfirmation(true);
+      } else {
+        throw new Error(response.error || 'Error desconocido en el registro');
+      }
     } catch (error) {
       console.error('Error en el registro:', error);
       handleError(error);
@@ -682,7 +695,7 @@ export default function RegisterPage() {
           <p className="text-sm text-gray-600">
             {accountPurpose === 'personal'
               ? 'Para uso personal y familiar'
-              : 'Para empresas y organizaciones'}
+              : 'Para organizaciones o miembros de una'}
           </p>
         </div>
       )}
