@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import { LoaderProvider, useLoader } from './context/LoaderContext';
 import GlobalLoader from './components/GlobalLoader';
 
+// eslint-disable-next-line react-refresh/only-export-components
 function AppWithLoader() {
   const { isLoading } = useLoader();
   const [showLoader, setShowLoader] = useState(false);

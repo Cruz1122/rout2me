@@ -9,7 +9,7 @@ interface LoaderContextType {
 
 const LoaderContext = createContext<LoaderContextType | undefined>(undefined);
 
-export function LoaderProvider({ children }: { children: ReactNode }) {
+export function LoaderProvider({ children }: { readonly children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const showLoader = () => setIsLoading(true);
@@ -25,6 +25,7 @@ export function LoaderProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLoader() {
   const context = useContext(LoaderContext);
   if (context === undefined) {

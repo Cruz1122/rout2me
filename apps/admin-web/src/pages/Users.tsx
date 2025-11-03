@@ -51,11 +51,6 @@ export default function UsersPage() {
   const toastHideTimerRef = useRef<number | null>(null);
   const toastEntryTimerRef = useRef<number | null>(null);
 
-  // Load users on mount
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
   async function loadUsers() {
     try {
       setLoading(true);
@@ -68,6 +63,12 @@ export default function UsersPage() {
       setLoading(false);
     }
   }
+
+  // Load users on mount
+  useEffect(() => {
+    loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function closeCreateModal() {
     setIsCreateOpen(false);

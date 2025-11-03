@@ -50,7 +50,7 @@ export default function LiveFleet() {
   } | null>(null);
 
   // Función para obtener el estado del vehículo basado en su status
-  const getVehicleDisplayStatus = (status: string): string => {
+  const getVehicleDisplayStatus = useCallback((status: string): string => {
     switch (status.toUpperCase()) {
       case 'AVAILABLE':
         return 'Disponible';
@@ -63,7 +63,7 @@ export default function LiveFleet() {
       default:
         return status;
     }
-  };
+  }, []);
 
   // Función para obtener el porcentaje de capacidad
   const getVehicleCapacityLevel = (): number => {

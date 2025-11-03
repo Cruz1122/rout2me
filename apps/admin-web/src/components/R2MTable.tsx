@@ -49,8 +49,8 @@ export default function R2MTable<T>({
     if (!sortColumn || !sortDirection) return dataToSort;
 
     return [...dataToSort].sort((a, b) => {
-      const aValue = (a as any)[sortColumn];
-      const bValue = (b as any)[sortColumn];
+      const aValue = (a as Record<string, unknown>)[sortColumn];
+      const bValue = (b as Record<string, unknown>)[sortColumn];
 
       if (aValue === null || aValue === undefined) return 1;
       if (bValue === null || bValue === undefined) return -1;
@@ -175,7 +175,16 @@ export default function R2MTable<T>({
                       >
                         {column.render
                           ? column.render(item)
-                          : String((item as any)[column.key] ?? 'N/A')}
+                          : (() => {
+                              const value = (item as Record<string, unknown>)[
+                                column.key
+                              ];
+                              if (value === null || value === undefined)
+                                return 'N/A';
+                              if (typeof value === 'object')
+                                return JSON.stringify(value);
+                              return String(value);
+                            })()}
                       </td>
                     ))}
                     {actions && (
