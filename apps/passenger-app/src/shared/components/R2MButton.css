@@ -1,0 +1,126 @@
+.r2m-button {
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Variantes */
+.r2m-button-primary {
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  box-shadow: 0 10px 25px -5px rgba(22, 49, 114, 0.3);
+}
+
+.r2m-button-primary:hover:not(.r2m-button-disabled) {
+  background-color: var(--color-secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px -5px rgba(22, 49, 114, 0.4);
+}
+
+.r2m-button-primary:active:not(.r2m-button-disabled) {
+  background-color: var(--color-secondary);
+  transform: translateY(0px);
+}
+
+.r2m-button-secondary {
+  background-color: var(--color-secondary);
+  color: #FFFFFF;
+  box-shadow: 0 10px 25px -5px rgba(30, 86, 160, 0.3);
+}
+
+.r2m-button-secondary:hover:not(.r2m-button-disabled) {
+  background-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px -5px rgba(30, 86, 160, 0.4);
+}
+
+.r2m-button-secondary:active:not(.r2m-button-disabled) {
+  background-color: var(--color-primary);
+  transform: translateY(0px);
+}
+
+.r2m-button-outline {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  box-shadow: none;
+}
+
+.r2m-button-outline:hover:not(.r2m-button-disabled) {
+  background-color: rgba(var(--color-primary-rgb), 0.05);
+  transform: translateY(-2px);
+}
+
+.r2m-button-outline:active:not(.r2m-button-disabled) {
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+  transform: translateY(0px);
+}
+
+.r2m-button-ghost {
+  background-color: transparent;
+  color: var(--color-primary);
+  box-shadow: none;
+}
+
+.r2m-button-ghost:hover:not(.r2m-button-disabled) {
+  background-color: rgba(var(--color-primary-rgb), 0.05);
+  transform: translateY(-2px);
+}
+
+.r2m-button-ghost:active:not(.r2m-button-disabled) {
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+  transform: translateY(0px);
+}
+
+/* Tamaños */
+.r2m-button-small {
+  height: 40px;
+  font-size: 14px;
+  padding: 0 20px;
+}
+
+.r2m-button-medium {
+  height: 48px;
+  font-size: 16px;
+  padding: 0 24px;
+}
+
+.r2m-button-large {
+  height: 56px;
+  font-size: 16px;
+  padding: 0 32px;
+}
+
+/* Full width */
+.r2m-button-full {
+  width: 100%;
+}
+
+/* Estado disabled */
+.r2m-button-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Animación de spin para el loader */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

@@ -1,9 +1,14 @@
 name: CI
+
 on:
-  push: { branches: ["main", "develop"] }
-  pull_request: { branches: ["main", "develop"] }
+  push: 
+    branches: ["main", "develop", "ci-test"]
+  pull_request: 
+    branches: ["main", "develop"]
+
 jobs:
-  build:
+  # Job para instalar dependencias (compartido)
+  install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,5 +18,176 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - run: pnpm install
+      - name: Cachear node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+  # Job para linting de todo el proyecto
+  lint:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Restaurar caché de node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
       - run: pnpm -w lint
-      - run: pnpm -w build
+
+  # Job para testing (cuando esté disponible)
+  test:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Restaurar caché de node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Configurar variables de entorno para tests
+        working-directory: infra/supabase        
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_COMPANYKEY: ${{ secrets.TEST_COMPANYKEY }}
+        run: |
+          cat > .env.local << EOF
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+          TEST_COMPANYKEY=${TEST_COMPANYKEY}
+          EOF
+
+      - name: Ejecutar tests
+        run: pnpm -w test
+        continue-on-error: true  # Temporal hasta que se implementen tests
+
+  # Job para build de admin-web
+  build-admin-web:
+    runs-on: ubuntu-latest
+    needs: [install, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Restaurar caché de node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Construir admin-web
+        run: pnpm --filter @rout2me/admin-web build
+      - name: Subir artifacts de build de admin-web
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-web-build
+          path: apps/admin-web/dist/
+          retention-days: 7
+
+  # Job para build de passenger-app
+  build-passenger-app:
+    runs-on: ubuntu-latest
+    needs: [install, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Restaurar caché de node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Construir passenger-app
+        run: pnpm --filter @rout2me/passenger-app build
+      - name: Subir artifacts de build de passenger-app
+        uses: actions/upload-artifact@v4
+        with:
+          name: passenger-app-build
+          path: apps/passenger-app/dist/
+          retention-days: 7
+
+  # Job para build del paquete compartido
+  build-shared:
+    runs-on: ubuntu-latest
+    needs: [install, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Restaurar caché de node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Construir paquete compartido
+        run: pnpm --filter @rout2me/shared build
+      - name: Subir artifacts de build del paquete compartido
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-build
+          path: packages/shared/dist/
+          retention-days: 7
+
+  # Job de integración que verifica que todo funciona juntos
+  integration:
+    runs-on: ubuntu-latest
+    needs: [build-admin-web, build-passenger-app, build-shared]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar todos los artifacts de build
+        uses: actions/download-artifact@v4
+      - name: Verificar builds
+        run: |
+          echo "Todos los builds completados exitosamente!"
+          echo "Build de Admin Web: $(ls -la admin-web-build/ | wc -l) archivos"
+          echo "Build de Passenger App: $(ls -la passenger-app-build/ | wc -l) archivos"
+          echo "Build del paquete compartido: $(ls -la shared-build/ | wc -l) archivos"

@@ -1,0 +1,21 @@
+.r2m-text-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-block;
+  font-weight: 600;
+  transition: all 0.25s ease-out;
+  transform-origin: center;
+}
+
+.r2m-text-link:hover {
+  transform: scale(1.05);
+  opacity: 0.85;
+}
+
+.r2m-text-link:active {
+  transform: scale(0.98);
+  opacity: 1;
+}

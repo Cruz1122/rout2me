@@ -10,12 +10,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ionic/react": "^8.0.0",
-    "@ionic/react-router": "^8.0.0",
+    "@ionic/react": "^8.7.5",
+    "@ionic/react-router": "^8.7.5",
     "@rout2me/shared": "workspace:*",
-    "ionicons": "^7.0.0",
+    "@supabase/supabase-js": "^2.78.0",
+    "fuse.js": "^7.1.0",
+    "history": "^5.3.0",
+    "ionicons": "^7.4.0",
+    "maplibre-gl": "^5.9.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-icons": "^5.5.0",
+    "react-router": "^5.3.4",
+    "react-router-dom": "^5.3.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
@@ -23,6 +30,8 @@
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
+    "@types/react-router": "5.1.20",
+    "@types/react-router-dom": "5.3.3",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.36.0",

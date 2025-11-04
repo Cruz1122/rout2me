@@ -11,13 +11,19 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts",
     "clean": "rimraf dist"
   },
   "devDependencies": {
+    "@types/node": "^24.6.2",
     "rimraf": "^6.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.75.1"
   }
 }

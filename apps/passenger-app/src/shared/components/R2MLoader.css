@@ -1,0 +1,118 @@
+.r2m-loader-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.r2m-loader {
+  display: block;
+  width: 5.375em;
+  height: 5.375em;
+}
+
+.r2m-loader__arrows,
+.r2m-loader__ring-rotate,
+.r2m-loader__ring-stroke,
+.r2m-loader__tick {
+  animation-duration: 1.2s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.r2m-loader__arrows {
+  animation-name: r2m-arrows;
+  transform: rotate(45deg);
+  transform-origin: 16px 52px;
+}
+
+.r2m-loader__ring-rotate,
+.r2m-loader__ring-stroke {
+  transform-origin: 80px 80px;
+}
+
+.r2m-loader__ring-rotate {
+  animation-name: r2m-ring-rotate;
+}
+
+.r2m-loader__ring-stroke {
+  animation-name: r2m-ring-stroke;
+  transform: rotate(-45deg);
+}
+
+.r2m-loader__tick {
+  animation-name: r2m-tick;
+}
+
+.r2m-loader__tick:nth-child(2) {
+  animation-delay: -1.05s;
+}
+
+.r2m-loader__tick:nth-child(3) {
+  animation-delay: -0.9s;
+}
+
+.r2m-loader__tick:nth-child(4) {
+  animation-delay: -0.75s;
+}
+
+.r2m-loader__tick:nth-child(5) {
+  animation-delay: -0.6s;
+}
+
+.r2m-loader__tick:nth-child(6) {
+  animation-delay: -0.45s;
+}
+
+.r2m-loader__tick:nth-child(7) {
+  animation-delay: -0.3s;
+}
+
+.r2m-loader__tick:nth-child(8) {
+  animation-delay: -0.15s;
+}
+
+/* Animaciones */
+@keyframes r2m-arrows {
+  from {
+    transform: rotate(45deg);
+  }
+  to {
+    transform: rotate(405deg);
+  }
+}
+
+@keyframes r2m-ring-rotate {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(720deg);
+  }
+}
+
+@keyframes r2m-ring-stroke {
+  from,
+  to {
+    stroke-dashoffset: 452;
+    transform: rotate(-45deg);
+  }
+  50% {
+    stroke-dashoffset: 169.5;
+    transform: rotate(-180deg);
+  }
+}
+
+@keyframes r2m-tick {
+  from,
+  3%,
+  47%,
+  to {
+    stroke-dashoffset: -12;
+  }
+  14%,
+  36% {
+    stroke-dashoffset: 0;
+  }
+}
