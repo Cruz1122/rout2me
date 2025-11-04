@@ -1,6 +1,8 @@
 // Configuración de Supabase
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY =
+  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
 
 export type VehicleStatus =
   | 'AVAILABLE'
@@ -116,20 +118,15 @@ export async function getCompanies(): Promise<Company[]> {
 
 // Obtener todos los vehículos con información extendida
 export async function getVehicles(): Promise<Vehicle[]> {
-  const token = getAuthToken();
-
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc`,
-    {
-      method: 'GET',
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation',
-      },
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/v_bus_latest_positions`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
     },
-  );
+  });
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -315,19 +312,14 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
 
 // Obtener las posiciones actuales de todos los buses
 export async function getBusPositions(): Promise<BusPosition[]> {
-  const token = getAuthToken();
-
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/v_bus_latest_positions?select=bus_id,plate,company_id,status,active_trip_id,active_route_variant_id,vp_id,vp_at,location_json,speed_kph,heading&order=plate.asc`,
-    {
-      method: 'GET',
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/v_bus_latest_positions`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
     },
-  );
+  });
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -340,15 +332,13 @@ export async function getBusPositions(): Promise<BusPosition[]> {
 
 // Obtener las variantes de rutas con sus paradas
 export async function getRouteVariants(): Promise<RouteVariant[]> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active,variant_id,path,length_m_json,stops&order=route_code.asc,variant_id.asc`,
     {
       method: 'GET',
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
       },
     },
@@ -365,15 +355,13 @@ export async function getRouteVariants(): Promise<RouteVariant[]> {
 
 // Obtener todas las rutas
 export async function getRoutes(): Promise<Route[]> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active&order=route_code.asc`,
     {
       method: 'GET',
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
       },
     },
@@ -416,15 +404,13 @@ export async function getRoutes(): Promise<Route[]> {
 export async function getRouteVariantsByRouteId(
   routeId: string,
 ): Promise<RouteVariant[]> {
-  const token = getAuthToken();
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/v_route_variants_agg?select=route_id,route_code,route_name,route_active,variant_id,path,length_m_json,stops&route_id=eq.${routeId}&order=variant_id.asc`,
     {
       method: 'GET',
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
       },
     },

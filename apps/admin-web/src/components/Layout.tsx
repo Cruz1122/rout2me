@@ -10,7 +10,16 @@ export default function Layout({ children }: Readonly<LayoutProps>) {
   const location = useLocation();
 
   // Rutas que no deben mostrar sidebar (auth pages)
-  const authRoutes = ['/signin', '/signup', '/email-verified', '/'];
+  const authRoutes = [
+    '/signin',
+    '/signup',
+    '/email-verified',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-recovery',
+    '/auth/confirm',
+    '/',
+  ];
   const isAuthRoute = authRoutes.includes(location.pathname);
 
   // Si es una ruta de autenticación, solo renderizar children sin layout

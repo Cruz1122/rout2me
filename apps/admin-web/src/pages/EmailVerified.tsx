@@ -7,13 +7,28 @@ export default function EmailVerified() {
   const [countdown, setCountdown] = useState(8);
 
   useEffect(() => {
-    // Verificar que el usuario llegó desde el proceso de verificación
-    const state = location.state as { verified?: boolean } | null;
+    // Verificar si viene desde el enlace de confirmación con tokens en el hash
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
 
-    if (!state || !state.verified) {
-      // Si no viene del proceso de verificación, redirigir a signin
-      navigate('/signin', { replace: true });
-      return;
+    // Si hay tokens en el hash, guardarlos en localStorage
+    if (accessToken) {
+      console.log('Tokens detectados en la URL, guardando sesión...');
+      localStorage.setItem('access_token', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+      // No retornar aquí, continuar con el countdown
+    } else {
+      // Verificar que el usuario llegó desde el proceso de verificación manual
+      const state = location.state as { verified?: boolean } | null;
+
+      if (!state || !state.verified) {
+        // Si no viene del proceso de verificación ni tiene tokens, redirigir a signin
+        navigate('/signin', { replace: true });
+        return;
+      }
     }
 
     // Countdown timer

@@ -53,15 +53,20 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
 - **Código Limpio**: Sin console.log en producción para mejor rendimiento
 
 ### Gestión de Vehículos
-- **Lista de Vehículos**: Visualización de todos los buses registrados con paginación
+- **Lista de Vehículos**: Visualización filtrada por compañía del usuario
+  - **Filtrado Automático**: Solo muestra vehículos de las compañías del usuario autenticado
   - Tabla con información GPS en tiempo real
   - Columnas: Placa, Estado, Ubicación (lat/lng), Velocidad (km/h), Última Actualización GPS, Ruta Activa
   - Tiempo relativo de última actualización (hace X seg/min/hora/día)
+- **Seguridad Multi-tenant**: Implementación de Row Level Security (RLS)
+  - Los vehículos se filtran por las compañías asociadas al usuario
+  - Carga inicial de compañías + filtrado de vehículos
+  - Mismo sistema de filtrado que LiveFleet para consistencia
 - **Crear Vehículo**: Modal con formulario validado
   - Formato automático de placa: ABC-123 (3 letras, guión, 3 números)
   - Validación de capacidad y modelo
   - Selección de estado del vehículo
-- **Asignación de Rutas a Vehículos** (NUEVO):
+- **Asignación de Rutas a Vehículos**:
   - **Modal de Selección de Ruta**: Interfaz en dos pasos
     1. Selección de ruta (dropdown con código + nombre)
     2. Selección de variante (dropdown con ID + distancia en km)
@@ -121,6 +126,36 @@ Panel de administración web para la plataforma Rout2Me, un sistema de gestión 
   - **Validación de puntos**: Filtrado de puntos undefined o null antes de renderizar
   - **Espera de carga del mapa**: No renderiza elementos hasta que el mapa esté completamente cargado
   - **Prevención de errores**: Manejo robusto de estado asíncrono para evitar crashes
+- **Gestión de Paradas** (NUEVO):
+  - **Editor de Paradas Interactivo**: Modal con mapa completo para asignar paradas a variantes
+  - **Mapa con Map Matching**: Integración con Stadia Maps API para ajustar rutas a calles reales
+    - Endpoint `trace_route` con costing mode `bus`
+    - Renderizado optimizado de rutas ajustadas a la red vial
+    - Fallback automático a coordenadas originales si falla el map matching
+  - **Sistema de Marcadores Visuales**:
+    - Paradas asignadas: Círculos verdes numerados (1, 2, 3...) indicando el orden
+    - Paradas disponibles: Íconos grises de pin para paradas no asignadas
+    - Nueva parada: Marcador naranja al crear una parada nueva en el mapa
+  - **Sidebar de Dos Paneles**:
+    - Panel superior: Lista ordenable de paradas asignadas con drag & drop
+    - Panel inferior: Lista de paradas disponibles con búsqueda en tiempo real
+  - **Operaciones CRUD**:
+    - Asignar paradas existentes a la variante
+    - Reordenar paradas asignadas arrastrando
+    - Remover paradas de la variante
+    - Crear nuevas paradas haciendo click en el mapa
+  - **API Dedicada** (`stops_api.ts`):
+    - `getStops()`: Obtener todas las paradas del sistema
+    - `getStopsForVariant()`: Obtener paradas asignadas a una variante con orden
+    - `assignStopsToVariant()`: Asignar/actualizar paradas de una variante
+    - `createStop()`: Crear nueva parada con nombre y ubicación GPS
+    - Manejo automático de campos `location_json` en base de datos
+  - **Validaciones**:
+    - Verificación de coordenadas GPS válidas antes de renderizar
+    - Validación de nombre al crear paradas
+    - Confirmación antes de guardar cambios
+  - **Integración con Vista Agregada**: Uso de `v_route_variants_agg` para optimizar consultas
+  - **Botón de Acceso**: Disponible en cada variante de ruta con ícono de pin
 - **Detalles de Ruta**: Panel lateral mostrando
   - ID, código, nombre
   - Estado (activa/inactiva)
@@ -748,7 +783,37 @@ Sistema de notificaciones implementado con:
 
 Este proyecto es parte del curso de Soft III, Semestre VII, Universidad.
 
-## � Historial de Cambios
+## 📋 Historial de Cambios
+
+### 3 de Noviembre, 2025 - Implementación de Filtrado Multi-tenant en Vehículos
+
+#### ✨ Nuevas Características
+- **Filtrado por Compañía en Vehículos** (`/vehicles`)
+  - Implementación del mismo sistema de filtrado que LiveFleet
+  - Solo muestra vehículos de las compañías del usuario autenticado
+  - Carga inicial optimizada: primero compañías, luego vehículos filtrados
+  
+#### 🔧 Mejoras Técnicas
+- **Función `initializeData()`**: Carga secuencial de compañías y vehículos
+- **Función `loadVehicles()`**: Actualizada para recibir compañías como parámetro
+  - Filtrado por `company_id` usando Set para mejor performance
+  - Logging de estadísticas de filtrado (X de Y vehículos)
+- **Actualización Post-Operaciones**: Mantiene el filtro después de:
+  - Crear vehículo
+  - Eliminar vehículo
+  - Asignar ruta
+  - Remover ruta
+
+#### 🛡️ Seguridad Multi-tenant
+- **Row Level Security (RLS)**: Implementación consistente
+  - Vehículos filtrados por organización del usuario
+  - Mismo comportamiento en HomePage, LiveFleet y Vehicles
+  - Prevención de acceso a datos de otras compañías
+  
+#### 🎨 Mejoras de UX
+- **Transparencia**: Console logs informativos sobre filtrado
+- **Consistencia**: Mismo sistema en todas las vistas de vehículos
+- **Performance**: Uso de Set para búsquedas O(1) en lugar de arrays
 
 ### 30 de Octubre, 2025 - Sistema Completo de Gestión de Usuarios
 

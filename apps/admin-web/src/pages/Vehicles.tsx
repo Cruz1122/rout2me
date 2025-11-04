@@ -101,18 +101,54 @@ export default function VehiclesPage() {
 
   // Cargar vehículos al montar el componente
   useEffect(() => {
-    loadVehicles();
+    // Primero cargar las compañías, luego los vehículos
+    initializeData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadVehicles() {
+  async function initializeData() {
+    try {
+      // Primero cargar las compañías del usuario
+      const myCompanies = await loadCompanies();
+      // Luego cargar y filtrar los vehículos
+      await loadVehicles(myCompanies);
+    } catch (error) {
+      console.error('Error initializing data:', error);
+    }
+  }
+
+  async function loadVehicles(myCompanies?: Company[]) {
     try {
       setLoadingVehicles(true);
-      const data = await getVehicles();
-      setVehicles(data);
+      const allVehicles = await getVehicles();
+
+      // Usar las compañías pasadas como parámetro o las ya cargadas
+      const companiesToFilter = myCompanies || companies;
+
+      let filteredVehicles: Vehicle[];
+
+      if (companiesToFilter.length === 0) {
+        console.warn('No companies loaded yet, showing all vehicles');
+        filteredVehicles = allVehicles;
+      } else {
+        // Crear set de company_ids de las compañías a las que tengo acceso
+        const myCompanyIds = new Set(companiesToFilter.map((c) => c.id));
+
+        // Filtrar solo vehículos que pertenecen a mis compañías
+        filteredVehicles = allVehicles.filter(
+          (v) => v.company_id && myCompanyIds.has(v.company_id),
+        );
+
+        console.log(
+          `Filtered vehicles: ${filteredVehicles.length} of ${allVehicles.length} belong to my companies`,
+        );
+      }
+
+      setVehicles(filteredVehicles);
+
       // Seleccionar el primer vehículo por defecto
-      if (data.length > 0 && !selectedVehicle) {
-        setSelectedVehicle(data[0]);
+      if (filteredVehicles.length > 0 && !selectedVehicle) {
+        setSelectedVehicle(filteredVehicles[0]);
       }
     } catch (error) {
       console.error('Error loading vehicles:', error);
@@ -122,7 +158,7 @@ export default function VehiclesPage() {
     }
   }
 
-  async function loadCompanies() {
+  async function loadCompanies(): Promise<Company[]> {
     try {
       setLoadingCompanies(true);
       const data = await getCompanies();
@@ -131,9 +167,11 @@ export default function VehiclesPage() {
       if (data.length > 0 && !company) {
         setCompany(data[0].id);
       }
+      return data;
     } catch (error) {
       console.error('Error loading companies:', error);
       showToast('error', 'Error al cargar las compañías');
+      return [];
     } finally {
       setLoadingCompanies(false);
     }
@@ -248,9 +286,16 @@ export default function VehiclesPage() {
       closeRouteModal();
 
       // Recargar vehículos y actualizar el seleccionado
-      const updatedVehicles = await getVehicles();
-      setVehicles(updatedVehicles);
-      const updatedVehicle = updatedVehicles.find(
+      const allVehicles = await getVehicles();
+
+      // Filtrar por compañías
+      const myCompanyIds = new Set(companies.map((c) => c.id));
+      const filteredVehicles = allVehicles.filter(
+        (v) => v.company_id && myCompanyIds.has(v.company_id),
+      );
+
+      setVehicles(filteredVehicles);
+      const updatedVehicle = filteredVehicles.find(
         (v) => v.id === selectedVehicle.id,
       );
       if (updatedVehicle) {
@@ -273,9 +318,16 @@ export default function VehiclesPage() {
       showToast('success', 'Ruta removida correctamente');
 
       // Recargar vehículos y actualizar el seleccionado
-      const updatedVehicles = await getVehicles();
-      setVehicles(updatedVehicles);
-      const updatedVehicle = updatedVehicles.find(
+      const allVehicles = await getVehicles();
+
+      // Filtrar por compañías
+      const myCompanyIds = new Set(companies.map((c) => c.id));
+      const filteredVehicles = allVehicles.filter(
+        (v) => v.company_id && myCompanyIds.has(v.company_id),
+      );
+
+      setVehicles(filteredVehicles);
+      const updatedVehicle = filteredVehicles.find(
         (v) => v.id === selectedVehicle.id,
       );
       if (updatedVehicle) {
@@ -379,8 +431,8 @@ export default function VehiclesPage() {
       .then((res) => {
         console.log('created', res);
         showToast('success', 'Vehículo creado correctamente.');
-        // Recargar la lista de vehículos
-        loadVehicles();
+        // Recargar la lista de vehículos con filtro
+        loadVehicles(companies);
         closeModal();
       })
       .catch((err) => {
@@ -459,7 +511,7 @@ export default function VehiclesPage() {
           setSelectedVehicle(null);
         }
         closeDeleteModal();
-        loadVehicles();
+        loadVehicles(companies);
       })
       .catch((err) => {
         console.error('delete failed', err);

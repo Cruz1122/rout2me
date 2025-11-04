@@ -14,6 +14,7 @@ import {
   RiGroupLine,
   RiLogoutBoxRLine,
   RiUserLine,
+  RiLockPasswordLine,
 } from 'react-icons/ri';
 import R2MModal from './R2MModal';
 import R2MButton from './R2MButton';
@@ -137,6 +138,21 @@ export default function R2MSidebar() {
 
           {/* Botón Cerrar Sesión */}
           <div className="r2m-sidebar__footer">
+            <Link to="/change-password">
+              <button
+                className="r2m-sidebar__logout"
+                title={isHovered ? undefined : 'Cambiar contraseña'}
+              >
+                <div className="r2m-sidebar__nav-icon">
+                  <RiLockPasswordLine size={24} />
+                </div>
+                {isHovered && (
+                  <span className="r2m-sidebar__nav-label">
+                    Cambiar Contraseña
+                  </span>
+                )}
+              </button>
+            </Link>
             <button
               onClick={() => setShowLogoutModal(true)}
               className="r2m-sidebar__logout"

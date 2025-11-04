@@ -47,6 +47,9 @@ importers:
       '@rout2me/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@supabase/supabase-js':
+        specifier: ^2.78.0
+        version: 2.78.0
       maplibre-gl:
         specifier: ^5.9.0
         version: 5.9.0

@@ -15,8 +15,17 @@ import {
   type RouteVariant,
   type Coordinate,
 } from '../api/route_variants_api';
+import {
+  getStops,
+  getStopsForVariant,
+  assignStopsToVariant,
+  createStop,
+  type Stop,
+  type StopWithOrder,
+} from '../api/stops_api';
 import { colorClasses } from '../styles/colors';
 import RouteMapEditor from '../components/RouteMapEditor';
+import StopEditor from '../components/StopEditor';
 import R2MButton from '../components/R2MButton';
 import R2MModal from '../components/R2MModal';
 import R2MTable, { type R2MTableColumn } from '../components/R2MTable';
@@ -37,6 +46,7 @@ export default function RoutesPage() {
   const [isVariantEditOpen, setIsVariantEditOpen] = useState(false);
   const [isVariantDeleteOpen, setIsVariantDeleteOpen] = useState(false);
   const [isVariantsModalOpen, setIsVariantsModalOpen] = useState(false);
+  const [isStopEditorOpen, setIsStopEditorOpen] = useState(false);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [active, setActive] = useState(true);
@@ -55,6 +65,8 @@ export default function RoutesPage() {
   const [selectedVariant, setSelectedVariant] = useState<RouteVariant | null>(
     null,
   );
+  const [allStops, setAllStops] = useState<Stop[]>([]);
+  const [variantStops, setVariantStops] = useState<StopWithOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<{
     type: 'success' | 'error';
@@ -112,6 +124,59 @@ export default function RoutesPage() {
       showToast('error', 'Error al cargar las variantes');
     } finally {
       setLoadingVariants(false);
+    }
+  }
+
+  async function openStopEditor(variant: RouteVariant) {
+    console.log('🔍 Opening stop editor for variant:', variant);
+    setSelectedVariant(variant);
+    setLoadingVariants(true);
+    try {
+      const [stops, varStops] = await Promise.all([
+        getStops(),
+        getStopsForVariant(variant.id),
+      ]);
+      console.log('📍 All stops loaded:', stops);
+      console.log('✅ Variant stops loaded:', varStops);
+      console.log('🛣️ Route path:', variant.path);
+      setAllStops(stops);
+      setVariantStops(varStops);
+      setIsStopEditorOpen(true);
+    } catch (error) {
+      console.error('❌ Error loading stops:', error);
+      showToast('error', 'Error al cargar las paradas');
+    } finally {
+      setLoadingVariants(false);
+    }
+  }
+
+  async function handleSaveStops(stopIds: string[]) {
+    if (!selectedVariant) return;
+    try {
+      await assignStopsToVariant(selectedVariant.id, stopIds);
+      showToast('success', 'Paradas actualizadas correctamente');
+      // Reload variant stops for next edit
+      const updated = await getStopsForVariant(selectedVariant.id);
+      setVariantStops(updated);
+    } catch (error) {
+      console.error('Error saving stops:', error);
+      showToast('error', 'Error al guardar las paradas');
+      throw error; // StopEditor will handle
+    }
+  }
+
+  async function handleCreateStop(data: {
+    name: string;
+    location: { lat: number; lng: number };
+  }) {
+    try {
+      const newStop = await createStop(data);
+      setAllStops([...allStops, newStop]);
+      return newStop;
+    } catch (error) {
+      console.error('Error creating stop:', error);
+      showToast('error', 'Error al crear la parada');
+      throw error;
     }
   }
 
@@ -958,6 +1023,12 @@ export default function RoutesPage() {
                     </div>
                     <div className="flex gap-2">
                       <R2MActionIconButton
+                        icon="ri-map-pin-line"
+                        label="Editar paradas"
+                        variant="primary"
+                        onClick={() => openStopEditor(variant)}
+                      />
+                      <R2MActionIconButton
                         icon="ri-edit-line"
                         label="Editar variante"
                         variant="info"
@@ -1111,6 +1182,22 @@ export default function RoutesPage() {
           puede deshacer.
         </p>
       </R2MModal>
+
+      {/* Modal: Editor de Paradas */}
+      {isStopEditorOpen && selectedVariant && (
+        <StopEditor
+          variantId={selectedVariant.id}
+          routePath={selectedVariant.path}
+          allStops={allStops}
+          assignedStops={variantStops}
+          onSave={handleSaveStops}
+          onCreateStop={handleCreateStop}
+          onClose={() => {
+            setIsStopEditorOpen(false);
+            setSelectedVariant(null);
+          }}
+        />
+      )}
     </>
   );
 }

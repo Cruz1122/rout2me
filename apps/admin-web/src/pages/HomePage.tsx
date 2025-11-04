@@ -107,12 +107,29 @@ export default function HomePage() {
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
   const [activeRoutesCount, setActiveRoutesCount] = useState(0); // Rutas con buses activos y GPS
 
+  // Función para obtener el estado del vehículo en español
+  const getVehicleDisplayStatus = useCallback((status: string): string => {
+    switch (status.toUpperCase()) {
+      case 'AVAILABLE':
+        return 'Disponible';
+      case 'IN_SERVICE':
+        return 'En Servicio';
+      case 'MAINTENANCE':
+        return 'Mantenimiento';
+      case 'OUT_OF_SERVICE':
+        return 'Fuera de Servicio';
+      default:
+        return status;
+    }
+  }, []);
+
   // Referencias para el mapa
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<MlMap | null>(null);
   const vehicleMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
   const routeLayersIds = useRef<Set<string>>(new Set());
   const vehiclesRef = useRef<Vehicle[]>([]); // Ref para mantener vehicles actualizado
+  const companiesRef = useRef<Company[]>([]); // Ref para mantener companies actualizado
   const [mapBearing, setMapBearing] = useState(0);
   const [isDraggingCompass, setIsDraggingCompass] = useState(false);
   const [dragStart, setDragStart] = useState<{
@@ -126,13 +143,18 @@ export default function HomePage() {
     vehiclesRef.current = vehicles;
   }, [vehicles]);
 
+  // Mantener la ref de companies sincronizada
+  useEffect(() => {
+    companiesRef.current = companies;
+  }, [companies]);
+
   // Cargar datos iniciales
   useEffect(() => {
     const initializeData = async () => {
-      const myVehicles = await loadVehicles(); // Cargar primero los vehículos de mi org
-      await loadBusPositions(myVehicles); // Luego filtrar posiciones por mis vehículos
+      await loadCompanies(); // Cargar primero las compañías
       await loadRouteVariants();
-      await loadCompanies();
+      const myVehicles = await loadVehicles(); // Luego los vehículos de mi org
+      await loadBusPositions(myVehicles); // Filtrar posiciones por vehículos de mis compañías
     };
 
     initializeData();
@@ -162,6 +184,17 @@ export default function HomePage() {
     try {
       const data = await getBusPositions();
 
+      console.log(
+        '🔍 [loadBusPositions] Raw data from API:',
+        data.length,
+        'positions',
+      );
+      console.log('🔍 [loadBusPositions] First position raw:', data[0]);
+      console.log(
+        '🔍 [loadBusPositions] First position location_json:',
+        data[0]?.location_json,
+      );
+
       // Usar los vehículos pasados como parámetro o los de la ref actualizada
       const vehiclesToFilter = myVehicles || vehiclesRef.current;
 
@@ -170,14 +203,39 @@ export default function HomePage() {
         return;
       }
 
-      const myBusIds = new Set(vehiclesToFilter.map((v) => v.id));
+      // Usar la ref actualizada de companies
+      const currentCompanies = companiesRef.current;
+
+      // Crear set de company_ids de las compañías a las que tengo acceso
+      const myCompanyIds = new Set(currentCompanies.map((c) => c.id));
+
+      // Filtrar solo vehículos que pertenecen a mis compañías
+      const vehiclesInMyCompanies = vehiclesToFilter.filter(
+        (v) => v.company_id && myCompanyIds.has(v.company_id),
+      );
+      const myBusIds = new Set(vehiclesInMyCompanies.map((v) => v.id));
+
+      // Filtrar por vehículos de mis compañías
       const filteredPositions = data.filter((pos) => myBusIds.has(pos.bus_id));
+
+      console.log(
+        '🔍 [loadBusPositions] Filtered positions:',
+        filteredPositions.length,
+      );
+      console.log(
+        '🔍 [loadBusPositions] First filtered position:',
+        filteredPositions[0],
+      );
+      console.log(
+        '🔍 [loadBusPositions] First filtered location_json:',
+        filteredPositions[0]?.location_json,
+      );
 
       setBusPositions(filteredPositions);
     } catch (error) {
       console.error('Error loading bus positions:', error);
     }
-  }, []); // Sin dependencias porque usa vehiclesRef
+  }, []); // Sin dependencias porque usa refs
 
   const loadRouteVariants = async () => {
     try {
@@ -463,21 +521,61 @@ export default function HomePage() {
 
   // Actualizar marcadores de vehículos
   useEffect(() => {
-    if (!mapInstance.current) return;
+    console.log('🎨 [HomePage] Vehicle markers effect triggered');
+    console.log('🎨 [HomePage] Map ready:', !!mapInstance.current);
+    console.log('🎨 [HomePage] Vehicles count:', vehicles.length);
+    console.log('🎨 [HomePage] Bus positions count:', busPositions.length);
 
+    // DEBUG: Mostrar los IDs para comparar
+    if (vehicles.length > 0 && busPositions.length > 0) {
+      console.log(
+        '🔍 [HomePage] Vehicle IDs:',
+        vehicles.map((v) => v.id),
+      );
+      console.log(
+        '🔍 [HomePage] Bus Position IDs:',
+        busPositions.map((p) => p.bus_id),
+      );
+      console.log('🔍 [HomePage] First vehicle details:', vehicles[0]);
+      console.log('🔍 [HomePage] First position details:', busPositions[0]);
+      console.log(
+        '🔍 [HomePage] First position location_json:',
+        busPositions[0]?.location_json,
+      );
+      console.log(
+        '🔍 [HomePage] Type of location_json:',
+        typeof busPositions[0]?.location_json,
+      );
+    }
+
+    if (!mapInstance.current) {
+      console.log('❌ [HomePage] Map not ready yet, skipping markers');
+      return;
+    }
+
+    console.log('🧹 [HomePage] Clearing existing markers...');
     // Limpiar marcadores existentes
     vehicleMarkers.current.forEach((marker) => marker.remove());
     vehicleMarkers.current.clear();
 
-    // Agregar marcadores para cada vehículo con posición
-    vehicles.forEach((vehicle) => {
-      const position = busPositions.find((pos) => pos.bus_id === vehicle.id);
+    let markersAdded = 0;
 
-      if (!position || !position.location_json) return;
+    // IMPORTANTE: Iterar sobre busPositions directamente, no sobre vehicles
+    // porque busPositions tiene la información de location_json
+    busPositions.forEach((position) => {
+      if (!position.location_json) {
+        console.log(
+          `⚠️ [HomePage] Position for bus ${position.plate} (${position.bus_id}) - No location_json`,
+        );
+        return;
+      }
 
       const { lat, lng } = position.location_json;
+      console.log(
+        `✅ [HomePage] Adding marker for ${position.plate} at [${lat}, ${lng}]`,
+      );
 
-      // Obtener color según la compañía (usar company_id de position, no de vehicle)
+      // Obtener color según la compañía
       const color = getCompanyColor(
         position.company_id,
         companyMap,
@@ -511,11 +609,48 @@ export default function HomePage() {
         </div>
       `;
 
-      // Agregar click handler para seleccionar el bus
+      // Agregar click handler para seleccionar el bus y centrar en la ruta
       element.addEventListener('click', () => {
-        setSelectedBusId(
-          selectedBusId === position.bus_id ? null : position.bus_id,
-        );
+        const newSelectedId =
+          selectedBusId === position.bus_id ? null : position.bus_id;
+        setSelectedBusId(newSelectedId);
+
+        // Si se seleccionó un bus (no se deseleccionó)
+        if (newSelectedId) {
+          // Si el bus tiene ruta activa, centrar en toda la ruta
+          if (position.active_route_variant_id) {
+            const route = routeVariants.find(
+              (r) => r.variant_id === position.active_route_variant_id,
+            );
+            if (route && mapInstance.current) {
+              // Calcular bounds de toda la ruta
+              const coordinates = route.path.map(
+                (point) => [point.lng, point.lat] as [number, number],
+              );
+
+              if (coordinates.length > 0) {
+                const bounds = coordinates.reduce(
+                  (bounds, coord) => bounds.extend(coord),
+                  new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+                );
+
+                mapInstance.current.fitBounds(bounds, {
+                  padding: { top: 100, bottom: 100, left: 100, right: 100 },
+                  duration: 1500,
+                });
+              }
+            }
+          } else {
+            // Si no tiene ruta, solo centrar en el bus
+            if (mapInstance.current) {
+              mapInstance.current.flyTo({
+                center: [lng, lat],
+                zoom: 16,
+                duration: 1500,
+              });
+            }
+          }
+        }
       });
 
       const marker = new maplibregl.Marker({
@@ -534,7 +669,7 @@ export default function HomePage() {
       // Agregar popup con información del vehículo
       const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
           <div style="padding: 8px;">
-            <h3 style="margin: 0 0 4px 0; font-weight: bold;">${vehicle.plate}</h3>
+            <h3 style="margin: 0 0 4px 0; font-weight: bold;">${position.plate}</h3>
             <p style="margin: 0; font-size: 12px; color: #666;">Compañía: ${companyName}</p>
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">Ruta: ${position.active_route_variant_id || 'Sin ruta'}</p>
             ${position.speed_kph !== undefined ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">Velocidad: ${position.speed_kph.toFixed(1)} km/h</p>` : ''}
@@ -543,8 +678,16 @@ export default function HomePage() {
 
       marker.setPopup(popup);
 
-      vehicleMarkers.current.set(vehicle.id, marker);
+      vehicleMarkers.current.set(position.bus_id, marker);
+      markersAdded++;
     });
+
+    console.log(
+      `🎉 [HomePage] Successfully added ${markersAdded} markers to map`,
+    );
+    console.log(
+      `📊 [HomePage] Total markers in map: ${vehicleMarkers.current.size}`,
+    );
   }, [
     vehicles,
     busPositions,
@@ -552,6 +695,7 @@ export default function HomePage() {
     companyMap,
     selectedBusId,
     companies,
+    routeVariants,
   ]);
 
   // Manejo de controles del mapa
@@ -694,105 +838,250 @@ export default function HomePage() {
         >
           Mapa en Tiempo Real
         </h2>
-        <div className="py-3">
-          <div
-            className="rounded-xl relative shadow-lg"
-            style={{
-              backgroundColor: '#e5e7eb',
-              height: '500px',
-              width: '100%',
-            }}
-          >
-            {/* Controles del Mapa */}
-            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-              {/* Zoom Controls */}
-              <div className="flex flex-col gap-0.5">
-                <button
-                  onClick={handleZoomIn}
-                  className={`flex size-10 items-center justify-center rounded-t-xl bg-white shadow-md hover:${colorClasses.bgSurface} transition-colors`}
-                  title="Acercar"
-                >
-                  <RiAddLine size={20} className={colorClasses.textPrimary} />
-                </button>
-                <button
-                  onClick={handleZoomOut}
-                  className={`flex size-10 items-center justify-center rounded-b-xl bg-white shadow-md hover:${colorClasses.bgSurface} transition-colors`}
-                  title="Alejar"
-                >
-                  <RiSubtractLine
-                    size={20}
-                    className={colorClasses.textPrimary}
-                  />
-                </button>
+        <div className="py-3 flex gap-4">
+          {/* Panel de Información del Vehículo Seleccionado */}
+          {selectedBusId &&
+            (() => {
+              const selectedVehicle = vehicles.find(
+                (v) => v.id === selectedBusId,
+              );
+              const selectedPosition = busPositions.find(
+                (pos) => pos.bus_id === selectedBusId,
+              );
+              const selectedCompany = selectedPosition
+                ? companies.find((c) => c.id === selectedPosition.company_id)
+                : null;
+              const selectedRoute = selectedPosition?.active_route_variant_id
+                ? routeVariants.find(
+                    (r) =>
+                      r.variant_id === selectedPosition.active_route_variant_id,
+                  )
+                : null;
+
+              if (!selectedVehicle) return null;
+
+              return (
+                <div className="w-80 flex-shrink-0">
+                  <div className="bg-white rounded-xl border shadow-sm p-4 sticky top-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3
+                        className={`${colorClasses.textPrimary} text-lg font-bold`}
+                      >
+                        Información del Bus
+                      </h3>
+                      <button
+                        onClick={() => setSelectedBusId(null)}
+                        className={`p-1 rounded-lg hover:${colorClasses.bgSurface} transition-colors`}
+                        title="Cerrar"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          fill="currentColor"
+                          viewBox="0 0 256 256"
+                        >
+                          <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <p
+                          className={`${colorClasses.textSecondary} text-xs font-medium uppercase mb-1`}
+                        >
+                          Placa
+                        </p>
+                        <p
+                          className={`${colorClasses.textPrimary} text-xl font-bold`}
+                        >
+                          {selectedVehicle.plate}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p
+                          className={`${colorClasses.textSecondary} text-xs font-medium uppercase mb-1`}
+                        >
+                          Compañía
+                        </p>
+                        <p
+                          className={`${colorClasses.textPrimary} text-sm font-medium`}
+                        >
+                          {selectedCompany
+                            ? selectedCompany.short_name || selectedCompany.name
+                            : 'Sin compañía'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p
+                          className={`${colorClasses.textSecondary} text-xs font-medium uppercase mb-1`}
+                        >
+                          Estado
+                        </p>
+                        <p
+                          className={`${colorClasses.textPrimary} text-sm font-medium`}
+                        >
+                          {getVehicleDisplayStatus(selectedVehicle.status)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p
+                          className={`${colorClasses.textSecondary} text-xs font-medium uppercase mb-1`}
+                        >
+                          Capacidad
+                        </p>
+                        <p
+                          className={`${colorClasses.textPrimary} text-sm font-medium`}
+                        >
+                          {selectedVehicle.capacity} pasajeros
+                        </p>
+                      </div>
+
+                      {selectedPosition && (
+                        <>
+                          <div>
+                            <p
+                              className={`${colorClasses.textSecondary} text-xs font-medium uppercase mb-1`}
+                            >
+                              Velocidad
+                            </p>
+                            <p
+                              className={`${colorClasses.textPrimary} text-sm font-medium`}
+                            >
+                              {selectedPosition.speed_kph !== undefined
+                                ? `${selectedPosition.speed_kph.toFixed(1)} km/h`
+                                : 'N/A'}
+                            </p>
+                          </div>
+
+                          {selectedRoute && (
+                            <div>
+                              <p
+                                className={`${colorClasses.textSecondary} text-xs font-medium uppercase mb-1`}
+                              >
+                                Ruta Actual
+                              </p>
+                              <p
+                                className={`${colorClasses.textPrimary} text-sm font-medium`}
+                              >
+                                {selectedRoute.route_code} -{' '}
+                                {selectedRoute.route_name}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+          {/* Contenedor del Mapa */}
+          <div className="flex-1">
+            <div
+              className="rounded-xl relative shadow-lg"
+              style={{
+                backgroundColor: '#e5e7eb',
+                height: '500px',
+                width: '100%',
+              }}
+            >
+              {/* Controles del Mapa */}
+              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                {/* Zoom Controls */}
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    onClick={handleZoomIn}
+                    className={`flex size-10 items-center justify-center rounded-t-xl bg-white shadow-md hover:${colorClasses.bgSurface} transition-colors`}
+                    title="Acercar"
+                  >
+                    <RiAddLine size={20} className={colorClasses.textPrimary} />
+                  </button>
+                  <button
+                    onClick={handleZoomOut}
+                    className={`flex size-10 items-center justify-center rounded-b-xl bg-white shadow-md hover:${colorClasses.bgSurface} transition-colors`}
+                    title="Alejar"
+                  >
+                    <RiSubtractLine
+                      size={20}
+                      className={colorClasses.textPrimary}
+                    />
+                  </button>
+                </div>
+
+                {/* Compass Control */}
+                <div className="relative">
+                  <button
+                    onMouseDown={handleCompassMouseDown}
+                    onDoubleClick={handleResetNorth}
+                    className={`flex size-10 items-center justify-center rounded-xl bg-white shadow-md hover:${colorClasses.bgSurface} transition-colors cursor-grab active:cursor-grabbing`}
+                    style={{
+                      transform: `rotate(${-mapBearing}deg)`,
+                    }}
+                    title="Rotar mapa (doble clic para restablecer norte)"
+                  >
+                    <RiCompassLine
+                      size={20}
+                      className={colorClasses.textPrimary}
+                    />
+                  </button>
+                </div>
               </div>
 
-              {/* Compass Control */}
-              <div className="relative">
-                <button
-                  onMouseDown={handleCompassMouseDown}
-                  onDoubleClick={handleResetNorth}
-                  className={`flex size-10 items-center justify-center rounded-xl bg-white shadow-md hover:${colorClasses.bgSurface} transition-colors cursor-grab active:cursor-grabbing`}
-                  style={{
-                    transform: `rotate(${-mapBearing}deg)`,
-                  }}
-                  title="Rotar mapa (doble clic para restablecer norte)"
-                >
-                  <RiCompassLine
-                    size={20}
-                    className={colorClasses.textPrimary}
-                  />
-                </button>
-              </div>
+              {/* Mapa */}
+              <div
+                ref={mapRef}
+                style={{ width: '100%', height: '100%' }}
+                className="rounded-xl"
+              />
+
+              {/* Indicador de carga */}
+              {!mapReady && (
+                <div className="absolute inset-0 rounded-xl overflow-hidden">
+                  <GlobalLoader />
+                </div>
+              )}
             </div>
 
-            {/* Mapa */}
-            <div
-              ref={mapRef}
-              style={{ width: '100%', height: '100%' }}
-              className="rounded-xl"
-            />
-
-            {/* Indicador de carga */}
-            {!mapReady && (
-              <div className="absolute inset-0 rounded-xl overflow-hidden">
-                <GlobalLoader />
+            {/* Leyenda de Colores por Organización */}
+            {companies.length > 0 && (
+              <div
+                className={`mt-4 p-4 bg-white rounded-xl border ${colorClasses.borderSurface} shadow-sm`}
+              >
+                <p
+                  className={`${colorClasses.textPrimary} text-sm font-semibold mb-3`}
+                >
+                  Organizaciones
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {companies.map((company) => {
+                    const color = companyColorMap.get(company.id) || '#64748b';
+                    return (
+                      <div
+                        key={company.id}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div
+                          className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
+                          style={{ backgroundColor: color }}
+                        ></div>
+                        <span
+                          className={`text-xs font-medium ${colorClasses.textPrimary}`}
+                        >
+                          {company.short_name || company.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
-
-          {/* Leyenda de Colores por Organización */}
-          {companies.length > 0 && (
-            <div
-              className={`mt-4 p-4 bg-white rounded-xl border ${colorClasses.borderSurface} shadow-sm`}
-            >
-              <p
-                className={`${colorClasses.textPrimary} text-sm font-semibold mb-3`}
-              >
-                Organizaciones
-              </p>
-              <div className="flex flex-wrap gap-3">
-                {companies.map((company) => {
-                  const color = companyColorMap.get(company.id) || '#64748b';
-                  return (
-                    <div
-                      key={company.id}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-                    >
-                      <div
-                        className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                        style={{ backgroundColor: color }}
-                      ></div>
-                      <span
-                        className={`text-xs font-medium ${colorClasses.textPrimary}`}
-                      >
-                        {company.short_name || company.name}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </>
