@@ -153,6 +153,14 @@ if (RUN_INTEGRATION) {
       if (!arr || arr.length === 0) return { data: null, error: { message: 'No rows' } };
       return { data: arr[0], error: r.error };
     }
+
+    // maybeSingle() - like supabase-js maybeSingle(): return null data instead of error when no rows
+    async maybeSingle() {
+      const r = await this.execute();
+      const arr = Array.isArray(r.data) ? r.data : (r.data ? [r.data] : []);
+      if (!arr || arr.length === 0) return { data: null, error: null };
+      return { data: arr[0], error: r.error };
+    }
   }
 
   // add `is` filter helper on the prototype-level by providing method here
@@ -166,8 +174,27 @@ if (RUN_INTEGRATION) {
     auth: {
       admin: {
         async createUser({ email, password, user_metadata }: any) {
+          // simulate unique email constraint
+          const users = ensureTable('users');
+          const exists = users.find((u:any) => String(u.email).toLowerCase() === String(email).toLowerCase());
+          if (exists) {
+            return { data: null, error: { message: 'duplicate key', code: '23505' } };
+          }
+
+          // basic password policy simulation (optional): enforce minimal checks in mock
+          // If ENFORCE_PASSWORD_POLICY is set, return error for weak passwords
+          const enforce = process.env.ENFORCE_PASSWORD_POLICY === '1' || process.env.ENFORCE_PASSWORD_POLICY === 'true';
+          if (enforce) {
+            const tooShort = typeof password === 'string' && password.length < 8;
+            const noUpper = typeof password === 'string' && !/[A-Z]/.test(password);
+            const noSpecial = typeof password === 'string' && !/[^A-Za-z0-9]/.test(password);
+            if (tooShort || noUpper || noSpecial) {
+              return { data: null, error: { message: 'password policy violation' } };
+            }
+          }
+
           const id = uniq('user').replace(/[^a-zA-Z0-9-_]/g, '');
-          ensureTable('users').push({ id, email, password, user_metadata });
+          users.push({ id, email, password, user_metadata });
           ensureTable('profile').push({ id, email, name: user_metadata?.name || null });
           ensureTable('user_roles').push({ id: uniq('ur'), user_id: id, role: 'USER' });
           authUsers[email] = { id, password };
