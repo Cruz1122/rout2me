@@ -75,6 +75,7 @@ dist
 .cache/
 public
 !apps/passenger-app/public/
+!apps/admin-web/public/
 
 # Storybook build outputs
 .out
