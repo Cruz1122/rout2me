@@ -27,8 +27,8 @@ export interface ApiRouteVariantAggregated {
   path: { lat: number; lng: number }[];
   length_m_json: number;
   stops: {
-    id: string;
-    name: string;
+    stop_id: string;
+    stop_name: string;
     location: { lat: number; lng: number };
   }[];
 }
@@ -351,8 +351,8 @@ export async function fetchRouteVariants(
       ]);
 
       const stops: Stop[] = variant.stops.map((stop) => ({
-        id: stop.id,
-        name: stop.name,
+        id: stop.stop_id,
+        name: stop.stop_name,
         created_at: '',
         location: [stop.location.lng, stop.location.lat],
       }));
@@ -389,8 +389,8 @@ function transformAggregatedVariantsToRoutes(
 
     // Convertir paradas al formato esperado
     const stops: Stop[] = variant.stops.map((stop) => ({
-      id: stop.id,
-      name: stop.name,
+      id: stop.stop_id,
+      name: stop.stop_name,
       created_at: '', // No viene en el endpoint agregado
       location: [stop.location.lng, stop.location.lat],
     }));
