@@ -359,20 +359,25 @@ export default function UsersPage() {
       key: 'role',
       header: 'Rol',
       sortable: true,
-      width: '200px',
+      width: '150px',
+      render: (user: User) => {
+        const roleColors = getRoleColors(user.role, user.is_superadmin);
+        return (
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-lg text-sm ${roleColors}`}
+          >
+            {user.is_superadmin ? 'SuperAdmin' : getRoleText(user.role)}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'organization',
+      header: 'Organización',
+      sortable: true,
+      width: '180px',
       render: (user: User) => (
-        <span
-          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${colorClasses.bgSurface} ${colorClasses.textPrimary}`}
-        >
-          {user.is_superadmin ? (
-            'SuperAdmin'
-          ) : (
-            <>
-              {getRoleText(user.role)}
-              {user.company_name && ` de ${user.company_name}`}
-            </>
-          )}
-        </span>
+        <span className="text-[#97A3B1]">{user.company_name || 'N/A'}</span>
       ),
     },
     {
@@ -433,6 +438,30 @@ export default function UsersPage() {
     if (roleLower === 'passenger') return 'Pasajero';
     if (roleLower === 'supervisor') return 'Supervisor';
     return 'Usuario';
+  }
+
+  // Get role colors (ordered by hierarchy)
+  function getRoleColors(
+    role: string | undefined,
+    isSuperadmin?: boolean,
+  ): string {
+    if (isSuperadmin) {
+      // Nivel más alto - Dorado
+      return 'bg-amber-500/20 text-amber-500 font-bold';
+    }
+    if (!role) return 'bg-slate-500/20 text-slate-500 font-bold';
+    const roleLower = role.toLowerCase();
+    // Administrador - Rojo (alta autoridad)
+    if (roleLower === 'admin') return 'bg-red-500/20 text-red-500 font-bold';
+    // Supervisor - Naranja (autoridad media-alta)
+    if (roleLower === 'supervisor')
+      return 'bg-orange-500/20 text-orange-500 font-bold';
+    // Conductor - Azul (autoridad operativa)
+    if (roleLower === 'driver') return 'bg-blue-500/20 text-blue-500 font-bold';
+    // Pasajero - Verde (sin autoridad administrativa)
+    if (roleLower === 'passenger')
+      return 'bg-emerald-500/20 text-emerald-500 font-bold';
+    return 'bg-slate-500/20 text-slate-500 font-bold';
   }
 
   // Filter users based on search query
