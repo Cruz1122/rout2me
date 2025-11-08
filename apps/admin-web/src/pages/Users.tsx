@@ -359,12 +359,19 @@ export default function UsersPage() {
       key: 'role',
       header: 'Rol',
       sortable: true,
-      width: '150px',
+      width: '200px',
       render: (user: User) => (
         <span
           className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${colorClasses.bgSurface} ${colorClasses.textPrimary}`}
         >
-          {getRoleText(user.role)}
+          {user.is_superadmin ? (
+            'SuperAdmin'
+          ) : (
+            <>
+              {getRoleText(user.role)}
+              {user.company_name && ` de ${user.company_name}`}
+            </>
+          )}
         </span>
       ),
     },
@@ -419,9 +426,12 @@ export default function UsersPage() {
 
   // Format user role text
   function getRoleText(role: string | undefined): string {
-    if (role === 'admin') return 'Administrador';
-    if (role === 'driver') return 'Conductor';
-    if (role === 'passenger') return 'Pasajero';
+    if (!role) return 'Usuario';
+    const roleLower = role.toLowerCase();
+    if (roleLower === 'admin') return 'Administrador';
+    if (roleLower === 'driver') return 'Conductor';
+    if (roleLower === 'passenger') return 'Pasajero';
+    if (roleLower === 'supervisor') return 'Supervisor';
     return 'Usuario';
   }
 
