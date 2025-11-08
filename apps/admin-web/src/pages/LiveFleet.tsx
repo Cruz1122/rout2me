@@ -743,7 +743,7 @@ export default function LiveFleet() {
             <h3 style="margin: 0 0 4px 0; font-weight: bold;">${position.plate}</h3>
             <p style="margin: 0; font-size: 12px; color: #666;">Compañía: ${companyName}</p>
             <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">${getVehicleDisplayStatus(position.status)}</p>
-            ${position.speed_kph !== undefined ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">Velocidad: ${position.speed_kph.toFixed(1)} km/h</p>` : ''}
+            ${position.speed_kph !== undefined && position.speed_kph !== null ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">Velocidad: ${position.speed_kph.toFixed(1)} km/h</p>` : ''}
           </div>
         `);
 

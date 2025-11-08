@@ -191,23 +191,24 @@ export async function getStopsForVariant(
   }
 
   console.log('✅ Stops from variant:', data[0].stops);
+  console.log('🔍 First stop structure:', data[0].stops[0]);
 
   // Mapear location_json a location y agregar stop_order
   const stopsWithOrder = data[0].stops.map(
     (
       stop: {
-        id: string;
-        name: string;
-        location_json?: StopLocation;
-        location?: StopLocation;
+        stop_id: string;
+        stop_name: string;
+        location: StopLocation;
       },
       index: number,
     ) => {
       console.log(`🔍 Processing stop ${index + 1}:`, stop);
+      console.log(`📝 Stop name: "${stop.stop_name}"`);
       return {
-        id: stop.id,
-        name: stop.name,
-        location: stop.location_json || stop.location, // Intentar ambos campos
+        id: stop.stop_id,
+        name: stop.stop_name,
+        location: stop.location,
         stop_order: index + 1,
       };
     },

@@ -151,8 +151,8 @@ export default function UsersPage() {
 
     if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
 
-    if (!phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
-    else if (!phoneRegex.test(phone))
+    // Teléfono es opcional, solo validar formato si se proporciona
+    if (phone.trim() && !phoneRegex.test(phone))
       newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
 
     setErrors(newErrors);
@@ -224,9 +224,8 @@ export default function UsersPage() {
 
   function validatePhone() {
     const phoneRegex = /^\+?\d{10,15}$/;
-    if (!phone.trim())
-      setErrors((e) => ({ ...e, phone: 'El teléfono es obligatorio' }));
-    else if (!phoneRegex.test(phone))
+    // Teléfono es opcional, solo validar si se proporciona
+    if (phone.trim() && !phoneRegex.test(phone))
       setErrors((e) => ({
         ...e,
         phone: 'Teléfono no válido (ej: +573001234567)',
@@ -275,8 +274,8 @@ export default function UsersPage() {
 
     if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
 
-    if (!phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
-    else if (!phoneRegex.test(phone))
+    // Teléfono es opcional, solo validar formato si se proporciona
+    if (phone.trim() && !phoneRegex.test(phone))
       newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
 
     setErrors(newErrors);
@@ -700,13 +699,12 @@ export default function UsersPage() {
           />
           <R2MInput
             type="tel"
-            placeholder="Teléfono (+573001234567)"
+            placeholder="Teléfono (+573001234567) - Opcional"
             value={phone}
             onValueChange={setPhone}
             onBlur={validatePhone}
             error={errors.phone}
             icon="ri-phone-line"
-            required
           />
         </div>
         <div className="flex gap-3 mt-6">
@@ -727,7 +725,6 @@ export default function UsersPage() {
               !email.trim() ||
               !password.trim() ||
               !name.trim() ||
-              !phone.trim() ||
               Object.keys(errors).length > 0
             }
             loading={loading}
@@ -779,13 +776,12 @@ export default function UsersPage() {
           />
           <R2MInput
             type="tel"
-            placeholder="Teléfono (+573001234567)"
+            placeholder="Teléfono (+573001234567) - Opcional"
             value={phone}
             onValueChange={setPhone}
             onBlur={validatePhone}
             error={errors.phone}
             icon="ri-phone-line"
-            required
           />
         </div>
         <div className="flex gap-3 mt-6">
@@ -805,7 +801,6 @@ export default function UsersPage() {
               loading ||
               !email.trim() ||
               !name.trim() ||
-              !phone.trim() ||
               Object.keys(errors).length > 0
             }
             loading={loading}
