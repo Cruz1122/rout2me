@@ -50,9 +50,6 @@ export function useUserLocation(): BusLocation | null {
           } else if (err.code === 3) {
             // TIMEOUT
             console.warn('Tiempo de espera agotado');
-            alert(
-              'El tiempo para obtener tu ubicación se agotó. Por favor, intenta nuevamente.',
-            );
           }
         },
         {
