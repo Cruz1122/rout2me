@@ -15,6 +15,7 @@ import {
   fetchBuses,
   type BusServiceError,
 } from '../services/busService';
+import { generateRouteColor } from '../services/routeService';
 import FilterSwitcher, {
   type FilterOption,
 } from '../components/FilterSwitcher';
@@ -301,6 +302,23 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
 
   const dynamicStatus = getDynamicStatus();
 
+  // Función helper para obtener el color de fondo con opacidad
+  const getRouteColorWithOpacity = (
+    routeNumber: string,
+    opacity: number = 0.1,
+  ) => {
+    const color = generateRouteColor(routeNumber);
+    if (color === 'var(--color-secondary)') {
+      return `rgba(30, 86, 160, ${opacity})`;
+    }
+    // Convertir hex a rgba
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
+
   const getOccupancyColor = (occupancy: Bus['occupancy']) => {
     switch (occupancy) {
       case 'low':
@@ -363,19 +381,37 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
         <div className="flex-1 min-w-0">
           {/* Título con número de ruta */}
           <div className="flex items-start justify-between gap-2 mb-1">
-            <div>
-              <h3
-                className="font-semibold text-sm leading-tight"
-                style={{
-                  color: dynamicStatus === 'offline' ? '#9CA3AF' : 'inherit',
-                }}
-              >
-                {bus.plate} - {bus.routeName}
-              </h3>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3
+                  className="font-semibold text-sm leading-tight"
+                  style={{
+                    color: dynamicStatus === 'offline' ? '#9CA3AF' : 'inherit',
+                  }}
+                >
+                  {bus.plate}
+                </h3>
+                {dynamicStatus !== 'offline' &&
+                  userLocation &&
+                  bus.location && (
+                    <span className="text-xs text-gray-500">
+                      {formatDistance(distance)}
+                    </span>
+                  )}
+              </div>
               {bus.routeNumber && bus.routeNumber !== 'N/A' && (
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Ruta: {bus.routeNumber}
-                </p>
+                <span
+                  className="inline-block text-xs font-semibold px-2 py-0.5 rounded"
+                  style={{
+                    backgroundColor: getRouteColorWithOpacity(
+                      bus.routeNumber,
+                      0.1,
+                    ),
+                    color: generateRouteColor(bus.routeNumber),
+                  }}
+                >
+                  {bus.routeName}
+                </span>
               )}
             </div>
             <span
@@ -390,18 +426,19 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
           </div>
 
           {/* Información adicional */}
-          <p
-            className="text-xs text-gray-500"
-            style={{ marginBottom: dynamicStatus === 'offline' ? 0 : '0.5rem' }}
-          >
-            {dynamicStatus === 'offline'
-              ? 'Fuera de servicio'
-              : !userLocation
-                ? 'Permite acceso a ubicación'
-                : !bus.location
-                  ? 'Sin ubicación disponible'
-                  : formatDistance(distance)}
-          </p>
+          {dynamicStatus === 'offline' && (
+            <p className="text-xs text-gray-500 mb-0.5">Fuera de servicio</p>
+          )}
+          {dynamicStatus !== 'offline' && !userLocation && (
+            <p className="text-xs text-gray-500 mb-0.5">
+              Permite acceso a ubicación
+            </p>
+          )}
+          {dynamicStatus !== 'offline' && userLocation && !bus.location && (
+            <p className="text-xs text-gray-500 mb-0.5">
+              Sin ubicación disponible
+            </p>
+          )}
 
           {/* Ocupación */}
           {dynamicStatus !== 'offline' && (

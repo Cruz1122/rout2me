@@ -268,14 +268,12 @@ export default function LoginPage() {
                   disabled={isGoogleLoading || isMicrosoftLoading}
                   onMouseEnter={() => setHoveredProvider('google')}
                   onMouseLeave={() => setHoveredProvider(null)}
-                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     borderRadius: '12px',
                     minHeight: '100px',
-                    backgroundColor:
-                      hoveredProvider === 'google' ? '#EA4335' : 'white',
-                    borderColor:
-                      hoveredProvider === 'google' ? '#EA4335' : '#e5e7eb',
+                    backgroundColor: '#EA4335',
+                    borderColor: '#EA4335',
                   }}
                 >
                   {isGoogleLoading ? (
@@ -283,7 +281,7 @@ export default function LoginPage() {
                       <RiLoaderLine
                         className="animate-spin"
                         size={32}
-                        style={{ color: '#EA4335' }}
+                        style={{ color: 'white' }}
                       />
                     </div>
                   ) : (
@@ -291,31 +289,14 @@ export default function LoginPage() {
                       className="mb-2 flex items-center justify-center relative"
                       style={{ width: '32px', height: '32px' }}
                     >
-                      <RiGoogleLine
-                        size={32}
-                        className={`absolute top-0 left-0 transition-all duration-300 ${
-                          hoveredProvider === 'google'
-                            ? 'opacity-0 scale-75'
-                            : 'opacity-100 scale-100'
-                        }`}
-                        style={{ color: 'var(--color-terciary)' }}
-                      />
-                      <RiGoogleFill
-                        size={32}
-                        className={`absolute top-0 left-0 transition-all duration-300 ${
-                          hoveredProvider === 'google'
-                            ? 'opacity-100 scale-100'
-                            : 'opacity-0 scale-75'
-                        }`}
-                        style={{ color: 'white' }}
-                      />
+                      <RiGoogleFill size={32} style={{ color: 'white' }} />
                     </div>
                   )}
                   <h3
                     className="font-semibold text-center transition-colors duration-300"
                     style={{
                       fontSize: '14px',
-                      color: hoveredProvider === 'google' ? 'white' : '#1f2937',
+                      color: 'white',
                     }}
                   >
                     {isGoogleLoading ? 'Cargando...' : 'Google'}
@@ -329,14 +310,12 @@ export default function LoginPage() {
                   disabled={isGoogleLoading || isMicrosoftLoading}
                   onMouseEnter={() => setHoveredProvider('microsoft')}
                   onMouseLeave={() => setHoveredProvider(null)}
-                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     borderRadius: '12px',
                     minHeight: '100px',
-                    backgroundColor:
-                      hoveredProvider === 'microsoft' ? '#00A4EF' : 'white',
-                    borderColor:
-                      hoveredProvider === 'microsoft' ? '#00A4EF' : '#e5e7eb',
+                    backgroundColor: '#00A4EF',
+                    borderColor: '#00A4EF',
                   }}
                 >
                   {isMicrosoftLoading ? (
@@ -344,7 +323,7 @@ export default function LoginPage() {
                       <RiLoaderLine
                         className="animate-spin"
                         size={32}
-                        style={{ color: '#00A4EF' }}
+                        style={{ color: 'white' }}
                       />
                     </div>
                   ) : (
@@ -352,32 +331,14 @@ export default function LoginPage() {
                       className="mb-2 flex items-center justify-center relative"
                       style={{ width: '32px', height: '32px' }}
                     >
-                      <RiMicrosoftLine
-                        size={32}
-                        className={`absolute top-0 left-0 transition-all duration-300 ${
-                          hoveredProvider === 'microsoft'
-                            ? 'opacity-0 scale-75'
-                            : 'opacity-100 scale-100'
-                        }`}
-                        style={{ color: 'var(--color-terciary)' }}
-                      />
-                      <RiMicrosoftFill
-                        size={32}
-                        className={`absolute top-0 left-0 transition-all duration-300 ${
-                          hoveredProvider === 'microsoft'
-                            ? 'opacity-100 scale-100'
-                            : 'opacity-0 scale-75'
-                        }`}
-                        style={{ color: 'white' }}
-                      />
+                      <RiMicrosoftFill size={32} style={{ color: 'white' }} />
                     </div>
                   )}
                   <h3
                     className="font-semibold text-center transition-colors duration-300"
                     style={{
                       fontSize: '14px',
-                      color:
-                        hoveredProvider === 'microsoft' ? 'white' : '#1f2937',
+                      color: 'white',
                     }}
                   >
                     {isMicrosoftLoading ? 'Cargando...' : 'Microsoft'}

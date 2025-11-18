@@ -2,8 +2,8 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import {
   RiFilterLine,
   RiFilterFill,
-  RiMapPinLine,
-  RiMapPinFill,
+  RiParkingLine,
+  RiParkingFill,
   RiBusLine,
   RiBusFill,
   RiGridLine,
@@ -25,8 +25,8 @@ const FILTER_OPTIONS: readonly FilterOption<FilterType>[] = [
   {
     id: 'stops',
     label: 'Paraderos',
-    iconOutline: RiMapPinLine,
-    iconFilled: RiMapPinFill,
+    iconOutline: RiParkingLine,
+    iconFilled: RiParkingFill,
   },
   {
     id: 'routes',
@@ -44,6 +44,9 @@ interface R2MCleanSearchBarProps extends R2MSearchBarProps {
     min: number | undefined,
     max: number | undefined,
   ) => void;
+  readonly onFocus?: () => void;
+  readonly onBlur?: () => void;
+  readonly inputRef?: React.RefObject<HTMLInputElement>;
 }
 
 export default function R2MSearchBar({
@@ -56,8 +59,12 @@ export default function R2MSearchBar({
   onToggleFilters,
   onFilterTypeChange,
   onFareRangeChange,
+  onFocus: onFocusProp,
+  onBlur: onBlurProp,
+  inputRef: externalInputRef,
 }: R2MCleanSearchBarProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const internalInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = externalInputRef || internalInputRef;
   const [isFocused, setIsFocused] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedType, setSelectedType] = useState<FilterType>('all');
@@ -99,6 +106,7 @@ export default function R2MSearchBar({
   const handleFocus = () => {
     setIsFocused(true);
     setIsExpanded(true);
+    onFocusProp?.();
   };
 
   const handleBlur = () => {
@@ -106,6 +114,7 @@ export default function R2MSearchBar({
     if (!value.trim()) {
       setIsExpanded(false);
     }
+    onBlurProp?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

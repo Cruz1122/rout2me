@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RiMapPinFill, RiBusFill, RiTimeLine } from 'react-icons/ri';
+import { RiParkingFill, RiBusFill, RiTimeLine } from 'react-icons/ri';
 import type { SearchItem } from '../../../shared/types/search';
 
 interface R2MMapInfoCardProps {
@@ -124,7 +124,7 @@ export default function R2MMapInfoCard({
             color: 'rgb(var(--color-primary-rgb))',
           }}
         >
-          <RiMapPinFill size={24} />
+          <RiParkingFill size={24} />
         </div>
       );
     } else {

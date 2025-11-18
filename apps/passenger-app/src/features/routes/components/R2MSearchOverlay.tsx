@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { SearchItem } from '../../../shared/types/search';
 import { useSearch } from '../hooks/useSearch';
 import R2MSearchBar from './R2MSearchBar';
@@ -17,6 +17,8 @@ export default function R2MSearchOverlay({
 }: R2MSearchOverlayProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const {
     searchTerm,
@@ -26,15 +28,46 @@ export default function R2MSearchOverlay({
     updateSearchTerm,
     updateFilters,
     clearSearch,
+    getRecentSearches,
   } = useSearch();
 
   const handleSearchChange = useCallback(
     (value: string) => {
       updateSearchTerm(value);
-      setShowResults(value.trim().length > 0);
+      if (value.trim().length > 0) {
+        setShowResults(true);
+      } else {
+        // Si se borra todo el texto y el input está enfocado, mostrar rutas recientes
+        if (isInputFocused) {
+          getRecentSearches();
+          setShowResults(true);
+        } else {
+          setShowResults(false);
+        }
+      }
     },
-    [updateSearchTerm],
+    [updateSearchTerm, isInputFocused, getRecentSearches],
   );
+
+  const handleSearchFocus = useCallback(() => {
+    setIsInputFocused(true);
+    // Si no hay texto, mostrar rutas recientes
+    if (!searchTerm.trim()) {
+      getRecentSearches();
+      setShowResults(true);
+    }
+  }, [searchTerm, getRecentSearches]);
+
+  const handleSearchBlur = useCallback(() => {
+    // Usar setTimeout para permitir que el click en un item se ejecute primero
+    setTimeout(() => {
+      setIsInputFocused(false);
+      // Ocultar resultados cuando se pierde el foco y no hay texto
+      if (!searchTerm.trim()) {
+        setShowResults(false);
+      }
+    }, 200);
+  }, [searchTerm]);
 
   const handleSearchSubmit = useCallback(() => {
     if (results.length > 0) {
@@ -48,7 +81,12 @@ export default function R2MSearchOverlay({
     (item: SearchItem) => {
       onItemSelect(item);
       setShowResults(false);
+      setIsInputFocused(false);
       clearSearch();
+      // Hacer que el input pierda el foco
+      if (inputRef.current) {
+        inputRef.current.blur();
+      }
     },
     [onItemSelect, clearSearch],
   );
@@ -92,6 +130,9 @@ export default function R2MSearchOverlay({
           value={searchTerm}
           onChange={handleSearchChange}
           onSubmit={handleSearchSubmit}
+          onFocus={handleSearchFocus}
+          onBlur={handleSearchBlur}
+          inputRef={inputRef}
           placeholder="Buscar paraderos y rutas..."
           showFilters={showFilters}
           onToggleFilters={handleToggleFilters}

@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
-import { IonContent, IonPage, useIonRouter } from '@ionic/react';
+import {
+  IonContent,
+  IonPage,
+  useIonRouter,
+  useIonViewDidEnter,
+} from '@ionic/react';
 import {
   RiBusLine,
   RiGridLine,
@@ -15,8 +20,11 @@ import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import {
   fetchAllRoutesData,
   getRecentRoutes,
+  recentRoutesStorage,
+  generateRouteColor,
   type Route,
 } from '../services/routeService';
+import { recentSearchesStorage } from '../services/recentSearchService';
 import { fetchBuses, getBusesByRouteVariant } from '../services/busService';
 import FilterSwitcher, {
   type FilterOption,
@@ -55,6 +63,12 @@ export default function RoutesPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [showRouteModal, setShowRouteModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Forzar actualización cuando se vuelve a la página para actualizar rutas recientes
+  useIonViewDidEnter(() => {
+    setRefreshKey((prev) => prev + 1);
+  });
 
   // Cargar rutas al montar el componente
   useEffect(() => {
@@ -111,6 +125,13 @@ export default function RoutesPage() {
 
   const handleViewOnMap = () => {
     if (!selectedRoute) return;
+
+    // Guardar la ruta como reciente
+    recentRoutesStorage.saveRecentRoute(selectedRoute.id);
+    recentSearchesStorage.saveRecentSearch({
+      id: selectedRoute.id,
+      type: 'route',
+    });
 
     // Navegar a HomePage con la ruta seleccionada
     const routeData = {
@@ -261,15 +282,19 @@ export default function RoutesPage() {
                 getRecentRoutes(getFilteredRoutes()).length > PREVIEW_LIMIT
               }
               onViewRoute={handleViewRoute}
+              allRoutes={routes}
             />
 
             {/* Todas las Rutas */}
             <RouteSection
               title="Todas las Rutas"
-              routes={getFilteredRoutes().slice(0, PREVIEW_LIMIT)}
+              routes={getFilteredRoutes()
+                .sort((a, b) => (b.activeBuses || 0) - (a.activeBuses || 0))
+                .slice(0, PREVIEW_LIMIT)}
               onViewMore={() => handleViewMore('all')}
               showViewMore={getFilteredRoutes().length > PREVIEW_LIMIT}
               onViewRoute={handleViewRoute}
+              allRoutes={routes}
             />
           </div>
         ) : (
@@ -280,11 +305,17 @@ export default function RoutesPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredRoutes.map((route) => (
+                {(activeFilter === 'all'
+                  ? [...filteredRoutes].sort(
+                      (a, b) => (b.activeBuses || 0) - (a.activeBuses || 0),
+                    )
+                  : filteredRoutes
+                ).map((route) => (
                   <RouteCard
                     key={route.id}
                     route={route}
                     onViewRoute={handleViewRoute}
+                    allRoutes={routes}
                   />
                 ))}
               </div>
@@ -403,6 +434,7 @@ interface RouteSectionProps {
   readonly onViewMore: () => void;
   readonly showViewMore: boolean;
   readonly onViewRoute: (route: Route) => void;
+  readonly allRoutes?: Route[];
 }
 
 function RouteSection({
@@ -411,6 +443,7 @@ function RouteSection({
   onViewMore,
   showViewMore,
   onViewRoute,
+  allRoutes,
 }: RouteSectionProps) {
   return (
     <div
@@ -435,7 +468,12 @@ function RouteSection({
       </div>
       <div className="space-y-3">
         {routes.map((route) => (
-          <RouteCard key={route.id} route={route} onViewRoute={onViewRoute} />
+          <RouteCard
+            key={route.id}
+            route={route}
+            onViewRoute={onViewRoute}
+            allRoutes={allRoutes}
+          />
         ))}
       </div>
     </div>
@@ -445,10 +483,22 @@ function RouteSection({
 function RouteCard({
   route,
   onViewRoute,
+  allRoutes,
 }: {
   readonly route: Route;
   readonly onViewRoute: (route: Route) => void;
+  readonly allRoutes?: Route[];
 }) {
+  // Obtener el color de la ruta
+  const routeColor = route.color || generateRouteColor(route.code);
+
+  // Agrupar variantes por código de ruta
+  const variants = allRoutes
+    ? allRoutes.filter((r) => r.code === route.code)
+    : [route];
+
+  const variantCount = variants.length;
+
   return (
     <div
       className="p-4 rounded-xl cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
@@ -468,14 +518,45 @@ function RouteCard({
       aria-label={`Ver información de la ruta ${route.name}`}
     >
       <div className="flex items-center gap-3">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white"
-          style={{
-            backgroundColor:
-              route.status === 'active' ? 'var(--color-secondary)' : '#9CA3AF',
-          }}
-        >
-          {route.number}
+        <div className="relative flex-shrink-0">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white"
+            style={{
+              backgroundColor:
+                route.status === 'active' ? routeColor : '#9CA3AF',
+            }}
+          >
+            {route.number}
+          </div>
+          {/* Círculos pequeños para variantes adicionales */}
+          {variantCount > 1 && (
+            <div className="absolute -bottom-1 -right-1 flex gap-0.5">
+              {variants
+                .slice(0, Math.min(variantCount - 1, 3))
+                .map((variant, idx) => (
+                  <div
+                    key={variant.id}
+                    className="w-3 h-3 rounded-full border-2 border-white"
+                    style={{
+                      backgroundColor:
+                        variant.status === 'active' ? routeColor : '#9CA3AF',
+                    }}
+                    title={`Variante ${idx + 2}`}
+                  />
+                ))}
+              {variantCount > 4 && (
+                <div
+                  className="w-3 h-3 rounded-full border-2 border-white flex items-center justify-center text-[6px] font-bold text-white"
+                  style={{
+                    backgroundColor: routeColor,
+                  }}
+                  title={`+${variantCount - 4} variantes más`}
+                >
+                  +
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -556,6 +637,9 @@ function RouteDetailModal({
   onClose,
   onViewOnMap,
 }: RouteDetailModalProps) {
+  // Obtener el color de la ruta
+  const routeColor = route.color || generateRouteColor(route.code);
+
   return (
     <R2MModal
       isOpen={true}
@@ -563,9 +647,7 @@ function RouteDetailModal({
       title={route.name}
       subtitle={`Ruta ${route.code}`}
       icon={route.number}
-      iconColor={
-        route.status === 'active' ? 'var(--color-secondary)' : '#9CA3AF'
-      }
+      iconColor={route.status === 'active' ? routeColor : '#9CA3AF'}
       actions={
         <div className="space-y-3">
           <R2MButton

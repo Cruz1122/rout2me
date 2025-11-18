@@ -1,14 +1,16 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  RiMapPinLine,
-  RiMapPinFill,
+  RiParkingLine,
+  RiParkingFill,
   RiBusLine,
   RiBusFill,
+  RiTimeLine,
 } from 'react-icons/ri';
 import type {
   R2MResultsListProps,
   SearchItem,
 } from '../../../shared/types/search';
+import { recentSearchesStorage } from '../services/recentSearchService';
 
 export default function R2MResultsList({
   items,
@@ -18,6 +20,15 @@ export default function R2MResultsList({
   const [activeIndex, setActiveIndex] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Obtener combinaciones recientes (tipo-id) cuando cambian los items
+  const recentSearchKeys = useMemo(() => {
+    const entries = recentSearchesStorage.getRecentSearches();
+    return new Set(entries.map((entry) => `${entry.type}-${entry.id}`));
+  }, [items]);
+
+  const isRecentItem = (item: SearchItem): boolean =>
+    recentSearchKeys.has(`${item.type}-${item.id}`);
 
   // Reset active index when items change
   useEffect(() => {
@@ -87,7 +98,7 @@ export default function R2MResultsList({
             color: 'rgb(var(--color-primary-rgb))',
           }}
         >
-          {isActive ? <RiMapPinFill size={16} /> : <RiMapPinLine size={16} />}
+          {isActive ? <RiParkingFill size={16} /> : <RiParkingLine size={16} />}
         </div>
       );
     } else {
@@ -140,7 +151,16 @@ export default function R2MResultsList({
           ref={(el) => {
             itemRefs.current[index] = el;
           }}
-          onClick={() => onSelect(item)}
+          onMouseDown={(e) => {
+            // Prevenir que el input pierda el foco al hacer clic
+            e.preventDefault();
+            onSelect(item);
+          }}
+          onTouchEnd={(e) => {
+            // Para dispositivos táctiles, prevenir el comportamiento por defecto
+            e.preventDefault();
+            onSelect(item);
+          }}
           onMouseEnter={() => setActiveIndex(index)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -171,9 +191,31 @@ export default function R2MResultsList({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between min-w-0">
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-base text-gray-900 truncate leading-tight">
-                  {item.name}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-base text-gray-900 truncate leading-tight">
+                    {item.name}
+                  </p>
+                  {isRecentItem(item) && (
+                    <div
+                      className="flex-shrink-0 flex items-center"
+                      title={
+                        item.type === 'stop'
+                          ? 'Paradero reciente'
+                          : 'Ruta reciente'
+                      }
+                      aria-label={
+                        item.type === 'stop'
+                          ? 'Paradero reciente'
+                          : 'Ruta reciente'
+                      }
+                    >
+                      <RiTimeLine
+                        size={16}
+                        style={{ color: 'rgb(var(--color-primary-rgb))' }}
+                      />
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm text-gray-500 font-mono">
                     {item.code}

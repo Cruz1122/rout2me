@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import type { Stop } from '../services/routeService';
 import { createPopupHTML } from '../utils/popupUtils';
+import { createStopMarkerElement } from '../utils/markerUtils';
 
 export interface RouteDrawingOptions {
   color?: string;
@@ -9,34 +10,10 @@ export interface RouteDrawingOptions {
   opacity?: number;
   outlineColor?: string;
   outlineWidth?: number;
-}
-
-/**
- * Crea un elemento HTML personalizado para marcadores de parada
- */
-function createStopMarkerElement(): HTMLElement {
-  const element = document.createElement('div');
-  element.innerHTML = `
-    <div style="
-      background: #FF6B35;
-      border: 3px solid #ffffff;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: white;
-      font-weight: bold;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">
-      <strong>P</strong>
-    </div>
-  `;
-  return element;
+  stopColor?: string;
+  stopOpacity?: number;
+  endpointColor?: string;
+  showShadow?: boolean;
 }
 
 export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
@@ -124,7 +101,11 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
   );
 
   const addRouteEndpoints = useCallback(
-    (routeId: string, coordinates: [number, number][]) => {
+    (
+      routeId: string,
+      coordinates: [number, number][],
+      markerColor = '#1E56A0',
+    ) => {
       if (!mapInstance.current || coordinates.length < 2) return;
 
       const startPoint = coordinates[0];
@@ -132,7 +113,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
       // Punto de inicio - Marcador azul estándar
       const startMarker = new maplibregl.Marker({
-        color: '#1E56A0', // Color azul hardcodeado
+        color: markerColor,
         scale: 1.2,
       })
         .setLngLat(startPoint)
@@ -140,7 +121,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
       // Punto de fin - Marcador azul estándar
       const endMarker = new maplibregl.Marker({
-        color: '#1E56A0', // Color azul hardcodeado
+        color: markerColor,
         scale: 1.2,
       })
         .setLngLat(endPoint)
@@ -162,7 +143,12 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
   );
 
   const addStopsToMap = useCallback(
-    (routeId: string, stops: Stop[]) => {
+    (
+      routeId: string,
+      stops: Stop[],
+      stopColor?: string,
+      stopOpacity?: number,
+    ) => {
       if (!mapInstance.current || !stops || stops.length === 0) return;
 
       // Limpiar paradas existentes para esta ruta
@@ -171,9 +157,12 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       for (const [index, stop] of stops.entries()) {
         const markerId = `stop-${routeId}-${stop.id}`;
 
-        // Crear marcador personalizado para parada
+        // Crear marcador personalizado para parada con color y opacidad personalizados
         const marker = new maplibregl.Marker({
-          element: createStopMarkerElement(),
+          element: createStopMarkerElement(
+            stopColor || '#FF6B35',
+            stopOpacity !== undefined ? stopOpacity : 1,
+          ),
           anchor: 'center',
         })
           .setLngLat(stop.location)
@@ -212,7 +201,17 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         return;
       }
 
-      const { color = '#1E56A0', width = 6, opacity = 0.9 } = options;
+      const {
+        color = '#1E56A0',
+        width = 6,
+        opacity = 0.9,
+        outlineColor = '#ffffff',
+        outlineWidth = 10,
+        stopColor,
+        stopOpacity,
+        endpointColor,
+        showShadow = true,
+      } = options;
 
       const sourceId = `route-${routeId}`;
       const shadowLayerId = `route-shadow-${routeId}`;
@@ -242,21 +241,23 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       });
 
       // Agregar capa de sombra (efecto Google Maps) - PRIMERA CAPA
-      mapInstance.current.addLayer({
-        id: shadowLayerId,
-        type: 'line',
-        source: sourceId,
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round',
-        },
-        paint: {
-          'line-color': '#000000',
-          'line-width': 12, // outlineWidth + 2 hardcodeado
-          'line-opacity': 0.3,
-          'line-translate': [2, 2],
-        },
-      });
+      if (showShadow) {
+        mapInstance.current.addLayer({
+          id: shadowLayerId,
+          type: 'line',
+          source: sourceId,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': '#000000',
+            'line-width': outlineWidth + 2,
+            'line-opacity': 0.3,
+            'line-translate': [2, 2],
+          },
+        });
+      }
 
       // Agregar capa de contorno (más gruesa, color diferente) - SEGUNDA CAPA
       mapInstance.current.addLayer({
@@ -268,8 +269,8 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           'line-cap': 'round',
         },
         paint: {
-          'line-color': '#ffffff', // outlineColor hardcodeado
-          'line-width': 10, // outlineWidth hardcodeado
+          'line-color': outlineColor,
+          'line-width': outlineWidth,
           'line-opacity': 1,
         },
       });
@@ -284,9 +285,9 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           'line-cap': 'round',
         },
         paint: {
-          'line-color': '#1E56A0', // color hardcodeado
-          'line-width': 6, // width hardcodeado
-          'line-opacity': 0.9, // opacity hardcodeado
+          'line-color': color,
+          'line-width': width,
+          'line-opacity': opacity,
         },
       });
 
@@ -300,23 +301,25 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
           'line-cap': 'round',
         },
         paint: {
-          'line-color': '#1E56A0', // color hardcodeado
-          'line-width': 8, // width + 2 hardcodeado
-          'line-opacity': 0.3,
+          'line-color': color,
+          'line-width': width + 2,
+          'line-opacity': opacity * 0.33, // Mantener proporción con la opacidad principal
           'line-blur': 3,
         },
       });
 
       // Agregar puntos de inicio y fin
-      addRouteEndpoints(routeId, coordinates);
+      addRouteEndpoints(routeId, coordinates, endpointColor || '#1E56A0');
 
       // Agregar paradas si están disponibles
       if (stops && stops.length > 0) {
-        addStopsToMap(routeId, stops);
+        addStopsToMap(routeId, stops, stopColor, stopOpacity);
       }
 
       routeSources.current.add(sourceId);
-      routeLayers.current.add(shadowLayerId);
+      if (showShadow) {
+        routeLayers.current.add(shadowLayerId);
+      }
       routeLayers.current.add(outlineLayerId);
       routeLayers.current.add(mainLayerId);
       routeLayers.current.add(glowLayerId);

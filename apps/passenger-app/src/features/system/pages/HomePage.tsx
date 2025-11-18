@@ -31,7 +31,13 @@ import {
   fetchBuses,
   getBusesByRouteVariant,
 } from '../../routes/services/busService';
-import { fetchAllRoutesData } from '../../routes/services/routeService';
+import {
+  fetchAllRoutesData,
+  recentRoutesStorage,
+  generateRouteColor,
+} from '../../routes/services/routeService';
+import { recentSearchesStorage } from '../../routes/services/recentSearchService';
+import { createStopMarkerElement } from '../../routes/utils/markerUtils';
 import type { SearchItem } from '../../../shared/types/search';
 import '../../../debug/paradasDebug'; // Importar script de debug
 import '../../../debug/apiTest'; // Importar script de prueba de API
@@ -107,6 +113,11 @@ export default function HomePage() {
       if (!mapInstance.current) return;
 
       if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
+        recentSearchesStorage.saveRecentSearch({
+          id: item.id,
+          type: 'stop',
+        });
+
         // Limpiar rutas y buses anteriores al seleccionar una parada
         clearAllRoutes();
         clearAllBuses();
@@ -121,8 +132,13 @@ export default function HomePage() {
           duration: 1000,
         });
 
+        const markerElement = createStopMarkerElement({
+          highlight: true,
+        });
+
         currentMarker.current = new maplibregl.Marker({
-          color: 'var(--color-secondary)', // #1E56A0
+          element: markerElement,
+          anchor: 'center',
         })
           .setLngLat([item.lng, item.lat])
           .addTo(mapInstance.current);
@@ -133,6 +149,13 @@ export default function HomePage() {
         'coordinates' in item &&
         item.coordinates
       ) {
+        // Guardar la ruta como reciente
+        recentRoutesStorage.saveRecentRoute(item.id);
+        recentSearchesStorage.saveRecentSearch({
+          id: item.id,
+          type: 'route',
+        });
+
         // Limpiar marcadores de paradas y buses
         if (currentMarker.current) {
           currentMarker.current.remove();
@@ -168,7 +191,7 @@ export default function HomePage() {
             item.id,
             processedRoute.matchedGeometry.coordinates as [number, number][],
             {
-              color: item.color || 'var(--color-secondary)', // Usar color de la ruta si está disponible
+              color: '#1E56A0',
               width: 4,
               opacity: 0.9,
               outlineColor: '#ffffff',
@@ -216,7 +239,7 @@ export default function HomePage() {
           // Error silencioso
           // Fallback: usar coordenadas originales si falla el procesamiento
           addRouteToMap(item.id, item.coordinates, {
-            color: item.color || 'var(--color-secondary)', // Usar color de la ruta si está disponible
+            color: '#1E56A0',
             width: 4,
             opacity: 0.9,
             outlineColor: '#ffffff',
@@ -574,7 +597,7 @@ export default function HomePage() {
           searchItem.id,
           processedRoute.matchedGeometry.coordinates as [number, number][],
           {
-            color: searchItem.color,
+            color: '#1E56A0',
             width: 4,
             opacity: 0.9,
             outlineColor: '#ffffff',
@@ -636,7 +659,7 @@ export default function HomePage() {
         };
 
         addRouteToMap(searchItem.id, searchItem.coordinates!, {
-          color: searchItem.color,
+          color: '#1E56A0',
           width: 4,
           opacity: 0.9,
           outlineColor: '#ffffff',
@@ -693,60 +716,105 @@ export default function HomePage() {
         try {
           const routes = await fetchAllRoutesData();
 
-          // Buscar la ruta que contiene la variante con el ID del bus
-          let route = null;
-          let variant = null;
+          // Buscar la ruta (cada variante es una ruta independiente)
+          // Primero intentar encontrar por ID directo
+          let route = routes.find((r) => r.id === busFromNavigation.id);
 
-          // Primero intentar encontrar por ID directo de ruta
-          route = routes.find((r) => r.id === busFromNavigation.id);
-          if (route?.variants?.length) {
-            variant = route.variants[0];
-            routeVariantId = variant.id;
-          } else {
-            // Si no se encuentra, buscar por activeRouteVariantId en las variantes
-            for (const r of routes) {
-              if (r.variants) {
-                const foundVariant = r.variants.find(
-                  (v) => v.id === busFromNavigation.id,
-                );
-                if (foundVariant) {
-                  route = r;
-                  variant = foundVariant;
-                  routeVariantId = variant.id;
-                  break;
-                }
-              }
+          // Si no se encuentra por ID, buscar por código de ruta
+          if (!route) {
+            route = routes.find((r) => r.code === busFromNavigation.code);
+          }
+
+          // Si aún no se encuentra, buscar cualquier ruta con el mismo código
+          if (!route) {
+            const routesWithSameCode = routes.filter(
+              (r) => r.code === busFromNavigation.code,
+            );
+            if (routesWithSameCode.length > 0) {
+              route = routesWithSameCode[0];
             }
           }
 
-          if (route && variant && variant.path && variant.path.length > 0) {
-            // Crear SearchItem con coordenadas reales
-            const searchItem: SearchItem = {
-              id: variant.id, // Usar el ID de la variante
-              type: 'route',
-              name: busFromNavigation.name,
-              code: busFromNavigation.code,
-              tags: [],
-              coordinates: variant.path,
-              color: route.color || 'var(--color-secondary)',
-            };
+          if (route && route.path && route.path.length > 0) {
+            // Obtener el color de la ruta
+            const routeColor = route.color || generateRouteColor(route.code);
 
-            // Agregar la ruta al mapa
-            addRouteToMap(searchItem.id, variant.path, {
-              color: searchItem.color,
-              width: 4,
-              opacity: 0.9,
-              outlineColor: '#ffffff',
-              outlineWidth: 8,
-            });
+            // Usar el path de la ruta (cada ruta ya es una variante con path)
+            const routePath = route.path || route.variants?.[0]?.path;
 
-            // Ajustar el mapa para mostrar toda la ruta
-            fitBoundsToRoute(variant.path, true); // hasInfoCard = true
+            if (routePath && routePath.length > 0) {
+              // Obtener la API key desde las variables de entorno
+              const apiKey = import.meta.env.VITE_STADIA_API_KEY;
+              const shouldApplyMapMatching = Boolean(
+                apiKey && apiKey.trim() !== '',
+              );
 
-            // Resaltar la ruta
-            highlightRoute(searchItem.id, true);
+              // Procesar la ruta con map matching si está disponible
+              let processedPath = routePath;
+              try {
+                const processedRoute = await processRouteWithCoordinates(
+                  routePath,
+                  apiKey,
+                  shouldApplyMapMatching,
+                );
+                processedPath = processedRoute.matchedGeometry.coordinates as [
+                  number,
+                  number,
+                ][];
+              } catch {
+                // Si falla el map matching, usar el path original
+                processedPath = routePath;
+              }
 
-            setSelectedItem(searchItem);
+              // Crear SearchItem con coordenadas reales
+              const searchItem: SearchItem = {
+                id: route.id,
+                type: 'route',
+                name: busFromNavigation.name,
+                code: busFromNavigation.code,
+                tags: [],
+                coordinates: processedPath,
+                color: routeColor,
+                routeStops: route.stops?.map((stop) => ({
+                  id: stop.id,
+                  name: stop.name,
+                  location: stop.location,
+                })),
+              };
+
+              // Agregar la ruta al mapa con opacidad menor y color verde (solo para buses)
+              addRouteToMap(
+                searchItem.id,
+                processedPath,
+                {
+                  color: '#10B981', // Verde para rutas de buses
+                  width: 4,
+                  opacity: 0.5, // Opacidad menor para ruta y paradas
+                  outlineColor: '#ffffff',
+                  outlineWidth: 4, // Contorno reducido para buses
+                  stopColor: '#10B981', // Color verde para marcadores de paradas
+                  stopOpacity: 0.5, // Opacidad menor para marcadores de paradas
+                  endpointColor: '#10B981',
+                  showShadow: false,
+                },
+                // Agregar paradas de la ruta (con opacidad menor)
+                route.stops?.map((stop) => ({
+                  id: stop.id,
+                  name: stop.name,
+                  created_at: stop.created_at || new Date().toISOString(),
+                  location: stop.location,
+                })),
+              );
+
+              // Ajustar el mapa para mostrar toda la ruta
+              fitBoundsToRoute(processedPath, true); // hasInfoCard = true
+
+              // NO resaltar la ruta (ya tiene color verde y opacidad menor)
+              // highlightRoute(searchItem.id, true);
+
+              setSelectedItem(searchItem);
+              routeVariantId = route.id;
+            }
           }
         } catch {
           // Error silencioso
@@ -956,10 +1024,10 @@ export default function HomePage() {
         <R2MMapInfoCard
           selectedItem={selectedItem}
           onClose={() => {
+            const lastSelected = selectedItem;
             setSelectedItem(null);
-            // Solo limpiar marcadores de paradas cuando se cierra la tarjeta
-            // Las rutas se mantienen en el mapa
-            if (currentMarker.current) {
+            // Mantener el marcador del paradero hasta que se seleccione otra cosa
+            if (lastSelected?.type !== 'stop' && currentMarker.current) {
               currentMarker.current.remove();
               currentMarker.current = null;
             }

@@ -421,7 +421,7 @@ function transformAggregatedVariantsToRoutes(
 /**
  * Genera un color para la ruta basado en su código
  */
-function generateRouteColor(code: string): string {
+export function generateRouteColor(code: string): string {
   const colors = [
     'var(--color-secondary)', // #1E56A0
     '#FF6B35',
@@ -453,10 +453,76 @@ export function getFavoriteRoutes(routes: Route[]): Route[] {
 }
 
 /**
- * Obtiene las rutas recientes (últimas 3 rutas)
+ * Servicio de almacenamiento de rutas recientes con localStorage
+ */
+export const recentRoutesStorage = {
+  // Clave para localStorage
+  RECENT_ROUTES_KEY: 'rout2me_recent_routes',
+  MAX_RECENT_ROUTES: 10, // Guardar hasta 10 rutas recientes
+
+  /**
+   * Guarda una ruta como reciente
+   */
+  saveRecentRoute(routeId: string): void {
+    try {
+      const recentRoutes = this.getRecentRouteIds();
+
+      // Remover la ruta si ya existe (para evitar duplicados)
+      const filtered = recentRoutes.filter((id) => id !== routeId);
+
+      // Agregar la ruta al inicio
+      const updated = [routeId, ...filtered].slice(0, this.MAX_RECENT_ROUTES);
+
+      localStorage.setItem(this.RECENT_ROUTES_KEY, JSON.stringify(updated));
+    } catch (error) {
+      console.error('Error guardando ruta reciente:', error);
+    }
+  },
+
+  /**
+   * Obtiene los IDs de las rutas recientes
+   */
+  getRecentRouteIds(): string[] {
+    try {
+      const data = localStorage.getItem(this.RECENT_ROUTES_KEY);
+      if (!data) return [];
+
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error('Error obteniendo rutas recientes:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Limpia todas las rutas recientes
+   */
+  clearRecentRoutes(): void {
+    try {
+      localStorage.removeItem(this.RECENT_ROUTES_KEY);
+    } catch (error) {
+      console.error('Error limpiando rutas recientes:', error);
+    }
+  },
+};
+
+/**
+ * Obtiene las rutas recientes (últimas visitadas, máximo 3)
  */
 export function getRecentRoutes(routes: Route[]): Route[] {
-  return routes.slice(0, 3);
+  const recentRouteIds = recentRoutesStorage.getRecentRouteIds();
+
+  // Crear un mapa de rutas por ID para búsqueda rápida
+  const routesMap = new Map(routes.map((route) => [route.id, route]));
+
+  // Obtener las rutas en el orden de visitas recientes
+  const recentRoutes = recentRouteIds
+    .map((id) => routesMap.get(id))
+    .filter((route): route is Route => route !== undefined)
+    .slice(0, 3); // Máximo 3 rutas recientes
+
+  return recentRoutes;
 }
 
 /**

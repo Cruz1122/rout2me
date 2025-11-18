@@ -2,7 +2,11 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import Fuse from 'fuse.js';
 import type { SearchItem, SearchFilters } from '../../../shared/types/search';
 import { mockSearchData } from '../../../data/mocks';
-import { fetchAllRoutesData } from '../services/routeService';
+import {
+  fetchAllRoutesData,
+  recentRoutesStorage,
+} from '../services/routeService';
+import { recentSearchesStorage } from '../services/recentSearchService';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 
 const fuseOptions = {
@@ -107,8 +111,27 @@ export function useSearch() {
         });
       }
 
-      // Limitar resultados y ordenar por score
-      const limitedResults = filteredResults.slice(0, 20);
+      // Obtener IDs de rutas recientes
+      const recentRouteIds = new Set(recentRoutesStorage.getRecentRouteIds());
+
+      // Separar resultados en recientes y no recientes
+      const recentResults: SearchItem[] = [];
+      const nonRecentResults: SearchItem[] = [];
+
+      filteredResults.forEach((item) => {
+        if (item.type === 'route' && recentRouteIds.has(item.id)) {
+          recentResults.push(item);
+        } else {
+          nonRecentResults.push(item);
+        }
+      });
+
+      // Ordenar resultados recientes manteniendo el orden de score (ya están ordenados por Fuse)
+      // Combinar: primero recientes, luego no recientes
+      const sortedResults = [...recentResults, ...nonRecentResults];
+
+      // Limitar resultados
+      const limitedResults = sortedResults.slice(0, 20);
 
       setResults(limitedResults);
       setIsSearching(false);
@@ -143,6 +166,49 @@ export function useSearch() {
     setIsSearching(false);
   }, []);
 
+  // Función para obtener búsquedas recientes (rutas y paraderos)
+  const getRecentSearches = useCallback(() => {
+    const recentEntries = recentSearchesStorage.getRecentSearches();
+
+    if (recentEntries.length === 0) {
+      setResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    const routesMap = new Map(
+      searchData
+        .filter(
+          (item): item is SearchItem & { type: 'route' } =>
+            item.type === 'route',
+        )
+        .map((item) => [item.id, item]),
+    );
+
+    const stopsMap = new Map(
+      searchData
+        .filter(
+          (item): item is SearchItem & { type: 'stop' } => item.type === 'stop',
+        )
+        .map((item) => [item.id, item]),
+    );
+
+    const recentItems = recentEntries
+      .map((entry) => {
+        if (entry.type === 'route') {
+          return routesMap.get(entry.id);
+        }
+        return stopsMap.get(entry.id);
+      })
+      .filter((item): item is SearchItem => item !== undefined)
+      .slice(0, 10);
+
+    setResults(recentItems);
+    setIsSearching(false);
+  }, [searchData]);
+
   return {
     searchTerm,
     results,
@@ -151,5 +217,6 @@ export function useSearch() {
     updateSearchTerm,
     updateFilters,
     clearSearch,
+    getRecentSearches,
   };
 }
