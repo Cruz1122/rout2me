@@ -151,8 +151,8 @@ export default function UsersPage() {
 
     if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
 
-    if (!phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
-    else if (!phoneRegex.test(phone))
+    // Teléfono es opcional, solo validar formato si se proporciona
+    if (phone.trim() && !phoneRegex.test(phone))
       newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
 
     setErrors(newErrors);
@@ -224,9 +224,8 @@ export default function UsersPage() {
 
   function validatePhone() {
     const phoneRegex = /^\+?\d{10,15}$/;
-    if (!phone.trim())
-      setErrors((e) => ({ ...e, phone: 'El teléfono es obligatorio' }));
-    else if (!phoneRegex.test(phone))
+    // Teléfono es opcional, solo validar si se proporciona
+    if (phone.trim() && !phoneRegex.test(phone))
       setErrors((e) => ({
         ...e,
         phone: 'Teléfono no válido (ej: +573001234567)',
@@ -275,8 +274,8 @@ export default function UsersPage() {
 
     if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
 
-    if (!phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
-    else if (!phoneRegex.test(phone))
+    // Teléfono es opcional, solo validar formato si se proporciona
+    if (phone.trim() && !phoneRegex.test(phone))
       newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
 
     setErrors(newErrors);
@@ -360,12 +359,24 @@ export default function UsersPage() {
       header: 'Rol',
       sortable: true,
       width: '150px',
+      render: (user: User) => {
+        const roleColors = getRoleColors(user.role, user.is_superadmin);
+        return (
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-lg text-sm ${roleColors}`}
+          >
+            {user.is_superadmin ? 'SuperAdmin' : getRoleText(user.role)}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'organization',
+      header: 'Organización',
+      sortable: true,
+      width: '180px',
       render: (user: User) => (
-        <span
-          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${colorClasses.bgSurface} ${colorClasses.textPrimary}`}
-        >
-          {getRoleText(user.role)}
-        </span>
+        <span className="text-[#97A3B1]">{user.company_name || 'N/A'}</span>
       ),
     },
     {
@@ -419,10 +430,37 @@ export default function UsersPage() {
 
   // Format user role text
   function getRoleText(role: string | undefined): string {
-    if (role === 'admin') return 'Administrador';
-    if (role === 'driver') return 'Conductor';
-    if (role === 'passenger') return 'Pasajero';
+    if (!role) return 'Usuario';
+    const roleLower = role.toLowerCase();
+    if (roleLower === 'admin') return 'Administrador';
+    if (roleLower === 'driver') return 'Conductor';
+    if (roleLower === 'passenger') return 'Pasajero';
+    if (roleLower === 'supervisor') return 'Supervisor';
     return 'Usuario';
+  }
+
+  // Get role colors (ordered by hierarchy)
+  function getRoleColors(
+    role: string | undefined,
+    isSuperadmin?: boolean,
+  ): string {
+    if (isSuperadmin) {
+      // Nivel más alto - Dorado
+      return 'bg-amber-500/20 text-amber-500 font-bold';
+    }
+    if (!role) return 'bg-slate-500/20 text-slate-500 font-bold';
+    const roleLower = role.toLowerCase();
+    // Administrador - Rojo (alta autoridad)
+    if (roleLower === 'admin') return 'bg-red-500/20 text-red-500 font-bold';
+    // Supervisor - Naranja (autoridad media-alta)
+    if (roleLower === 'supervisor')
+      return 'bg-orange-500/20 text-orange-500 font-bold';
+    // Conductor - Azul (autoridad operativa)
+    if (roleLower === 'driver') return 'bg-blue-500/20 text-blue-500 font-bold';
+    // Pasajero - Verde (sin autoridad administrativa)
+    if (roleLower === 'passenger')
+      return 'bg-emerald-500/20 text-emerald-500 font-bold';
+    return 'bg-slate-500/20 text-slate-500 font-bold';
   }
 
   // Filter users based on search query
@@ -661,13 +699,12 @@ export default function UsersPage() {
           />
           <R2MInput
             type="tel"
-            placeholder="Teléfono (+573001234567)"
+            placeholder="Teléfono (+573001234567) - Opcional"
             value={phone}
             onValueChange={setPhone}
             onBlur={validatePhone}
             error={errors.phone}
             icon="ri-phone-line"
-            required
           />
         </div>
         <div className="flex gap-3 mt-6">
@@ -688,7 +725,6 @@ export default function UsersPage() {
               !email.trim() ||
               !password.trim() ||
               !name.trim() ||
-              !phone.trim() ||
               Object.keys(errors).length > 0
             }
             loading={loading}
@@ -740,13 +776,12 @@ export default function UsersPage() {
           />
           <R2MInput
             type="tel"
-            placeholder="Teléfono (+573001234567)"
+            placeholder="Teléfono (+573001234567) - Opcional"
             value={phone}
             onValueChange={setPhone}
             onBlur={validatePhone}
             error={errors.phone}
             icon="ri-phone-line"
-            required
           />
         </div>
         <div className="flex gap-3 mt-6">
@@ -766,7 +801,6 @@ export default function UsersPage() {
               loading ||
               !email.trim() ||
               !name.trim() ||
-              !phone.trim() ||
               Object.keys(errors).length > 0
             }
             loading={loading}

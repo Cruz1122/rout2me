@@ -3,7 +3,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY =
   import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
 
-export type UserRole = 'admin' | 'user' | 'driver' | 'supervisor';
+export type UserRole = 'ADMIN' | 'USER' | 'DRIVER' | 'SUPERVISOR' | 'PASSENGER';
 
 export type User = {
   id: string;
@@ -11,6 +11,8 @@ export type User = {
   name: string;
   phone: string;
   role?: UserRole;
+  company_name?: string;
+  is_superadmin?: boolean;
   created_at: string;
   email_confirmed_at?: string;
 };
@@ -67,7 +69,12 @@ export async function getUsers(): Promise<User[]> {
     (user: {
       id: string;
       email: string;
-      user_metadata?: { name?: string; phone?: string };
+      user_metadata?: {
+        name?: string;
+        phone?: string;
+        orgs?: Array<{ org_role?: string; company_name?: string }>;
+        is_superadmin?: boolean;
+      };
       created_at: string;
       email_confirmed_at?: string;
     }) => ({
@@ -75,7 +82,9 @@ export async function getUsers(): Promise<User[]> {
       email: user.email || '',
       name: user.user_metadata?.name || 'Sin nombre',
       phone: user.user_metadata?.phone || '',
-      role: 'user', // Por defecto, se puede mejorar si tienen roles en user_metadata
+      role: (user.user_metadata?.orgs?.[0]?.org_role as UserRole) || 'USER',
+      company_name: user.user_metadata?.orgs?.[0]?.company_name || '',
+      is_superadmin: user.user_metadata?.is_superadmin || false,
       created_at: user.created_at,
       email_confirmed_at: user.email_confirmed_at,
     }),
@@ -140,7 +149,9 @@ export async function createUser(payload: UserCreate): Promise<User> {
     email: newUser.email,
     name: newUser.user_metadata?.name || '',
     phone: newUser.user_metadata?.phone || '',
-    role: 'user',
+    role: (newUser.user_metadata?.orgs?.[0]?.org_role as UserRole) || 'USER',
+    company_name: newUser.user_metadata?.orgs?.[0]?.company_name || '',
+    is_superadmin: newUser.user_metadata?.is_superadmin || false,
     created_at: newUser.created_at,
     email_confirmed_at: newUser.email_confirmed_at,
   };
@@ -184,7 +195,10 @@ export async function updateUser(
     email: updatedUser.email,
     name: updatedUser.user_metadata?.name || '',
     phone: updatedUser.user_metadata?.phone || '',
-    role: 'user',
+    role:
+      (updatedUser.user_metadata?.orgs?.[0]?.org_role as UserRole) || 'USER',
+    company_name: updatedUser.user_metadata?.orgs?.[0]?.company_name || '',
+    is_superadmin: updatedUser.user_metadata?.is_superadmin || false,
     created_at: updatedUser.created_at,
     email_confirmed_at: updatedUser.email_confirmed_at,
   };

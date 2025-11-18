@@ -29,7 +29,7 @@ export async function getRouteVariants(
   routeId: string,
 ): Promise<RouteVariant[]> {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/route_variants?select=id,route_id,path,length_m_json&route_id=eq.${routeId}`,
+    `${SUPABASE_URL}/rest/v1/v_route_variants_len?select=id,route_id,path,length_m_json&route_id=eq.${routeId}`,
     {
       method: 'GET',
       headers: {
