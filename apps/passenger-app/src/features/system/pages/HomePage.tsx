@@ -826,25 +826,33 @@ export default function HomePage() {
         // Cargar buses para esta ruta usando el ID de la variante
         await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
 
-        // Centrar la cámara en el bus específico
-        if (busFromNavigation.busLocation && mapInstance.current) {
-          mapInstance.current.flyTo({
-            center: [
-              busFromNavigation.busLocation.longitude,
-              busFromNavigation.busLocation.latitude,
-            ],
-            zoom: 16,
-            duration: 1500,
-          });
-        }
+        // Ocultar loader después de cargar los buses
+        setIsMapLoading(false);
+
+        // Esperar unos segundos antes de hacer zoom al bus destacado
+        // Esto permite que el usuario vea toda la ruta primero
+        setTimeout(() => {
+          // Centrar la cámara en el bus específico después de unos segundos
+          if (busFromNavigation.busLocation && mapInstance.current) {
+            mapInstance.current.flyTo({
+              center: [
+                busFromNavigation.busLocation.longitude,
+                busFromNavigation.busLocation.latitude,
+              ],
+              zoom: 16,
+              duration: 500,
+            });
+          }
+        }, 3000); // Esperar 3 segundos antes de hacer zoom
 
         // NO re-renderizar el marcador - mantener el marcador existente intacto
         // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
       } catch {
         // Error silencioso
-      } finally {
         setIsMapLoading(false);
-        setBusFromNavigation(null); // Limpiar después de procesar
+      } finally {
+        // Limpiar después de procesar (el loader ya se desactiva después de cargar buses)
+        setBusFromNavigation(null);
       }
     };
 

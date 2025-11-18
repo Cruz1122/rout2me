@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
-import { IonContent, IonPage, useIonRouter } from '@ionic/react';
+import {
+  IonContent,
+  IonPage,
+  useIonRouter,
+  useIonViewDidEnter,
+} from '@ionic/react';
 import { IoSearch, IoSearchOutline } from 'react-icons/io5';
 import {
   RiBusLine,
@@ -63,7 +68,13 @@ export default function LivePage() {
   const [error, setError] = useState<BusServiceError | null>(null);
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
   const [showBusModal, setShowBusModal] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const userLocation = useUserLocation();
+
+  // Resetear el estado de navegación cuando se vuelve a la página
+  useIonViewDidEnter(() => {
+    setIsNavigating(false);
+  });
 
   // Cargar buses al montar el componente
   useEffect(() => {
@@ -93,26 +104,35 @@ export default function LivePage() {
     setShowBusModal(true);
   };
 
-  const handleViewBusOnMap = () => {
+  const handleViewBusOnMap = async () => {
     if (!selectedBus) return;
 
-    // Navegar a HomePage con el bus seleccionado
-    const busData = {
-      id: selectedBus.activeRouteVariantId || selectedBus.routeNumber,
-      code: selectedBus.routeNumber,
-      name: selectedBus.routeName,
-      busId: selectedBus.id,
-      busLocation: selectedBus.location,
-    };
+    // Mostrar loader mientras se procesa
+    setIsNavigating(true);
 
-    // Guardar en el estado global para que HomePage pueda acceder
-    (globalThis as { busData?: typeof busData }).busData = busData;
+    try {
+      // Navegar a HomePage con el bus seleccionado
+      const busData = {
+        id: selectedBus.activeRouteVariantId || selectedBus.routeNumber,
+        code: selectedBus.routeNumber,
+        name: selectedBus.routeName,
+        busId: selectedBus.id,
+        busLocation: selectedBus.location,
+      };
 
-    setShowBusModal(false);
-    setSelectedBus(null);
+      // Guardar en el estado global para que HomePage pueda acceder
+      (globalThis as { busData?: typeof busData }).busData = busData;
 
-    // Navegar a HomePage usando Ionic Router (sin recargar la página)
-    router.push('/inicio', 'forward', 'push');
+      setShowBusModal(false);
+      setSelectedBus(null);
+
+      // Navegar a HomePage usando Ionic Router (sin recargar la página)
+      // El loader se mantendrá hasta que HomePage complete el procesamiento
+      await router.push('/inicio', 'forward', 'push');
+    } catch (error) {
+      console.error('Error navigating to map:', error);
+      setIsNavigating(false);
+    }
   };
 
   const getFilteredBuses = (): Bus[] => {
@@ -205,6 +225,7 @@ export default function LivePage() {
   return (
     <IonPage>
       <IonContent>
+        {isNavigating && <GlobalLoader />}
         <R2MPageHeader title="Buses en tiempo real" />
 
         {/* Barra de búsqueda y filtros */}
