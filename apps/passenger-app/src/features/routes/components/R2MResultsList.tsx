@@ -25,7 +25,7 @@ export default function R2MResultsList({
   const recentSearchKeys = useMemo(() => {
     const entries = recentSearchesStorage.getRecentSearches();
     return new Set(entries.map((entry) => `${entry.type}-${entry.id}`));
-  }, [items]);
+  }, []);
 
   const isRecentItem = (item: SearchItem): boolean =>
     recentSearchKeys.has(`${item.type}-${item.id}`);

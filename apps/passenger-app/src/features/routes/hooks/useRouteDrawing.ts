@@ -159,10 +159,10 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
 
         // Crear marcador personalizado para parada con color y opacidad personalizados
         const marker = new maplibregl.Marker({
-          element: createStopMarkerElement(
-            stopColor || '#FF6B35',
-            stopOpacity !== undefined ? stopOpacity : 1,
-          ),
+          element: createStopMarkerElement({
+            color: stopColor || '#FF6B35',
+            opacity: stopOpacity ?? 1,
+          }),
           anchor: 'center',
         })
           .setLngLat(stop.location)

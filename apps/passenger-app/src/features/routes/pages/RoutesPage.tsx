@@ -104,7 +104,7 @@ export default function RoutesPage() {
     };
 
     loadRoutes();
-  }, []);
+  }, [refreshKey]);
 
   const handleViewMore = (filter: FilterTab) => {
     setActiveFilter(filter);

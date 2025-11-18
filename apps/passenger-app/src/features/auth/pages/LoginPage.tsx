@@ -6,9 +6,7 @@ import {
   useIonViewDidEnter,
 } from '@ionic/react';
 import {
-  RiGoogleLine,
   RiGoogleFill,
-  RiMicrosoftLine,
   RiMicrosoftFill,
   RiArrowLeftLine,
   RiLoaderLine,
@@ -35,9 +33,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
-  const [hoveredProvider, setHoveredProvider] = useState<
-    'google' | 'microsoft' | null
-  >(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -266,8 +261,6 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleGoogleLogin}
                   disabled={isGoogleLoading || isMicrosoftLoading}
-                  onMouseEnter={() => setHoveredProvider('google')}
-                  onMouseLeave={() => setHoveredProvider(null)}
                   className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     borderRadius: '12px',
@@ -308,8 +301,6 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleMicrosoftLogin}
                   disabled={isGoogleLoading || isMicrosoftLoading}
-                  onMouseEnter={() => setHoveredProvider('microsoft')}
-                  onMouseLeave={() => setHoveredProvider(null)}
                   className="flex-1 p-4 border-2 transition-all duration-300 flex flex-col items-center justify-center shadow-sm hover:shadow-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     borderRadius: '12px',
