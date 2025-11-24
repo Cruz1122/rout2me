@@ -33,7 +33,7 @@ describe("Users CRUD (Supabase Auth + DB)", () => {
     const roleNames = (roles ?? []).map((r: any) => r.role);
     expect(roleNames).toContain("USER");
 
-    // si definiste TEST_COMPANYKEY, debería existir una membresía
+    //Debería existir una membresía
     if (TEST_COMPANYKEY) {
       const { data: mem } = await admin.from("memberships").select("company_id, org_role").eq("user_id", user1Id);
       expect((mem ?? []).length).toBeGreaterThanOrEqual(1);
@@ -95,9 +95,36 @@ describe("Users CRUD (Supabase Auth + DB)", () => {
     expect(upd.data[0].phone).toBe(phone);
   });
 
+   /**
+   * [US-ADM-016] Asignar roles
+   *
+   * Test: creación/gestión de usuarios con roles diferentes a los permitidos.
+   *
+   * Aquí probamos que la capa de datos NO permita insertar un rol arbitrario en
+   * la tabla `user_roles` (por ejemplo, un string que no esté contemplado en la
+   * enumeración de roles válidos o en las FKs que tengas configuradas).
+   *
+   * Si la BD está bien modelada, debe devolver error (FK o CHECK constraint).
+   */
+  it("rechaza asignar un rol no permitido en user_roles", async () => {
+    // Aseguramos que ya se creó el usuario base del primer test
+    expect(user1Id).not.toBe("");
+
+    const { error } = await admin.from("user_roles").insert({
+      user_id: user1Id,
+      role: "INVALID_ROLE_TEST" // rol que no debería existir en el catálogo
+    });
+
+    // Esperamos que haya un error de constraint (FK/CHECK/ENUM, etc.)
+    expect(error).toBeTruthy();
+  });
+
   afterAll(async () => {
-    // Cleanup (si no usas ON DELETE CASCADE, borra dependencias primero)
+    // Cleanup (borra dependencias primero)
     if (otherId) await admin.auth.admin.deleteUser(otherId);
     if (user1Id) await admin.auth.admin.deleteUser(user1Id);
   });
+
 });
+
+
