@@ -10,10 +10,12 @@ import {
   getRouteVariantsByRouteId,
   assignRouteToVehicle,
   removeRouteFromVehicle,
+  updateVehicle as updateVehicleApi,
 } from '../api/vehicles_api';
 import type {
   Vehicle,
   VehicleStatus,
+  VehicleType,
   Company,
   Route,
   RouteVariant,
@@ -59,6 +61,7 @@ function getTimeAgo(dateString: string | null): string {
 
 export default function VehiclesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
@@ -66,6 +69,9 @@ export default function VehiclesPage() {
   const [plate, setPlate] = useState('');
   const [capacity, setCapacity] = useState('');
   const [status, setStatus] = useState<VehicleStatus>('AVAILABLE');
+  const [vehicleType, setVehicleType] = useState<VehicleType | ''>('');
+  const [hasRamp, setHasRamp] = useState(false);
+  const [lastMaintenance, setLastMaintenance] = useState('');
   const [errors, setErrors] = useState<{
     company?: string;
     plate?: string;
@@ -348,6 +354,88 @@ export default function VehiclesPage() {
     setPlate('');
     setCapacity('');
     setStatus('AVAILABLE');
+    setVehicleType('');
+    setHasRamp(false);
+    setLastMaintenance('');
+  }
+
+  function openEditModal(vehicle: Vehicle) {
+    setSelectedVehicle(vehicle);
+    setCapacity(vehicle.capacity.toString());
+    setStatus(vehicle.status);
+    setVehicleType(vehicle.type || '');
+    setHasRamp(vehicle.has_ramp || false);
+    // Formatear la fecha para el input datetime-local
+    if (vehicle.last_maintenance) {
+      const date = new Date(vehicle.last_maintenance);
+      const formatted = date.toISOString().slice(0, 16);
+      setLastMaintenance(formatted);
+    } else {
+      setLastMaintenance('');
+    }
+    setIsEditOpen(true);
+  }
+
+  function closeEditModal() {
+    setIsEditOpen(false);
+    setSelectedVehicle(null);
+    setCapacity('');
+    setStatus('AVAILABLE');
+    setVehicleType('');
+    setHasRamp(false);
+    setLastMaintenance('');
+    setErrors({});
+  }
+
+  function updateVehicle() {
+    if (!selectedVehicle) return;
+
+    // Validar
+    const newErrors: { capacity?: string } = {};
+    const capacityRegex = /^\d+$/;
+
+    if (!capacity.trim()) newErrors.capacity = 'La capacidad es obligatoria';
+    else if (!capacityRegex.test(capacity))
+      newErrors.capacity = 'La capacidad debe ser numérica';
+    if (!vehicleType) {
+      showToast('error', 'Debe seleccionar un tipo de vehículo');
+      return;
+    }
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    // Llamar API
+    setLoading(true);
+    updateVehicleApi(selectedVehicle.id, {
+      capacity: parseInt(capacity),
+      status,
+      type: vehicleType,
+      has_ramp: hasRamp,
+      last_maintenance: lastMaintenance || undefined,
+    })
+      .then((updatedVehicle) => {
+        console.log('updated', updatedVehicle);
+        showToast('success', 'Vehículo actualizado correctamente.');
+        // Actualizar la lista
+        setVehicles((prev) =>
+          prev.map((v) => (v.id === updatedVehicle.id ? updatedVehicle : v)),
+        );
+        // Actualizar el vehículo seleccionado si está en detalles
+        if (selectedVehicle.id === updatedVehicle.id) {
+          setSelectedVehicle(updatedVehicle);
+        }
+        closeEditModal();
+      })
+      .catch((err) => {
+        console.error('update failed', err);
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'Error al actualizar el vehículo.';
+        showToast('error', errorMessage);
+      })
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -416,6 +504,10 @@ export default function VehiclesPage() {
     if (!capacity.trim()) newErrors.capacity = 'La capacidad es obligatoria';
     else if (!capacityRegex.test(capacity))
       newErrors.capacity = 'La capacidad debe ser numérica';
+    if (!vehicleType) {
+      showToast('error', 'Debe seleccionar un tipo de vehículo');
+      return;
+    }
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -427,6 +519,8 @@ export default function VehiclesPage() {
       plate,
       capacity: parseInt(capacity),
       status,
+      type: vehicleType,
+      has_ramp: hasRamp,
     })
       .then((res) => {
         console.log('created', res);
@@ -625,6 +719,15 @@ export default function VehiclesPage() {
         }}
       />
       <R2MActionIconButton
+        icon="ri-edit-line"
+        label="Editar vehículo"
+        variant="warning"
+        onClick={(e) => {
+          e.stopPropagation();
+          openEditModal(vehicle);
+        }}
+      />
+      <R2MActionIconButton
         icon="ri-route-line"
         label={
           vehicle.active_route_variant_id ? 'Cambiar ruta' : 'Asignar ruta'
@@ -661,6 +764,15 @@ export default function VehiclesPage() {
             ? 'Mantenimiento'
             : 'Fuera de Servicio';
 
+    const typeText =
+      vehicle.type?.toUpperCase() === 'BUS'
+        ? 'Bus'
+        : vehicle.type?.toUpperCase() === 'BUSETA'
+          ? 'Buseta'
+          : vehicle.type?.toUpperCase() === 'MICROBUS'
+            ? 'Microbus'
+            : 'N/A';
+
     const locationText = vehicle.location_json
       ? `${vehicle.location_json.lat.toFixed(6)}, ${vehicle.location_json.lng.toFixed(6)}`
       : 'Sin ubicación';
@@ -684,6 +796,11 @@ export default function VehiclesPage() {
         type: 'text',
       },
       {
+        label: 'Compañía',
+        value: vehicle.company_name || 'N/A',
+        type: 'text',
+      },
+      {
         label: 'Compañía ID',
         value: vehicle.company_id,
         type: 'id',
@@ -691,9 +808,46 @@ export default function VehiclesPage() {
         copyable: true,
       },
       {
+        label: 'Tipo',
+        value: typeText,
+        type: 'text',
+      },
+      {
+        label: 'Rampa',
+        value: vehicle.has_ramp ? 'Sí' : 'No',
+        type: 'text',
+      },
+      {
+        label: 'Capacidad',
+        value: `${vehicle.capacity} pasajeros`,
+        type: 'text',
+      },
+      {
         label: 'Estado',
         value: statusText,
         type: 'status',
+      },
+      {
+        label: 'Fecha de Creación',
+        value: vehicle.created_at
+          ? new Date(vehicle.created_at).toLocaleDateString('es-ES', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })
+          : 'N/A',
+        type: 'text',
+      },
+      {
+        label: 'Último Mantenimiento',
+        value: vehicle.last_maintenance
+          ? new Date(vehicle.last_maintenance).toLocaleDateString('es-ES', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })
+          : 'N/A',
+        type: 'text',
       },
       {
         label: 'Ubicación GPS',
@@ -837,7 +991,8 @@ export default function VehiclesPage() {
                   !(
                     company.trim() &&
                     /^[A-Z]{3}-\d{3}$/.test(plate) &&
-                    /^\d+$/.test(capacity)
+                    /^\d+$/.test(capacity) &&
+                    vehicleType
                   )
                 }
                 loading={loading}
@@ -922,6 +1077,39 @@ export default function VehiclesPage() {
             </div>
 
             <div>
+              <label className="flex flex-col">
+                <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                  Tipo de Vehículo
+                </p>
+                <R2MSelect
+                  value={vehicleType}
+                  onChange={(value) => setVehicleType(value as VehicleType)}
+                  options={[
+                    { value: 'BUS', label: 'Bus' },
+                    { value: 'BUSETA', label: 'Buseta' },
+                    { value: 'MICROBUS', label: 'Microbus' },
+                  ]}
+                  placeholder="Seleccione el tipo de vehículo"
+                  icon="ri-bus-line"
+                />
+              </label>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasRamp}
+                  onChange={(e) => setHasRamp(e.target.checked)}
+                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-[#111317] text-base font-medium leading-normal">
+                  Tiene rampa para silla de ruedas
+                </span>
+              </label>
+            </div>
+
+            <div>
               <p className="text-[#111317] text-base font-medium leading-normal pb-2">
                 Estado
               </p>
@@ -987,6 +1175,132 @@ export default function VehiclesPage() {
         </div>
       </div>
 
+      {/* Modal de Editar Vehículo */}
+      <R2MModal
+        isOpen={isEditOpen}
+        onClose={closeEditModal}
+        title="Editar Vehículo"
+        maxWidth="xl"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <R2MButton onClick={closeEditModal} variant="ghost" size="md">
+              Cancelar
+            </R2MButton>
+            <R2MButton
+              onClick={updateVehicle}
+              disabled={!/^\d+$/.test(capacity) || !vehicleType}
+              loading={loading}
+              variant="secondary"
+              size="md"
+              icon="ri-save-line"
+              iconPosition="left"
+            >
+              Actualizar
+            </R2MButton>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="flex flex-col">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Capacidad
+              </p>
+              <R2MInput
+                type="number"
+                value={capacity}
+                onValueChange={(value) =>
+                  setCapacity(value.replace(/[^0-9]/g, ''))
+                }
+                placeholder="Ingrese la capacidad de pasajeros"
+                icon="ri-group-line"
+                error={errors.capacity}
+              />
+            </label>
+          </div>
+
+          <div>
+            <label className="flex flex-col">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Tipo de Vehículo
+              </p>
+              <R2MSelect
+                value={vehicleType}
+                onChange={(value) => setVehicleType(value as VehicleType)}
+                options={[
+                  { value: 'BUS', label: 'Bus' },
+                  { value: 'BUSETA', label: 'Buseta' },
+                  { value: 'MICROBUS', label: 'Microbus' },
+                ]}
+                placeholder="Seleccione el tipo de vehículo"
+                icon="ri-bus-line"
+              />
+            </label>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasRamp}
+                onChange={(e) => setHasRamp(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-[#111317] text-base font-medium leading-normal">
+                Tiene rampa para silla de ruedas
+              </span>
+            </label>
+          </div>
+
+          <div>
+            <label className="flex flex-col">
+              <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+                Último Mantenimiento
+              </p>
+              <input
+                type="datetime-local"
+                value={lastMaintenance}
+                onChange={(e) => setLastMaintenance(e.target.value)}
+                className="form-input min-w-0 flex-1 rounded-lg border border-[#dcdfe5] bg-white px-4 py-3 text-[#111317] placeholder:text-[#97A3B1] focus:border-[#1980e6] focus:ring-1 focus:ring-[#1980e6] outline-none"
+              />
+            </label>
+          </div>
+
+          <div>
+            <p className="text-[#111317] text-base font-medium leading-normal pb-2">
+              Estado
+            </p>
+            <R2MFilterSwitcher
+              options={[
+                {
+                  id: 'AVAILABLE',
+                  label: 'Disponible',
+                  icon: 'ri-checkbox-circle-line',
+                },
+                {
+                  id: 'IN_SERVICE',
+                  label: 'En Servicio',
+                  icon: 'ri-steering-2-line',
+                },
+                {
+                  id: 'MAINTENANCE',
+                  label: 'Mantenimiento',
+                  icon: 'ri-tools-line',
+                },
+                {
+                  id: 'OUT_OF_SERVICE',
+                  label: 'Fuera de Servicio',
+                  icon: 'ri-close-circle-line',
+                },
+              ]}
+              activeFilter={status}
+              onFilterChange={(filter) => setStatus(filter as VehicleStatus)}
+              allowDeselect={false}
+            />
+          </div>
+        </div>
+      </R2MModal>
+
       {/* Modal de Detalles del Vehículo */}
       {isDetailsOpen && selectedVehicle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -1018,6 +1332,16 @@ export default function VehiclesPage() {
 
             <div className="mt-6 pt-6 border-t border-[#dcdfe5]">
               <div className="flex gap-3 justify-end">
+                <R2MButton
+                  variant="secondary"
+                  icon="ri-pencil-line"
+                  onClick={() => {
+                    setIsDetailsOpen(false);
+                    openEditModal(selectedVehicle);
+                  }}
+                >
+                  Editar
+                </R2MButton>
                 {selectedVehicle?.active_route_variant_id ? (
                   <>
                     <R2MButton

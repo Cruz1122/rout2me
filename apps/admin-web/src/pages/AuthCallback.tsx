@@ -47,6 +47,16 @@ export default function AuthCallback() {
 
             const user = userData.user;
 
+            // Validar el rol del usuario
+            const isSuperAdmin = user.user_metadata?.is_superadmin === true;
+            const orgRole = user.user_metadata?.orgs?.[0]?.org_role;
+
+            // Permitir solo ADMIN o superadmin
+            if (!isSuperAdmin && orgRole !== 'ADMIN') {
+              navigate('/signin?error=no_permissions', { replace: true });
+              return;
+            }
+
             const userObj = {
               id: user.id,
               email: user.email!,
@@ -109,6 +119,16 @@ export default function AuthCallback() {
             const user = data.session.user;
             const accessToken = data.session.access_token;
             const refreshToken = data.session.refresh_token;
+
+            // Validar el rol del usuario
+            const isSuperAdmin = user.user_metadata?.is_superadmin === true;
+            const orgRole = user.user_metadata?.orgs?.[0]?.org_role;
+
+            // Permitir solo ADMIN o superadmin
+            if (!isSuperAdmin && orgRole !== 'ADMIN') {
+              navigate('/signin?error=no_permissions', { replace: true });
+              return;
+            }
 
             const userObj = {
               id: user.id,

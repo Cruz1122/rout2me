@@ -2,8 +2,10 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY =
   import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
-export type UserRole = 'ADMIN' | 'USER' | 'DRIVER' | 'SUPERVISOR' | 'PASSENGER';
+export type UserRole = 'ADMIN' | 'USER' | 'DRIVER';
 
 export type User = {
   id: string;
@@ -12,6 +14,7 @@ export type User = {
   phone: string;
   role?: UserRole;
   company_name?: string;
+  company_id?: string;
   is_superadmin?: boolean;
   created_at: string;
   email_confirmed_at?: string;
@@ -20,20 +23,23 @@ export type User = {
 export type UserCreate = {
   email: string;
   password: string;
-  email_confirm: boolean;
-  user_metadata: {
-    name: string;
-    phone: string;
-  };
+  name: string;
+  phone?: string;
+  company_id: string;
+  org_role: UserRole;
+  is_superadmin?: boolean;
 };
 
 export type UserUpdate = {
-  email?: string;
+  user_id: string;
+  email: string;
   password?: string;
-  user_metadata?: {
-    name?: string;
+  user_metadata: {
+    name: string;
     phone?: string;
   };
+  company_id: string;
+  org_role: UserRole;
 };
 
 export type UserWithRole = {
@@ -72,7 +78,11 @@ export async function getUsers(): Promise<User[]> {
       user_metadata?: {
         name?: string;
         phone?: string;
-        orgs?: Array<{ org_role?: string; company_name?: string }>;
+        orgs?: Array<{
+          org_role?: string;
+          company_name?: string;
+          company_id?: string;
+        }>;
         is_superadmin?: boolean;
       };
       created_at: string;
@@ -84,6 +94,7 @@ export async function getUsers(): Promise<User[]> {
       phone: user.user_metadata?.phone || '',
       role: (user.user_metadata?.orgs?.[0]?.org_role as UserRole) || 'USER',
       company_name: user.user_metadata?.orgs?.[0]?.company_name || '',
+      company_id: user.user_metadata?.orgs?.[0]?.company_id || '',
       is_superadmin: user.user_metadata?.is_superadmin || false,
       created_at: user.created_at,
       email_confirmed_at: user.email_confirmed_at,
@@ -114,16 +125,17 @@ export async function getUserRole(userId: string): Promise<UserRole | null> {
   return roles.length > 0 ? roles[0].role : null;
 }
 
-// Crear un nuevo usuario (Admin endpoint)
+// Crear un nuevo usuario usando el endpoint admin_create_user
 export async function createUser(payload: UserCreate): Promise<User> {
-  const url = `${SUPABASE_URL}/auth/v1/admin/users`;
+  const url = `${SUPABASE_URL}/functions/v1/admin_create_user`;
+  const token = localStorage.getItem('access_token');
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      apikey: SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify(payload),
   });
@@ -135,41 +147,46 @@ export async function createUser(payload: UserCreate): Promise<User> {
     try {
       const errorJson = JSON.parse(errorText);
       throw new Error(
-        `Create user failed: ${errorJson.message || errorJson.code || errorText}`,
+        errorJson.error ||
+          errorJson.message ||
+          `Create user failed: ${res.status}`,
       );
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('error')) {
+        throw e;
+      }
       throw new Error(`Create user failed: ${res.status} ${errorText}`);
     }
   }
 
-  const newUser = await res.json();
+  const result = await res.json();
 
+  // La respuesta devuelve: { ok, user_id, email, company_id, org_role, global_role }
   return {
-    id: newUser.id,
-    email: newUser.email,
-    name: newUser.user_metadata?.name || '',
-    phone: newUser.user_metadata?.phone || '',
-    role: (newUser.user_metadata?.orgs?.[0]?.org_role as UserRole) || 'USER',
-    company_name: newUser.user_metadata?.orgs?.[0]?.company_name || '',
-    is_superadmin: newUser.user_metadata?.is_superadmin || false,
-    created_at: newUser.created_at,
-    email_confirmed_at: newUser.email_confirmed_at,
+    id: result.user_id,
+    email: result.email,
+    name: payload.name,
+    phone: payload.phone || '',
+    role: result.org_role as UserRole,
+    company_name: '',
+    company_id: result.company_id,
+    is_superadmin: payload.is_superadmin || false,
+    created_at: new Date().toISOString(),
+    email_confirmed_at: undefined,
   };
 }
 
-// Actualizar un usuario existente
-export async function updateUser(
-  userId: string,
-  payload: UserUpdate,
-): Promise<User> {
-  const url = `${SUPABASE_URL}/auth/v1/admin/users/${userId}`;
+// Actualizar un usuario existente usando el endpoint admin_update_user
+export async function updateUser(payload: UserUpdate): Promise<User> {
+  const url = `${SUPABASE_URL}/functions/v1/admin_update_user`;
+  const token = localStorage.getItem('access_token');
 
   const res = await fetch(url, {
-    method: 'PUT',
+    method: 'POST',
     headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      apikey: SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify(payload),
   });
@@ -181,26 +198,50 @@ export async function updateUser(
     try {
       const errorJson = JSON.parse(errorText);
       throw new Error(
-        `Update user failed: ${errorJson.message || errorJson.code || errorText}`,
+        errorJson.error ||
+          errorJson.message ||
+          `Update user failed: ${res.status}`,
       );
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('error')) {
+        throw e;
+      }
       throw new Error(`Update user failed: ${res.status} ${errorText}`);
     }
   }
 
-  const updatedUser = await res.json();
+  const result = await res.json();
 
+  // Si la respuesta es similar a create, adaptamos
+  if (result.user) {
+    const updatedUser = result.user;
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.user_metadata?.name || '',
+      phone: updatedUser.user_metadata?.phone || '',
+      role:
+        (updatedUser.user_metadata?.orgs?.[0]?.org_role as UserRole) || 'USER',
+      company_name: updatedUser.user_metadata?.orgs?.[0]?.company_name || '',
+      company_id: updatedUser.user_metadata?.orgs?.[0]?.company_id || '',
+      is_superadmin: updatedUser.user_metadata?.is_superadmin || false,
+      created_at: updatedUser.created_at,
+      email_confirmed_at: updatedUser.email_confirmed_at,
+    };
+  }
+
+  // Si devuelve formato simplificado como create
   return {
-    id: updatedUser.id,
-    email: updatedUser.email,
-    name: updatedUser.user_metadata?.name || '',
-    phone: updatedUser.user_metadata?.phone || '',
-    role:
-      (updatedUser.user_metadata?.orgs?.[0]?.org_role as UserRole) || 'USER',
-    company_name: updatedUser.user_metadata?.orgs?.[0]?.company_name || '',
-    is_superadmin: updatedUser.user_metadata?.is_superadmin || false,
-    created_at: updatedUser.created_at,
-    email_confirmed_at: updatedUser.email_confirmed_at,
+    id: payload.user_id,
+    email: payload.email,
+    name: payload.user_metadata.name,
+    phone: payload.user_metadata.phone || '',
+    role: payload.org_role,
+    company_name: '',
+    company_id: payload.company_id,
+    is_superadmin: false,
+    created_at: new Date().toISOString(),
+    email_confirmed_at: undefined,
   };
 }
 

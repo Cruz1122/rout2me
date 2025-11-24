@@ -79,8 +79,29 @@ export async function signIn(email: string, password: string) {
   const result = await response.json();
 
   if (!response.ok) {
+    // Traducir mensajes de error comunes
+    let errorMessage =
+      result.error_description || result.msg || 'Error al iniciar sesión';
+
+    if (
+      errorMessage === 'Invalid login credentials' ||
+      errorMessage.includes('credentials')
+    ) {
+      errorMessage = 'Credenciales inválidas. Verifica tu correo y contraseña.';
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  // Validar el rol del usuario
+  const user = result.user;
+  const isSuperAdmin = user?.user_metadata?.is_superadmin === true;
+  const orgRole = user?.user_metadata?.orgs?.[0]?.org_role;
+
+  // Permitir solo ADMIN o superadmin
+  if (!isSuperAdmin && orgRole !== 'ADMIN') {
     throw new Error(
-      result.error_description || result.msg || 'Error al iniciar sesión',
+      'No tienes permisos para acceder a esta aplicación. Solo administradores pueden iniciar sesión.',
     );
   }
 
