@@ -21,6 +21,7 @@ import R2MCodeInput from '../../../shared/components/R2MCodeInput';
 import ErrorNotification from '../../../features/system/components/ErrorNotification';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 import { signupUser, validateAuthConfig } from '../services/authService';
+import { useTheme } from '../../../contexts/ThemeContext';
 import '../../../shared/components/R2MInput.css';
 
 // Tipos para el registro
@@ -41,6 +42,7 @@ type AccountPurpose = 'personal' | 'organization';
 export default function RegisterPage() {
   const router = useIonRouter();
   const { error, handleError, clearError } = useErrorNotification();
+  const { theme } = useTheme();
 
   // Estados para las fases
   const [currentPhase, setCurrentPhase] = useState(1);
@@ -665,12 +667,29 @@ export default function RegisterPage() {
         <button
           type="button"
           onClick={() => setAccountPurpose('personal')}
-          className={`flex-1 aspect-square p-6 border-2 transition-all duration-300 flex flex-col items-center justify-center bg-white ${
-            accountPurpose === 'personal'
-              ? 'border-blue-500 shadow-lg'
-              : 'border-gray-200 hover:border-gray-300 shadow-sm'
-          }`}
-          style={{ borderRadius: '16px' }}
+          className="flex-1 aspect-square p-6 border-2 transition-all duration-300 flex flex-col items-center justify-center"
+          style={{
+            borderRadius: '16px',
+            backgroundColor: 'var(--color-card)',
+            borderColor:
+              accountPurpose === 'personal'
+                ? 'var(--color-primary)'
+                : 'var(--color-border)',
+            boxShadow:
+              accountPurpose === 'personal'
+                ? '0 4px 12px rgba(255, 255, 255, 0.3)'
+                : '0 2px 8px rgba(255, 255, 255, 0.2)',
+          }}
+          onMouseEnter={(e) => {
+            if (accountPurpose !== 'personal') {
+              e.currentTarget.style.borderColor = 'var(--color-border-strong)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (accountPurpose !== 'personal') {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }
+          }}
         >
           <div
             className="mb-3 flex items-center justify-center"
@@ -697,19 +716,46 @@ export default function RegisterPage() {
               />
             </div>
           </div>
-          <h3 className="font-semibold text-lg text-center">Personal</h3>
+          <h3
+            className="font-semibold text-lg text-center transition-colors duration-300"
+            style={{
+              color:
+                accountPurpose === 'personal'
+                  ? 'var(--color-text)'
+                  : 'var(--color-terciary)',
+            }}
+          >
+            Personal
+          </h3>
         </button>
 
         {/* Opción Organización */}
         <button
           type="button"
           onClick={() => setAccountPurpose('organization')}
-          className={`flex-1 aspect-square p-6 border-2 transition-all duration-300 flex flex-col items-center justify-center bg-white ${
-            accountPurpose === 'organization'
-              ? 'border-blue-500 shadow-lg'
-              : 'border-gray-200 hover:border-gray-300 shadow-sm'
-          }`}
-          style={{ borderRadius: '16px' }}
+          className="flex-1 aspect-square p-6 border-2 transition-all duration-300 flex flex-col items-center justify-center"
+          style={{
+            borderRadius: '16px',
+            backgroundColor: 'var(--color-card)',
+            borderColor:
+              accountPurpose === 'organization'
+                ? 'var(--color-primary)'
+                : 'var(--color-border)',
+            boxShadow:
+              accountPurpose === 'organization'
+                ? '0 4px 12px rgba(255, 255, 255, 0.3)'
+                : '0 2px 8px rgba(255, 255, 255, 0.2)',
+          }}
+          onMouseEnter={(e) => {
+            if (accountPurpose !== 'organization') {
+              e.currentTarget.style.borderColor = 'var(--color-border-strong)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (accountPurpose !== 'organization') {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }
+          }}
         >
           <div
             className="mb-3 flex items-center justify-center"
@@ -736,14 +782,24 @@ export default function RegisterPage() {
               />
             </div>
           </div>
-          <h3 className="font-semibold text-lg text-center">Organización</h3>
+          <h3
+            className="font-semibold text-lg text-center transition-colors duration-300"
+            style={{
+              color:
+                accountPurpose === 'organization'
+                  ? 'var(--color-text)'
+                  : 'var(--color-terciary)',
+            }}
+          >
+            Organización
+          </h3>
         </button>
       </div>
 
       {/* Descripción de la opción seleccionada */}
       {accountPurpose && (
         <div className="mb-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm" style={{ color: 'var(--color-terciary)' }}>
             {accountPurpose === 'personal'
               ? 'Para uso personal y familiar'
               : 'Para organizaciones o miembros de una'}
@@ -814,9 +870,9 @@ export default function RegisterPage() {
           <button
             ref={backButtonRef}
             onClick={handlePreviousPhase}
-            className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
+            className="absolute top-4 left-4 z-5 p-2 transition-colors"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              backgroundColor: 'transparent',
             }}
             tabIndex={-1}
             aria-label="Volver atrás"

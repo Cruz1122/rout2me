@@ -151,9 +151,9 @@ export default function LoginPage() {
         <button
           ref={backButtonRef}
           onClick={() => router.push('/welcome', 'back')}
-          className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
+          className="absolute top-4 left-4 z-5 p-2 transition-colors"
           style={{
-            backgroundColor: 'rgba(var(--color-card-rgb), 0.9)',
+            backgroundColor: 'transparent',
           }}
           tabIndex={-1}
           aria-label="Volver atrás"

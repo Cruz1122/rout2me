@@ -11,6 +11,10 @@ export interface ApiBusLatestPosition {
   location_json: { lat: number; lng: number } | null;
   speed_kph: number | null;
   heading: number | null;
+  capacity: number;
+  passenger_count: number;
+  has_ramp: boolean;
+  type: 'bus' | 'buseta' | 'microbus';
 }
 
 export interface BusLocation {
@@ -39,6 +43,8 @@ export interface Bus {
   speed: number | null;
   heading: number | null;
   activeRouteVariantId: string | null;
+  hasRamp: boolean;
+  type: 'bus' | 'buseta' | 'microbus';
 }
 
 const API_REST_URL = import.meta.env.VITE_BACKEND_REST_URL;
@@ -135,10 +141,22 @@ async function transformApiBusToBus(
   const routeNumber = routeInfo?.code || 'N/A';
   const routeName = routeInfo?.name || 'Sin ruta asignada';
 
-  // Calcular ocupación (usar valores predeterminados ya que no están en la API)
-  const occupancy = 'medium';
-  const currentCapacity = 0; // No disponible en la API actual
-  const maxCapacity = 40; // Capacidad estándar
+  // Usar valores reales de la API
+  const maxCapacity = apiBus.capacity;
+  const currentCapacity = apiBus.passenger_count;
+
+  // Calcular ocupación basada en porcentaje
+  let occupancy: 'low' | 'medium' | 'high' = 'low';
+  if (maxCapacity > 0) {
+    const occupancyPercentage = (currentCapacity / maxCapacity) * 100;
+    if (occupancyPercentage < 50) {
+      occupancy = 'low';
+    } else if (occupancyPercentage <= 80) {
+      occupancy = 'medium';
+    } else {
+      occupancy = 'high';
+    }
+  }
 
   // Convertir location_json a BusLocation
   let location: BusLocation | null = null;
@@ -162,6 +180,8 @@ async function transformApiBusToBus(
     speed: apiBus.speed_kph,
     heading: apiBus.heading,
     activeRouteVariantId: apiBus.active_route_variant_id,
+    hasRamp: apiBus.has_ramp,
+    type: apiBus.type,
   };
 }
 

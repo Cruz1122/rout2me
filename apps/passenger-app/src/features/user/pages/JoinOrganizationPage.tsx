@@ -128,9 +128,9 @@ export default function JoinOrganizationPage() {
             ref={backButtonRef}
             onClick={handleGoBack}
             disabled={isJoining}
-            className="absolute top-4 left-4 z-50 p-2 rounded-full transition-colors disabled:opacity-50"
+            className="absolute top-4 left-4 z-50 p-2 transition-colors disabled:opacity-50"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              backgroundColor: 'transparent',
             }}
             tabIndex={-1}
             aria-label="Volver atrás"

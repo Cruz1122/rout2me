@@ -28,6 +28,17 @@ const getRouteColorRGB = (variable: string, fallback: string): string => {
   return value || fallback;
 };
 
+// Helper para obtener el color de fondo del círculo según el tema
+const getCircleBackgroundColor = (): string => {
+  if (typeof window === 'undefined') return '#FFFFFF';
+  const isDarkMode =
+    document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDarkMode) {
+    return getRouteColor('--color-surface', '#131517');
+  }
+  return '#FFFFFF';
+};
+
 /**
  * Crea un marcador personalizado para puntos de origen/destino
  * Más pequeño y diferenciado del marcador del usuario
@@ -53,9 +64,11 @@ export function createEndpointMarkerElement(
 
   // Marcador más pequeño (18px) con estilo diferenciado del usuario
   // El usuario tiene 20px con animación de pulso, estos son más pequeños y sin pulso
+  // Usar fondo blanco en light mode, surface en dark mode, y contorno del color de la ruta
+  const backgroundColor = getCircleBackgroundColor();
   marker.style.cssText = `
-    background: ${finalColor};
-    border: 2.5px solid ${borderColor};
+    background: ${backgroundColor};
+    border: 2.5px solid ${finalColor};
     border-radius: 50%;
     width: 18px;
     height: 18px;
@@ -69,13 +82,12 @@ export function createEndpointMarkerElement(
 
   marker.addEventListener('mouseenter', () => {
     marker.style.transform = 'scale(1.2)';
-    marker.style.boxShadow =
-      '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 2px ' + finalColor;
+    marker.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
   });
 
   marker.addEventListener('mouseleave', () => {
     marker.style.transform = 'scale(1)';
-    marker.style.boxShadow = shadowColor + ', inset 0 0 0 2px ' + finalColor;
+    marker.style.boxShadow = shadowColor;
   });
 
   wrapper.appendChild(marker);
@@ -110,9 +122,11 @@ export function createStopMarkerElement(
   wrapper.style.opacity = String(opacity);
   wrapper.style.transition = 'opacity 0.3s ease-in-out';
 
+  // Usar fondo blanco en light mode, surface en dark mode, y contorno del color de la ruta
+  const backgroundColor = getCircleBackgroundColor();
   marker.style.cssText = `
-    background: ${stopColor};
-    border: ${highlight ? '4px' : '3px'} solid ${borderColor};
+    background: ${backgroundColor};
+    border: ${highlight ? '4px' : '3px'} solid ${stopColor};
     border-radius: 50%;
     width: ${highlight ? '30px' : '24px'};
     height: ${highlight ? '30px' : '24px'};
@@ -120,7 +134,7 @@ export function createStopMarkerElement(
     align-items: center;
     justify-content: center;
     font-size: ${highlight ? '14px' : '12px'};
-    color: ${borderColor};
+    color: ${stopColor};
     font-weight: bold;
     box-shadow: ${
       highlight ? `0 4px 12px rgba(${successColorRGB}, 0.35)` : shadowColor

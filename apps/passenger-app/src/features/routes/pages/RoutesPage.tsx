@@ -5,6 +5,7 @@ import {
   useIonRouter,
   useIonViewDidEnter,
 } from '@ionic/react';
+import { useTheme } from '../../../contexts/ThemeContext';
 import {
   RiBusLine,
   RiGridLine,
@@ -369,8 +370,8 @@ function FareInfoCard() {
           style={{
             backgroundColor: showInfo
               ? 'rgba(var(--color-primary-rgb), 0.1)'
-              : 'rgba(0, 0, 0, 0.05)',
-            color: showInfo ? 'var(--color-primary)' : '#6B7280',
+              : 'rgba(var(--color-terciary-rgb), 0.1)',
+            color: showInfo ? 'var(--color-primary)' : 'var(--color-terciary)',
           }}
           aria-label="Información sobre tarifas"
         >
@@ -386,7 +387,10 @@ function FareInfoCard() {
             border: '1px solid rgba(var(--color-primary-rgb), 0.1)',
           }}
         >
-          <p className="text-gray-700 leading-relaxed mb-2">
+          <p
+            className="leading-relaxed mb-2"
+            style={{ color: 'var(--color-text)' }}
+          >
             Tarifas expedidas por el Ministerio de Transporte en los Decretos
             0042, 0043 y 0044 de Manizales.
           </p>
@@ -422,7 +426,10 @@ function FareInfoCard() {
               className="mb-2 p-2 rounded-lg"
               style={{ backgroundColor: 'var(--color-primary)' }}
             >
-              <p className="text-xl font-bold" style={{ color: 'white' }}>
+              <p
+                className="text-xl font-bold"
+                style={{ color: 'var(--color-on-primary)' }}
+              >
                 ${fare.price.toLocaleString('es-CO')}
               </p>
             </div>
@@ -479,16 +486,26 @@ function RouteSection({
           </button>
         )}
       </div>
-      <div className="space-y-3">
-        {routes.map((route) => (
-          <RouteCard
-            key={route.id}
-            route={route}
-            onViewRoute={onViewRoute}
-            allRoutes={allRoutes}
-          />
-        ))}
-      </div>
+      {routes.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-sm" style={{ color: 'var(--color-terciary)' }}>
+            {title === 'Rutas Recientes'
+              ? 'No hay rutas recientes. Las rutas que visites aparecerán aquí.'
+              : 'No hay rutas disponibles.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {routes.map((route) => (
+            <RouteCard
+              key={route.id}
+              route={route}
+              onViewRoute={onViewRoute}
+              allRoutes={allRoutes}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -502,6 +519,7 @@ function RouteCard({
   readonly onViewRoute: (route: Route) => void;
   readonly allRoutes?: Route[];
 }) {
+  const { theme } = useTheme();
   // Obtener el color de la ruta
   const routeColor = route.color || generateRouteColor(route.code);
 
@@ -533,43 +551,28 @@ function RouteCard({
       <div className="flex items-center gap-3">
         <div className="relative flex-shrink-0">
           <div
-            className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white"
+            className="w-12 h-12 rounded-full flex items-center justify-center font-bold"
             style={{
               backgroundColor:
-                route.status === 'active' ? routeColor : '#9CA3AF',
+                (route.activeBuses || 0) === 0
+                  ? '#EF4444'
+                  : theme === 'dark'
+                    ? 'var(--color-surface)'
+                    : '#FFFFFF',
+              border:
+                (route.activeBuses || 0) === 0
+                  ? '2.5px solid #EF4444'
+                  : `2.5px solid ${route.status === 'active' ? routeColor : '#9CA3AF'}`,
+              color:
+                (route.activeBuses || 0) === 0
+                  ? '#FFFFFF'
+                  : route.status === 'active'
+                    ? routeColor
+                    : '#9CA3AF',
             }}
           >
             {route.number}
           </div>
-          {/* Círculos pequeños para variantes adicionales */}
-          {variantCount > 1 && (
-            <div className="absolute -bottom-1 -right-1 flex gap-0.5">
-              {variants
-                .slice(0, Math.min(variantCount - 1, 3))
-                .map((variant, idx) => (
-                  <div
-                    key={variant.id}
-                    className="w-3 h-3 rounded-full border-2 border-white"
-                    style={{
-                      backgroundColor:
-                        variant.status === 'active' ? routeColor : '#9CA3AF',
-                    }}
-                    title={`Variante ${idx + 2}`}
-                  />
-                ))}
-              {variantCount > 4 && (
-                <div
-                  className="w-3 h-3 rounded-full border-2 border-white flex items-center justify-center text-[6px] font-bold text-white"
-                  style={{
-                    backgroundColor: routeColor,
-                  }}
-                  title={`+${variantCount - 4} variantes más`}
-                >
-                  +
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -593,18 +596,28 @@ function RouteCard({
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 text-xs">
-              <span
-                className="flex items-center gap-1"
-                style={{
-                  color:
-                    (route.activeBuses || 0) > 0
-                      ? 'var(--color-secondary)'
-                      : '#EF4444',
-                }}
-              >
-                <RiBusLine size={14} />
-                {route.activeBuses || 0} buses activos
-              </span>
+              {(route.activeBuses || 0) > 0 ? (
+                <span
+                  className="flex items-center gap-1"
+                  style={{
+                    color: 'var(--color-secondary)',
+                  }}
+                >
+                  <RiBusLine size={14} />
+                  {route.activeBuses} buses activos
+                </span>
+              ) : (
+                <span
+                  className="text-xs font-medium px-2 py-1 rounded flex items-center gap-1"
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: '#EF4444',
+                  }}
+                >
+                  <RiBusLine size={14} />
+                  Sin buses activos
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -653,6 +666,14 @@ function RouteDetailModal({
   // Obtener el color de la ruta
   const routeColor = route.color || generateRouteColor(route.code);
 
+  // Determinar el color del icono: rojo si no hay buses activos, sino el color de la ruta
+  const iconColor =
+    (route.activeBuses || 0) === 0
+      ? '#EF4444'
+      : route.status === 'active'
+        ? routeColor
+        : '#9CA3AF';
+
   return (
     <R2MModal
       isOpen={true}
@@ -660,7 +681,7 @@ function RouteDetailModal({
       title={route.name}
       subtitle={`Ruta ${route.code}`}
       icon={route.number}
-      iconColor={route.status === 'active' ? routeColor : '#9CA3AF'}
+      iconColor={iconColor}
       actions={
         <div className="space-y-3">
           <R2MButton

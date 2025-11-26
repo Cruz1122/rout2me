@@ -34,6 +34,7 @@ import GlobalLoader from '../../system/components/GlobalLoader';
 import R2MModal from '../../../shared/components/R2MModal';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MPageHeader from '../../../shared/components/R2MPageHeader';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 type FilterTab = 'all' | 'active' | 'nearby';
 
@@ -310,6 +311,7 @@ interface BusCardProps {
 }
 
 function BusCard({ bus, userLocation, onClick }: BusCardProps) {
+  const { theme } = useTheme();
   // Calcular distancia en tiempo real (solo si el bus tiene ubicación Y el usuario también)
   const canCalculateDistance = bus.location !== null && userLocation !== null;
   const distance = canCalculateDistance
@@ -395,9 +397,12 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
       <div className="flex items-center gap-3">
         {/* Badge del bus */}
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white"
+          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold"
           style={{
-            backgroundColor: getStatusColor(dynamicStatus),
+            backgroundColor:
+              theme === 'dark' ? 'var(--color-surface)' : '#FFFFFF',
+            border: `2.5px solid ${getOccupancyColor(bus.occupancy)}`,
+            color: getOccupancyColor(bus.occupancy),
           }}
         >
           <RiBusLine size={24} />
@@ -509,6 +514,38 @@ interface BusDetailModalProps {
   readonly onViewOnMap: () => void;
 }
 
+/**
+ * Obtiene la tarifa según el tipo de vehículo
+ */
+function getFareByType(type: string): number | null {
+  switch (type.toLowerCase()) {
+    case 'bus':
+      return 2650;
+    case 'buseta':
+      return 2900;
+    case 'microbus':
+      return 3000;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Capitaliza el tipo de vehículo para mostrar
+ */
+function capitalizeType(type: string): string {
+  switch (type.toLowerCase()) {
+    case 'bus':
+      return 'Bus';
+    case 'buseta':
+      return 'Buseta';
+    case 'microbus':
+      return 'Microbus';
+    default:
+      return type;
+  }
+}
+
 function BusDetailModal({
   bus,
   userLocation,
@@ -519,6 +556,8 @@ function BusDetailModal({
   const distance = canCalculateDistance
     ? getDistanceBetweenLocations(userLocation!, bus.location!)
     : Infinity;
+
+  const fare = getFareByType(bus.type);
 
   const getStatusColor = (status: Bus['status']) => {
     switch (status) {
@@ -631,6 +670,34 @@ function BusDetailModal({
             {Math.round((bus.currentCapacity / bus.maxCapacity) * 100)}%
           </span>
         </div>
+      </div>
+
+      {/* Tipo de vehículo */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">
+          Tipo de vehículo
+        </span>
+        <span className="text-sm font-semibold">
+          {capitalizeType(bus.type)}
+        </span>
+      </div>
+
+      {/* Accesibilidad */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Accesibilidad</span>
+        <span className="text-sm font-semibold">
+          {bus.hasRamp ? 'Con rampa' : 'Sin rampa'}
+        </span>
+      </div>
+
+      {/* Tarifa */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Tarifa</span>
+        <span className="text-sm font-semibold">
+          {fare !== null
+            ? `$${fare.toLocaleString('es-CO')} COP`
+            : 'No disponible'}
+        </span>
       </div>
     </R2MModal>
   );

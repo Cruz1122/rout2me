@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { RiCloseLine } from 'react-icons/ri';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface R2MModalProps {
   readonly isOpen: boolean;
@@ -22,6 +23,7 @@ export default function R2MModal({
   children,
   actions,
 }: R2MModalProps) {
+  const { theme } = useTheme();
   if (!isOpen) return null;
 
   return (
@@ -55,8 +57,13 @@ export default function R2MModal({
           <div className="flex items-center gap-3">
             {icon && (
               <div
-                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white"
-                style={{ backgroundColor: iconColor }}
+                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold"
+                style={{
+                  backgroundColor:
+                    theme === 'dark' ? 'var(--color-surface)' : '#FFFFFF',
+                  border: `2.5px solid ${iconColor}`,
+                  color: iconColor,
+                }}
               >
                 {icon}
               </div>

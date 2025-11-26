@@ -553,10 +553,22 @@ export default function HomePage() {
       setIsMapLoading(false);
       setIsMapReady(true); // Marcar el mapa como listo para activar el marcador
 
-      // En modo oscuro, aplicar un ligero tinte Fiord al mapa base
+      // En modo oscuro, aplicar tinte negro #131517 al mapa base
       if (theme === 'dark') {
         try {
-          map.setPaintProperty('carto-tiles-layer', 'raster-opacity', 0.85);
+          map.setPaintProperty('carto-tiles-layer', 'raster-opacity', 0.9);
+          map.setPaintProperty(
+            'carto-tiles-layer',
+            'raster-brightness-min',
+            0.1,
+          );
+          map.setPaintProperty(
+            'carto-tiles-layer',
+            'raster-brightness-max',
+            0.3,
+          );
+          map.setPaintProperty('carto-tiles-layer', 'raster-contrast', -0.2);
+          map.setPaintProperty('carto-tiles-layer', 'raster-saturation', -0.5);
         } catch {
           // Si por alguna razón la capa aún no existe, no romper la carga
         }
@@ -968,8 +980,7 @@ export default function HomePage() {
             left: 0,
             zIndex: 1,
             touchAction: 'pan-x pan-y',
-            backgroundColor:
-              theme === 'dark' ? 'var(--color-map-fiord)' : 'var(--color-bg)',
+            backgroundColor: theme === 'dark' ? '#131517' : 'var(--color-bg)',
           }}
         />
 
@@ -994,15 +1005,14 @@ export default function HomePage() {
                        hover:scale-105 active:scale-95 shadow-lg
                        opacity-40 hover:opacity-100"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              backgroundColor: 'rgba(var(--color-card-rgb), 0.95)',
+              border: `1px solid var(--color-border)`,
               borderRadius: '50%',
-              boxShadow:
-                '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              boxShadow: 'var(--color-shadow)',
             }}
             aria-label="Acercar"
           >
-            <RiAddLine size={20} style={{ color: '#000000' }} />
+            <RiAddLine size={20} style={{ color: 'var(--color-text)' }} />
           </button>
 
           <button
@@ -1012,15 +1022,14 @@ export default function HomePage() {
                        hover:scale-105 active:scale-95 shadow-lg
                        opacity-40 hover:opacity-100"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              backgroundColor: 'rgba(var(--color-card-rgb), 0.95)',
+              border: `1px solid var(--color-border)`,
               borderRadius: '50%',
-              boxShadow:
-                '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              boxShadow: 'var(--color-shadow)',
             }}
             aria-label="Alejar"
           >
-            <RiSubtractLine size={20} style={{ color: '#000000' }} />
+            <RiSubtractLine size={20} style={{ color: 'var(--color-text)' }} />
           </button>
 
           <button
@@ -1033,19 +1042,20 @@ export default function HomePage() {
                        ${isDraggingCompass ? 'cursor-grabbing scale-105 opacity-100' : 'cursor-pointer opacity-40 hover:opacity-100'}`}
             style={{
               backgroundColor: isDraggingCompass
-                ? 'rgba(30, 86, 160, 0.95)'
-                : 'rgba(255, 255, 255, 0.95)',
-              border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+                ? 'rgba(var(--color-secondary-rgb), 0.95)'
+                : 'rgba(var(--color-card-rgb), 0.95)',
+              border: `1px solid ${isDraggingCompass ? 'rgba(var(--color-secondary-rgb), 0.5)' : 'var(--color-border)'}`,
               borderRadius: '50%',
-              boxShadow:
-                '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              boxShadow: 'var(--color-shadow)',
             }}
             aria-label="Arrastrar para rotar - Click para resetear"
           >
             <RiCompassLine
               size={20}
               style={{
-                color: isDraggingCompass ? '#FFFFFF' : '#000000',
+                color: isDraggingCompass
+                  ? 'var(--color-on-secondary)'
+                  : 'var(--color-text)',
                 transform: `rotate(${mapBearing}deg)`,
                 transition: isDraggingCompass ? 'none' : 'transform 0.2s ease',
               }}
@@ -1059,15 +1069,14 @@ export default function HomePage() {
                        hover:scale-105 active:scale-95 shadow-lg
                        opacity-40 hover:opacity-100"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
+              backgroundColor: 'rgba(var(--color-card-rgb), 0.95)',
+              border: `1px solid var(--color-border)`,
               borderRadius: '50%',
-              boxShadow:
-                '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              boxShadow: 'var(--color-shadow)',
             }}
             aria-label="Mi ubicación"
           >
-            <RiFocus3Line size={20} style={{ color: '#000000' }} />
+            <RiFocus3Line size={20} style={{ color: 'var(--color-text)' }} />
           </button>
 
           <button
@@ -1080,13 +1089,13 @@ export default function HomePage() {
                        disabled:cursor-not-allowed`}
             style={{
               backgroundColor: isClearingRoutes
-                ? 'rgba(220, 38, 38, 0.95)'
-                : 'rgba(255, 255, 255, 0.95)',
-              border: `1px solid ${isClearingRoutes ? 'rgba(220, 38, 38, 0.5)' : 'rgba(var(--color-surface-rgb), 0.3)'}`,
+                ? 'rgba(var(--color-error-rgb), 0.95)'
+                : 'rgba(var(--color-card-rgb), 0.95)',
+              border: `1px solid ${isClearingRoutes ? 'rgba(var(--color-error-rgb), 0.5)' : 'var(--color-border)'}`,
               borderRadius: '50%',
               boxShadow: isClearingRoutes
-                ? '0 10px 25px -5px rgba(220, 38, 38, 0.4), 0 4px 6px -2px rgba(220, 38, 38, 0.2)'
-                : '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                ? '0 10px 25px -5px rgba(var(--color-error-rgb), 0.4), 0 4px 6px -2px rgba(var(--color-error-rgb), 0.2)'
+                : 'var(--color-shadow)',
               transform: isClearingRoutes ? 'scale(0.95)' : 'scale(1)',
             }}
             aria-label="Limpiar rutas"
@@ -1094,7 +1103,7 @@ export default function HomePage() {
             <RiDeleteBinLine
               size={20}
               style={{
-                color: isClearingRoutes ? '#FFFFFF' : '#000000',
+                color: isClearingRoutes ? '#FFFFFF' : 'var(--color-text)',
                 transform: isClearingRoutes
                   ? 'translateY(-2px)'
                   : 'translateY(0)',

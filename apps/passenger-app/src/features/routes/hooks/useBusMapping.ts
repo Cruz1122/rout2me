@@ -66,6 +66,22 @@ function getStatusColor(status: Bus['status']): string {
   }
 }
 
+/**
+ * Obtiene el color basado en la ocupación del bus
+ */
+function getOccupancyColor(occupancy: Bus['occupancy']): string {
+  switch (occupancy) {
+    case 'low':
+      return '#10B981'; // Verde
+    case 'medium':
+      return '#F59E0B'; // Amarillo
+    case 'high':
+      return '#EF4444'; // Rojo
+    default:
+      return '#9CA3AF'; // Gris
+  }
+}
+
 function getStatusLabel(status: Bus['status']): string {
   switch (status) {
     case 'active':
@@ -93,21 +109,33 @@ function createBusMarkerElement(
   element.style.opacity = String(initialOpacity);
   element.style.transition = 'opacity 0.3s ease-in-out';
 
-  const statusColor = getStatusColor(bus.status);
+  // Usar color basado en ocupación, no en ubicación
+  const occupancyColor = getOccupancyColor(bus.occupancy);
+
+  // Detectar si estamos en dark mode
+  const isDarkMode =
+    document.documentElement.getAttribute('data-theme') === 'dark';
+
+  // En light mode usar fondo blanco, en dark mode usar surface
+  const backgroundColor = isDarkMode
+    ? getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-surface')
+        .trim() || '#D6E4F0'
+    : '#FFFFFF';
 
   // Crear el contenedor del marcador
   const markerContainer = document.createElement('div');
   markerContainer.style.cssText = `
-    background: ${statusColor};
-    border: ${isHighlighted ? '4px' : '3px'} solid ${isHighlighted ? '#10B981' : '#ffffff'};
+    background: ${backgroundColor};
+    border: ${isHighlighted ? '4px' : '3px'} solid ${occupancyColor};
     border-radius: 50%;
     width: ${isHighlighted ? '32px' : '28px'};
     height: ${isHighlighted ? '32px' : '28px'};
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    box-shadow: ${isHighlighted ? '0 4px 12px rgba(16, 185, 129, 0.4)' : '0 2px 8px rgba(0, 0, 0, 0.3)'};
+    color: ${occupancyColor};
+    box-shadow: ${isHighlighted ? `0 4px 12px ${occupancyColor}40` : '0 2px 8px rgba(0, 0, 0, 0.3)'};
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
@@ -128,10 +156,11 @@ function createBusMarkerElement(
     document.head.appendChild(style);
   }
 
-  // Crear el ícono de React Icons
+  // Crear el ícono de React Icons con color basado en ocupación
   const iconContainer = document.createElement('div');
+  iconContainer.style.color = occupancyColor;
   const root = createRoot(iconContainer);
-  root.render(RiBus2Fill({ size: 16 }));
+  root.render(RiBus2Fill({ size: 16, color: occupancyColor }));
 
   markerContainer.appendChild(iconContainer);
 
