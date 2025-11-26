@@ -36,6 +36,50 @@ export interface RouteDrawingCallbacks {
   ) => void;
 }
 
+// Constantes de animación
+const FADE_OUT_DURATION = 300; // ms
+const FADE_IN_DURATION = 300; // ms
+
+// Helper para animar fade-out de un marcador
+const fadeOutMarker = (marker: maplibregl.Marker): Promise<void> => {
+  return new Promise((resolve) => {
+    const element = marker.getElement();
+    if (!element) {
+      resolve();
+      return;
+    }
+
+    // Animar opacidad a 0
+    element.style.transition = `opacity ${FADE_OUT_DURATION}ms ease-in-out`;
+    element.style.opacity = '0';
+
+    setTimeout(() => {
+      resolve();
+    }, FADE_OUT_DURATION);
+  });
+};
+
+// Helper para animar fade-in de un marcador
+const fadeInMarker = (marker: maplibregl.Marker): void => {
+  const element = marker.getElement();
+  if (!element) return;
+
+  // Asegurar que el elemento tenga opacidad 0 inicialmente
+  element.style.opacity = '0';
+  element.style.transition = `opacity ${FADE_IN_DURATION}ms ease-in-out`;
+
+  // Usar requestAnimationFrame para asegurar que el cambio de opacidad se aplique
+  // después de que el elemento esté en el DOM
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      // Verificar que el elemento todavía existe antes de animar
+      if (element && element.parentElement) {
+        element.style.opacity = '1';
+      }
+    });
+  });
+};
+
 export function useRouteDrawing(
   mapInstance: React.RefObject<MlMap | null>,
   callbacks?: RouteDrawingCallbacks,
@@ -45,29 +89,36 @@ export function useRouteDrawing(
   const stopMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
 
   const removeStopsFromMap = useCallback(
-    (routeId: string) => {
+    async (routeId: string) => {
       if (!mapInstance.current) return;
 
-      // Buscar y remover marcadores de paradas para esta ruta
-      const markersToRemove: string[] = [];
+      // Buscar marcadores de paradas para esta ruta
+      const markersToRemove: Array<{ id: string; marker: maplibregl.Marker }> =
+        [];
 
       for (const [markerId, marker] of stopMarkers.current) {
         if (markerId.startsWith(`stop-${routeId}-`)) {
-          marker.remove();
-          markersToRemove.push(markerId);
+          markersToRemove.push({ id: markerId, marker });
         }
       }
 
-      // Limpiar referencias
-      for (const markerId of markersToRemove) {
-        stopMarkers.current.delete(markerId);
+      // Animar fade-out de todos los marcadores
+      const fadeOutPromises = markersToRemove.map(({ marker }) =>
+        fadeOutMarker(marker),
+      );
+      await Promise.all(fadeOutPromises);
+
+      // Remover marcadores después de la animación
+      for (const { id, marker } of markersToRemove) {
+        marker.remove();
+        stopMarkers.current.delete(id);
       }
     },
     [mapInstance],
   );
 
   const removeRouteFromMap = useCallback(
-    (routeId: string) => {
+    async (routeId: string) => {
       if (!mapInstance.current) return;
 
       const layersToRemove = [
@@ -79,7 +130,56 @@ export function useRouteDrawing(
 
       const sourcesToRemove = [`route-${routeId}`];
 
-      // Remover capas
+      // Animar fade-out de las capas
+      for (const layerId of layersToRemove) {
+        if (mapInstance.current.getLayer(layerId)) {
+          // Animar opacidad a 0 usando setPaintProperty con transición
+          try {
+            mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0, {
+              duration: FADE_OUT_DURATION,
+            });
+          } catch {
+            // Si falla, continuar sin animación
+          }
+        }
+      }
+
+      // Animar fade-out de marcadores de inicio y fin
+      const mapWithMarkers = mapInstance.current as MlMap & {
+        _routeMarkers?: Record<string, maplibregl.Marker>;
+      };
+      const markers = mapWithMarkers._routeMarkers;
+      const endpointFadeOutPromises: Promise<void>[] = [];
+
+      if (markers) {
+        if (
+          markers[`start-${routeId}`] &&
+          typeof markers[`start-${routeId}`].remove === 'function'
+        ) {
+          endpointFadeOutPromises.push(
+            fadeOutMarker(markers[`start-${routeId}`]),
+          );
+        }
+        if (
+          markers[`end-${routeId}`] &&
+          typeof markers[`end-${routeId}`].remove === 'function'
+        ) {
+          endpointFadeOutPromises.push(
+            fadeOutMarker(markers[`end-${routeId}`]),
+          );
+        }
+      }
+
+      // Animar fade-out de paradas
+      await removeStopsFromMap(routeId);
+
+      // Esperar a que terminen todas las animaciones
+      await Promise.all([
+        new Promise((resolve) => setTimeout(resolve, FADE_OUT_DURATION)),
+        ...endpointFadeOutPromises,
+      ]);
+
+      // Remover capas después de la animación
       for (const layerId of layersToRemove) {
         if (mapInstance.current.getLayer(layerId)) {
           mapInstance.current.removeLayer(layerId);
@@ -95,11 +195,7 @@ export function useRouteDrawing(
         }
       }
 
-      // Remover marcadores de inicio y fin
-      const mapWithMarkers = mapInstance.current as MlMap & {
-        _routeMarkers?: Record<string, maplibregl.Marker>;
-      };
-      const markers = mapWithMarkers._routeMarkers;
+      // Remover marcadores de inicio y fin después de la animación
       if (markers) {
         if (
           markers[`start-${routeId}`] &&
@@ -116,9 +212,6 @@ export function useRouteDrawing(
           delete markers[`end-${routeId}`];
         }
       }
-
-      // Remover paradas de la ruta
-      removeStopsFromMap(routeId);
     },
     [mapInstance, removeStopsFromMap],
   );
@@ -138,11 +231,13 @@ export function useRouteDrawing(
       const startMarkerElement = createEndpointMarkerElement({
         type: 'start',
         color: markerColor,
+        opacity: 0, // Iniciar con opacidad 0 para fade-in
       });
 
       const endMarkerElement = createEndpointMarkerElement({
         type: 'end',
         color: markerColor,
+        opacity: 0, // Iniciar con opacidad 0 para fade-in
       });
 
       // Agregar event listeners para clics en los marcadores
@@ -187,12 +282,16 @@ export function useRouteDrawing(
       mapWithMarkers._routeMarkers = mapWithMarkers._routeMarkers || {};
       mapWithMarkers._routeMarkers[`start-${routeId}`] = startMarker;
       mapWithMarkers._routeMarkers[`end-${routeId}`] = endMarker;
+
+      // Animar fade-in de los marcadores
+      fadeInMarker(startMarker);
+      fadeInMarker(endMarker);
     },
     [mapInstance, callbacks],
   );
 
   const addStopsToMap = useCallback(
-    (
+    async (
       routeId: string,
       stops: Stop[],
       stopColor?: string,
@@ -200,17 +299,17 @@ export function useRouteDrawing(
     ) => {
       if (!mapInstance.current || !stops || stops.length === 0) return;
 
-      // Limpiar paradas existentes para esta ruta
-      removeStopsFromMap(routeId);
+      // Limpiar paradas existentes para esta ruta (con animación)
+      await removeStopsFromMap(routeId);
 
       for (const [index, stop] of stops.entries()) {
         const markerId = `stop-${routeId}-${stop.id}`;
 
-        // Crear marcador personalizado para parada con color y opacidad personalizados
+        // Crear marcador personalizado para parada con opacidad inicial 0
         // Usar colores del tema actual
         const markerElement = createStopMarkerElement({
           color: stopColor || getRouteColor('--color-route-stop', '#FF6B35'),
-          opacity: stopOpacity ?? 1,
+          opacity: 0, // Iniciar con opacidad 0 para fade-in
           highlight: false,
         });
 
@@ -231,13 +330,16 @@ export function useRouteDrawing(
 
         // Guardar referencia del marcador
         stopMarkers.current.set(markerId, marker);
+
+        // Animar fade-in del marcador
+        fadeInMarker(marker);
       }
     },
     [mapInstance, removeStopsFromMap, callbacks],
   );
 
   const addRouteToMap = useCallback(
-    (
+    async (
       routeId: string,
       coordinates: [number, number][],
       options: RouteDrawingOptions = {},
@@ -265,8 +367,8 @@ export function useRouteDrawing(
       const mainLayerId = `route-main-${routeId}`;
       const glowLayerId = `route-glow-${routeId}`;
 
-      // Limpiar ruta existente si ya existe
-      removeRouteFromMap(routeId);
+      // Limpiar ruta existente si ya existe (con animación)
+      await removeRouteFromMap(routeId);
 
       // Agregar fuente de datos GeoJSON
       mapInstance.current.addSource(sourceId, {
@@ -287,6 +389,7 @@ export function useRouteDrawing(
       });
 
       // Agregar capa de sombra (efecto Google Maps) - PRIMERA CAPA
+      // Iniciar con opacidad 0 para fade-in
       if (showShadow) {
         mapInstance.current.addLayer({
           id: shadowLayerId,
@@ -299,13 +402,14 @@ export function useRouteDrawing(
           paint: {
             'line-color': '#000000',
             'line-width': outlineWidth + 2,
-            'line-opacity': 0.3,
+            'line-opacity': 0, // Iniciar con opacidad 0
             'line-translate': [2, 2],
           },
         });
       }
 
       // Agregar capa de contorno (más gruesa, color diferente) - SEGUNDA CAPA
+      // Iniciar con opacidad 0 para fade-in
       mapInstance.current.addLayer({
         id: outlineLayerId,
         type: 'line',
@@ -317,11 +421,12 @@ export function useRouteDrawing(
         paint: {
           'line-color': outlineColor,
           'line-width': outlineWidth,
-          'line-opacity': 1,
+          'line-opacity': 0, // Iniciar con opacidad 0
         },
       });
 
       // Agregar capa principal de la ruta - TERCERA CAPA (MÁS ARRIBA)
+      // Iniciar con opacidad 0 para fade-in
       mapInstance.current.addLayer({
         id: mainLayerId,
         type: 'line',
@@ -333,11 +438,12 @@ export function useRouteDrawing(
         paint: {
           'line-color': color,
           'line-width': width,
-          'line-opacity': opacity,
+          'line-opacity': 0, // Iniciar con opacidad 0
         },
       });
 
       // Agregar capa de brillo (efecto Google Maps) - CUARTA CAPA (MÁS ARRIBA)
+      // Iniciar con opacidad 0 para fade-in
       mapInstance.current.addLayer({
         id: glowLayerId,
         type: 'line',
@@ -349,9 +455,47 @@ export function useRouteDrawing(
         paint: {
           'line-color': color,
           'line-width': width + 2,
-          'line-opacity': opacity * 0.33, // Mantener proporción con la opacidad principal
+          'line-opacity': 0, // Iniciar con opacidad 0
           'line-blur': 3,
         },
+      });
+
+      // Animar fade-in de las capas después de un pequeño delay
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (showShadow && mapInstance.current?.getLayer(shadowLayerId)) {
+            mapInstance.current.setPaintProperty(
+              shadowLayerId,
+              'line-opacity',
+              0.3,
+              { duration: FADE_IN_DURATION },
+            );
+          }
+          if (mapInstance.current?.getLayer(outlineLayerId)) {
+            mapInstance.current.setPaintProperty(
+              outlineLayerId,
+              'line-opacity',
+              1,
+              { duration: FADE_IN_DURATION },
+            );
+          }
+          if (mapInstance.current?.getLayer(mainLayerId)) {
+            mapInstance.current.setPaintProperty(
+              mainLayerId,
+              'line-opacity',
+              opacity,
+              { duration: FADE_IN_DURATION },
+            );
+          }
+          if (mapInstance.current?.getLayer(glowLayerId)) {
+            mapInstance.current.setPaintProperty(
+              glowLayerId,
+              'line-opacity',
+              opacity * 0.33,
+              { duration: FADE_IN_DURATION },
+            );
+          }
+        });
       });
 
       // Agregar puntos de inicio y fin
@@ -361,9 +505,9 @@ export function useRouteDrawing(
         endpointColor || getRouteColor('--color-route-endpoint', '#1E56A0'),
       );
 
-      // Agregar paradas si están disponibles
+      // Agregar paradas si están disponibles (con animación)
       if (stops && stops.length > 0) {
-        addStopsToMap(routeId, stops, stopColor, stopOpacity);
+        await addStopsToMap(routeId, stops, stopColor, stopOpacity);
       }
 
       routeSources.current.add(sourceId);
@@ -377,13 +521,57 @@ export function useRouteDrawing(
     [mapInstance, addRouteEndpoints, removeRouteFromMap, addStopsToMap],
   );
 
-  const clearAllRoutes = useCallback(() => {
+  const clearAllRoutes = useCallback(async () => {
     if (!mapInstance.current) return;
 
     const sourcesToRemove = Array.from(routeSources.current);
     const layersToRemove = Array.from(routeLayers.current);
 
-    // Remover todas las capas
+    // Animar fade-out de todas las capas
+    for (const layerId of layersToRemove) {
+      if (mapInstance.current.getLayer(layerId)) {
+        try {
+          mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0, {
+            duration: FADE_OUT_DURATION,
+          });
+        } catch {
+          // Si falla, continuar sin animación
+        }
+      }
+    }
+
+    // Animar fade-out de todos los marcadores de rutas
+    const mapWithMarkers = mapInstance.current as MlMap & {
+      _routeMarkers?: Record<string, maplibregl.Marker>;
+    };
+    const markers = mapWithMarkers._routeMarkers;
+    const endpointFadeOutPromises: Promise<void>[] = [];
+
+    if (markers) {
+      for (const markerId in markers) {
+        if (
+          markers[markerId] &&
+          typeof markers[markerId].remove === 'function'
+        ) {
+          endpointFadeOutPromises.push(fadeOutMarker(markers[markerId]));
+        }
+      }
+    }
+
+    // Animar fade-out de todos los marcadores de paradas
+    const stopFadeOutPromises: Promise<void>[] = [];
+    for (const marker of stopMarkers.current.values()) {
+      stopFadeOutPromises.push(fadeOutMarker(marker));
+    }
+
+    // Esperar a que terminen todas las animaciones
+    await Promise.all([
+      new Promise((resolve) => setTimeout(resolve, FADE_OUT_DURATION)),
+      ...endpointFadeOutPromises,
+      ...stopFadeOutPromises,
+    ]);
+
+    // Remover todas las capas después de la animación
     for (const layerId of layersToRemove) {
       if (mapInstance.current.getLayer(layerId)) {
         mapInstance.current.removeLayer(layerId);
@@ -397,11 +585,7 @@ export function useRouteDrawing(
       }
     }
 
-    // Remover todos los marcadores de rutas
-    const mapWithMarkers = mapInstance.current as MlMap & {
-      _routeMarkers?: Record<string, maplibregl.Marker>;
-    };
-    const markers = mapWithMarkers._routeMarkers;
+    // Remover todos los marcadores de rutas después de la animación
     if (markers) {
       for (const markerId in markers) {
         if (
@@ -414,7 +598,7 @@ export function useRouteDrawing(
       mapWithMarkers._routeMarkers = {};
     }
 
-    // Remover todos los marcadores de paradas
+    // Remover todos los marcadores de paradas después de la animación
     for (const marker of stopMarkers.current.values()) {
       marker.remove();
     }

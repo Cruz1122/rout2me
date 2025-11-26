@@ -47,6 +47,10 @@ export function createEndpointMarkerElement(
   const wrapper = document.createElement('div');
   const marker = document.createElement('div');
 
+  // Aplicar opacidad al wrapper para facilitar las animaciones
+  wrapper.style.opacity = String(opacity);
+  wrapper.style.transition = 'opacity 0.3s ease-in-out';
+
   // Marcador más pequeño (18px) con estilo diferenciado del usuario
   // El usuario tiene 20px con animación de pulso, estos son más pequeños y sin pulso
   marker.style.cssText = `
@@ -59,7 +63,6 @@ export function createEndpointMarkerElement(
     box-shadow: ${shadowColor};
     cursor: pointer;
     transition: all 0.2s ease;
-    opacity: ${opacity};
     position: relative;
     z-index: 999;
   `;
@@ -103,6 +106,10 @@ export function createStopMarkerElement(
   const wrapper = document.createElement('div');
   const marker = document.createElement('div');
 
+  // Aplicar opacidad al wrapper para facilitar las animaciones
+  wrapper.style.opacity = String(opacity);
+  wrapper.style.transition = 'opacity 0.3s ease-in-out';
+
   marker.style.cssText = `
     background: ${stopColor};
     border: ${highlight ? '4px' : '3px'} solid ${borderColor};
@@ -120,7 +127,6 @@ export function createStopMarkerElement(
     };
     cursor: pointer;
     transition: all 0.2s ease;
-    opacity: ${opacity};
     position: relative;
   `;
 

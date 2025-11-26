@@ -165,9 +165,9 @@ export default function HomePage() {
           type: 'stop',
         });
 
-        // Limpiar rutas y buses anteriores al seleccionar una parada
-        clearAllRoutes();
-        clearAllBuses();
+        // Limpiar rutas y buses anteriores al seleccionar una parada (con animación)
+        await clearAllRoutes();
+        await clearAllBuses();
 
         if (currentMarker.current) {
           currentMarker.current.remove();
@@ -179,8 +179,10 @@ export default function HomePage() {
           duration: 1000,
         });
 
+        // Crear marcador con opacidad inicial 0 para fade-in
         const markerElement = createStopMarkerElement({
           highlight: true,
+          opacity: 0, // Iniciar con opacidad 0 para fade-in
         });
 
         currentMarker.current = new maplibregl.Marker({
@@ -189,6 +191,19 @@ export default function HomePage() {
         })
           .setLngLat([item.lng, item.lat])
           .addTo(mapInstance.current);
+
+        // Animar fade-in del marcador
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (currentMarker.current) {
+              const element = currentMarker.current.getElement();
+              if (element) {
+                element.style.transition = 'opacity 300ms ease-in-out';
+                element.style.opacity = '1';
+              }
+            }
+          });
+        });
 
         setSelectedItem(item);
       } else if (
@@ -209,9 +224,9 @@ export default function HomePage() {
           currentMarker.current = null;
         }
 
-        // Limpiar todas las rutas y buses anteriores antes de agregar la nueva
-        clearAllRoutes();
-        clearAllBuses();
+        // Limpiar todas las rutas y buses anteriores antes de agregar la nueva (con animación)
+        await clearAllRoutes();
+        await clearAllBuses();
 
         // Mostrar loader mientras se procesa el map matching
         setIsMapLoading(true);
@@ -231,8 +246,8 @@ export default function HomePage() {
             shouldApplyMapMatching, // Aplicar map matching si hay API key
           );
 
-          // Usar las coordenadas procesadas para dibujar la ruta
-          addRouteToMap(
+          // Usar las coordenadas procesadas para dibujar la ruta (con animación)
+          await addRouteToMap(
             item.id,
             processedRoute.matchedGeometry.coordinates as [number, number][],
             {
@@ -284,8 +299,8 @@ export default function HomePage() {
         } catch {
           // Error silencioso
           // Fallback: usar coordenadas originales si falla el procesamiento
-          // Dibujar la ruta en el mapa usando colores del tema actual
-          addRouteToMap(item.id, item.coordinates, {
+          // Dibujar la ruta en el mapa usando colores del tema actual (con animación)
+          await addRouteToMap(item.id, item.coordinates, {
             color: getRouteColor('--color-route-default', '#1E56A0'),
             width: 4,
             opacity: 0.9,
@@ -362,14 +377,15 @@ export default function HomePage() {
   const [isDraggingCompass, setIsDraggingCompass] = useState(false);
   const [isClearingRoutes, setIsClearingRoutes] = useState(false);
 
-  const handleClearRoutes = useCallback(() => {
+  const handleClearRoutes = useCallback(async () => {
     if (isClearingRoutes) return; // Prevenir múltiples clicks
 
     setIsClearingRoutes(true);
 
     // Limpiar rutas, buses y marcadores (pero NO el marcador de ubicación del usuario)
-    clearAllRoutes();
-    clearAllBuses();
+    // Con animación
+    await clearAllRoutes();
+    await clearAllBuses();
     setSelectedItem(null);
     if (currentMarker.current) {
       currentMarker.current.remove();
@@ -620,8 +636,8 @@ export default function HomePage() {
 
     const processRouteFromNavigation = async () => {
       try {
-        // Limpiar rutas anteriores
-        clearAllRoutes();
+        // Limpiar rutas anteriores (con animación)
+        await clearAllRoutes();
         if (currentMarker.current) {
           currentMarker.current.remove();
           currentMarker.current = null;
@@ -660,8 +676,8 @@ export default function HomePage() {
           })),
         };
 
-        // Dibujar la ruta en el mapa usando colores del tema actual
-        addRouteToMap(
+        // Dibujar la ruta en el mapa usando colores del tema actual (con animación)
+        await addRouteToMap(
           searchItem.id,
           processedRoute.matchedGeometry.coordinates as [number, number][],
           {
@@ -728,8 +744,8 @@ export default function HomePage() {
           })),
         };
 
-        // Dibujar la ruta en el mapa usando colores del tema actual (fallback)
-        addRouteToMap(searchItem.id, searchItem.coordinates!, {
+        // Dibujar la ruta en el mapa usando colores del tema actual (fallback con animación)
+        await addRouteToMap(searchItem.id, searchItem.coordinates!, {
           color: getRouteColor('--color-route-default', '#1E56A0'),
           width: 4,
           opacity: 0.9,
@@ -772,9 +788,9 @@ export default function HomePage() {
 
     const processBusFromNavigation = async () => {
       try {
-        // Limpiar rutas y buses anteriores
-        clearAllRoutes();
-        clearAllBuses();
+        // Limpiar rutas y buses anteriores (con animación)
+        await clearAllRoutes();
+        await clearAllBuses();
         if (currentMarker.current) {
           currentMarker.current.remove();
           currentMarker.current = null;
@@ -850,8 +866,8 @@ export default function HomePage() {
                 })),
               };
 
-              // Agregar la ruta al mapa con opacidad menor y color verde (solo para buses)
-              addRouteToMap(
+              // Agregar la ruta al mapa con opacidad menor y color verde (solo para buses, con animación)
+              await addRouteToMap(
                 searchItem.id,
                 processedPath,
                 {

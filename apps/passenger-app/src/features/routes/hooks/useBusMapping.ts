@@ -8,6 +8,50 @@ export interface BusMappingCallbacks {
   onBusClick?: (bus: Bus) => void;
 }
 
+// Constantes de animación
+const FADE_OUT_DURATION = 300; // ms
+const FADE_IN_DURATION = 300; // ms
+
+// Helper para animar fade-out de un marcador
+const fadeOutMarker = (marker: maplibregl.Marker): Promise<void> => {
+  return new Promise((resolve) => {
+    const element = marker.getElement();
+    if (!element) {
+      resolve();
+      return;
+    }
+
+    // Animar opacidad a 0
+    element.style.transition = `opacity ${FADE_OUT_DURATION}ms ease-in-out`;
+    element.style.opacity = '0';
+
+    setTimeout(() => {
+      resolve();
+    }, FADE_OUT_DURATION);
+  });
+};
+
+// Helper para animar fade-in de un marcador
+const fadeInMarker = (marker: maplibregl.Marker): void => {
+  const element = marker.getElement();
+  if (!element) return;
+
+  // Asegurar que el elemento tenga opacidad 0 inicialmente
+  element.style.opacity = '0';
+  element.style.transition = `opacity ${FADE_IN_DURATION}ms ease-in-out`;
+
+  // Usar requestAnimationFrame para asegurar que el cambio de opacidad se aplique
+  // después de que el elemento esté en el DOM
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      // Verificar que el elemento todavía existe antes de animar
+      if (element && element.parentElement) {
+        element.style.opacity = '1';
+      }
+    });
+  });
+};
+
 // Funciones auxiliares para simplificar el código
 function getStatusColor(status: Bus['status']): string {
   switch (status) {
@@ -38,8 +82,16 @@ function getStatusLabel(status: Bus['status']): string {
 /**
  * Crea un elemento HTML personalizado para marcadores de bus
  */
-function createBusMarkerElement(bus: Bus, isHighlighted = false): HTMLElement {
+function createBusMarkerElement(
+  bus: Bus,
+  isHighlighted = false,
+  initialOpacity = 1,
+): HTMLElement {
   const element = document.createElement('div');
+
+  // Aplicar opacidad al wrapper para facilitar las animaciones
+  element.style.opacity = String(initialOpacity);
+  element.style.transition = 'opacity 0.3s ease-in-out';
 
   const statusColor = getStatusColor(bus.status);
 
@@ -132,11 +184,13 @@ export function useBusMapping(
   const busMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
 
   const removeBusFromMap = useCallback(
-    (busId: string) => {
+    async (busId: string) => {
       if (!mapInstance.current) return;
 
       const marker = busMarkers.current.get(busId);
       if (marker) {
+        // Animar fade-out antes de remover
+        await fadeOutMarker(marker);
         marker.remove();
         busMarkers.current.delete(busId);
       }
@@ -155,9 +209,19 @@ export function useBusMapping(
     [mapInstance, removeBusFromMap],
   );
 
-  const clearAllBuses = useCallback(() => {
+  const clearAllBuses = useCallback(async () => {
     if (!mapInstance.current) return;
 
+    // Animar fade-out de todos los marcadores
+    const fadeOutPromises: Promise<void>[] = [];
+    for (const marker of busMarkers.current.values()) {
+      fadeOutPromises.push(fadeOutMarker(marker));
+    }
+
+    // Esperar a que terminen todas las animaciones
+    await Promise.all(fadeOutPromises);
+
+    // Remover marcadores después de la animación
     for (const marker of busMarkers.current.values()) {
       marker.remove();
     }
@@ -165,14 +229,14 @@ export function useBusMapping(
   }, [mapInstance]);
 
   const addBusToMap = useCallback(
-    (bus: Bus, isHighlighted = false) => {
+    async (bus: Bus, isHighlighted = false) => {
       if (!mapInstance.current || !bus.location) return;
 
-      // Remover marcador existente si ya existe
-      removeBusFromMap(bus.id);
+      // Remover marcador existente si ya existe (con animación)
+      await removeBusFromMap(bus.id);
 
-      // Crear marcador personalizado para el bus
-      const markerElement = createBusMarkerElement(bus, isHighlighted);
+      // Crear marcador personalizado para el bus con opacidad inicial 0
+      const markerElement = createBusMarkerElement(bus, isHighlighted, 0);
 
       // Agregar event listener para clic en el marcador
       markerElement.addEventListener('click', (e) => {
@@ -191,22 +255,25 @@ export function useBusMapping(
 
       // Guardar referencia del marcador
       busMarkers.current.set(bus.id, marker);
+
+      // Animar fade-in del marcador
+      fadeInMarker(marker);
     },
     [mapInstance, removeBusFromMap, callbacks],
   );
 
   const addBusesToMap = useCallback(
-    (buses: Bus[], highlightedBusId?: string) => {
+    async (buses: Bus[], highlightedBusId?: string) => {
       if (!mapInstance.current) return;
 
-      // Limpiar buses existentes
-      clearAllBuses();
+      // Limpiar buses existentes (con animación)
+      await clearAllBuses();
 
-      // Agregar cada bus al mapa
+      // Agregar cada bus al mapa (con animación)
       for (const bus of buses) {
         if (bus.location && bus.status !== 'offline') {
           const isHighlighted = highlightedBusId === bus.id;
-          addBusToMap(bus, isHighlighted);
+          await addBusToMap(bus, isHighlighted);
         }
       }
     },
