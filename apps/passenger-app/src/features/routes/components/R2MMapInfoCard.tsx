@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   RiParkingFill,
   RiBusFill,
@@ -30,72 +30,230 @@ interface R2MMapInfoCardProps {
   readonly onClose: () => void;
 }
 
+type AnimationState = 'hidden' | 'exiting' | 'entering' | 'visible';
+
+const ANIMATION_DURATION = 200; // ms
+
 export default function R2MMapInfoCard({
   selectedItem,
   selectedMarker,
   onClose,
 }: R2MMapInfoCardProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [animationState, setAnimationState] =
+    useState<AnimationState>('hidden');
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
-  const [isClosing, setIsClosing] = useState(false);
-  const [opacity, setOpacity] = useState(0);
-  const wasVisibleRef = useRef(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Determinar qué mostrar: prioridad a selectedMarker sobre selectedItem
-  const displayData =
-    selectedMarker ||
-    (selectedItem ? { type: 'search' as const, data: selectedItem } : null);
+  const displayData = useMemo(() => {
+    return (
+      selectedMarker ||
+      (selectedItem ? { type: 'search' as const, data: selectedItem } : null)
+    );
+  }, [selectedMarker, selectedItem]);
 
-  useEffect(() => {
-    if (displayData) {
-      const isFirstAppearance = !wasVisibleRef.current;
-      setIsVisible(true);
-      setIsClosing(false);
-      setDragX(0);
-      setIsDragging(false);
+  // Crear displayKey único basado en el tipo y datos del popup
+  const displayKey = useMemo(() => {
+    if (!displayData) return null;
 
-      // Fade de entrada solo cuando aparece por primera vez
-      if (isFirstAppearance) {
-        setOpacity(0);
-        // Pequeño delay para que el fade se vea
-        setTimeout(() => {
-          setOpacity(1);
-        }, 10);
-      } else {
-        // Si ya estaba visible, mantener opacidad en 1
-        setOpacity(1);
-      }
-
-      wasVisibleRef.current = true;
+    if (displayData.type === 'stop') {
+      return `stop-${displayData.data.id}`;
+    } else if (displayData.type === 'bus') {
+      return `bus-${displayData.data.plate}`;
+    } else if (displayData.type === 'endpoint') {
+      return `endpoint-${displayData.data.type}-${displayData.data.coordinates.join(',')}`;
     } else {
-      setIsVisible(false);
-      setIsClosing(false);
-      setOpacity(0);
-      wasVisibleRef.current = false;
+      // SearchItem
+      return `search-${displayData.data.type}-${displayData.data.id}`;
     }
   }, [displayData]);
 
+  const previousDisplayKeyRef = useRef<string | null>(null);
+
   // Handler para cerrar
   const handleClose = useCallback(() => {
-    setIsClosing(true);
-    // Usar requestAnimationFrame para asegurar que el estado se actualice antes de cambiar opacity
-    requestAnimationFrame(() => {
-      setOpacity(0); // Iniciar fade de salida
-      // Esperar a que termine la animación fade antes de ocultar y llamar onClose
-      setTimeout(() => {
-        setIsVisible(false);
-        setIsClosing(false);
+    // Limpiar timers pendientes
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = null;
+    }
+
+    // Usar función de actualización para obtener el estado actual
+    setAnimationState((currentState) => {
+      if (currentState === 'hidden' || currentState === 'exiting') {
+        return currentState;
+      }
+
+      // Iniciar animación de salida
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        setAnimationState('hidden');
+        previousDisplayKeyRef.current = null;
         onClose();
-      }, 200); // Duración del fade
+      }, ANIMATION_DURATION);
+      return 'exiting';
     });
   }, [onClose]);
 
+  // Función auxiliar para iniciar animación de entrada
+  const startEnterAnimation = useCallback((key: string) => {
+    setAnimationState('entering');
+    previousDisplayKeyRef.current = key;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setAnimationState('visible');
+    }, ANIMATION_DURATION);
+  }, []);
+
+  // Función auxiliar para iniciar animación de salida
+  const startExitAnimation = useCallback(() => {
+    setAnimationState('exiting');
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setAnimationState('hidden');
+      previousDisplayKeyRef.current = null;
+    }, ANIMATION_DURATION);
+  }, []);
+
+  // Función auxiliar para manejar cambio de contenido
+  const handleContentChange = useCallback(
+    (currentKey: string) => {
+      // Usar función de actualización para obtener el estado actual
+      setAnimationState((currentState) => {
+        const needsExitAnimation =
+          currentState === 'visible' ||
+          currentState === 'entering' ||
+          currentState === 'exiting';
+
+        if (needsExitAnimation) {
+          // Fade out primero, luego fade in
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
+          timeoutRef.current = setTimeout(() => {
+            startEnterAnimation(currentKey);
+          }, ANIMATION_DURATION);
+          return 'exiting';
+        } else {
+          // Estado hidden, entrar directamente
+          startEnterAnimation(currentKey);
+          return currentState;
+        }
+      });
+    },
+    [startEnterAnimation],
+  );
+
+  // Manejar cambios de contenido y animaciones
+  useEffect(() => {
+    const previousKey = previousDisplayKeyRef.current;
+    const currentKey = displayKey;
+
+    // Si no hay contenido, cerrar
+    if (!currentKey) {
+      // Limpiar timers pendientes
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+
+      // Actualizar la referencia primero
+      previousDisplayKeyRef.current = null;
+
+      // Usar función de actualización para obtener el estado actual
+      setAnimationState((currentState) => {
+        const isCurrentlyVisible =
+          currentState === 'visible' || currentState === 'entering';
+        if (isCurrentlyVisible || currentState === 'exiting') {
+          // Iniciar animación de salida
+          const timeoutId = setTimeout(() => {
+            setAnimationState('hidden');
+          }, ANIMATION_DURATION);
+          timeoutRef.current = timeoutId;
+          return 'exiting';
+        } else {
+          return 'hidden';
+        }
+      });
+      return;
+    }
+
+    // Si hay contenido y cambió la clave
+    if (previousKey !== currentKey) {
+      // Limpiar timers pendientes
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+
+      if (previousKey === null) {
+        // Primera aparición: entrar directamente
+        startEnterAnimation(currentKey);
+      } else {
+        // Cambio de contenido: fade out → cambio → fade in
+        handleContentChange(currentKey);
+      }
+    }
+    // Si la clave no cambió, no hacer nada (mantener estado actual)
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [
+    displayKey,
+    startEnterAnimation,
+    startExitAnimation,
+    handleContentChange,
+  ]);
+
+  // Auto-close timer
+  useEffect(() => {
+    if (animationState === 'visible' && !isDragging) {
+      autoCloseTimerRef.current = setTimeout(() => {
+        handleClose();
+      }, 4500);
+
+      return () => {
+        if (autoCloseTimerRef.current) {
+          clearTimeout(autoCloseTimerRef.current);
+          autoCloseTimerRef.current = null;
+        }
+      };
+    }
+  }, [animationState, isDragging, handleClose]);
+
+  // Reset drag cuando cambia el contenido
+  useEffect(() => {
+    if (displayKey && previousDisplayKeyRef.current !== displayKey) {
+      setDragX(0);
+      setIsDragging(false);
+    }
+  }, [displayKey]);
+
   // Handler para clic fuera del componente
   useEffect(() => {
-    if (!isVisible) return;
+    if (animationState !== 'visible') return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
@@ -112,25 +270,7 @@ export default function R2MMapInfoCard({
       clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isVisible, handleClose]);
-
-  useEffect(() => {
-    if (isVisible && !isClosing) {
-      const timer = setTimeout(() => {
-        handleClose();
-      }, 4500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, isClosing, handleClose]);
-
-  // Cleanup cuando el componente se desmonta o displayData cambia a null
-  useEffect(() => {
-    if (!displayData) {
-      setDragX(0);
-      setIsDragging(false);
-    }
-  }, [displayData]);
+  }, [animationState, handleClose]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsDragging(true);
@@ -180,7 +320,33 @@ export default function R2MMapInfoCard({
     }
   };
 
-  if (!displayData || !isVisible) return null;
+  // Calcular opacidad basada en el estado de animación
+  const getOpacity = () => {
+    if (isDragging) {
+      return Math.max(0.7, 1 - Math.abs(dragX) / 200);
+    }
+    switch (animationState) {
+      case 'hidden':
+        return 0;
+      case 'exiting':
+        return 0;
+      case 'entering':
+        return 1;
+      case 'visible':
+        return 1;
+      default:
+        return 0;
+    }
+  };
+
+  // Calcular transición CSS
+  const getTransition = () => {
+    if (isDragging) return 'none';
+    if (animationState === 'hidden') return 'none';
+    return `opacity ${ANIMATION_DURATION}ms ease-in-out, transform 0.2s ease-out`;
+  };
+
+  if (!displayData || animationState === 'hidden') return null;
 
   const formatFare = (fare?: number) => {
     if (!fare) return '';
@@ -218,6 +384,11 @@ export default function R2MMapInfoCard({
   };
 
   const getIcon = () => {
+    const secondaryIconStyle = {
+      backgroundColor: 'rgba(var(--color-secondary-rgb), 0.1)',
+      color: 'rgb(var(--color-secondary-rgb))',
+    };
+
     if (
       displayData.type === 'stop' ||
       (displayData.type === 'search' && displayData.data.type === 'stop')
@@ -233,48 +404,29 @@ export default function R2MMapInfoCard({
           <RiParkingFill size={20} />
         </div>
       );
-    } else if (displayData.type === 'bus') {
-      return (
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            backgroundColor: 'rgba(var(--color-secondary-rgb), 0.1)',
-            color: 'rgb(var(--color-secondary-rgb))',
-          }}
-        >
-          <RiBusFill size={20} />
-        </div>
-      );
-    } else if (displayData.type === 'endpoint') {
-      return (
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            backgroundColor: 'rgba(var(--color-secondary-rgb), 0.1)',
-            color: 'rgb(var(--color-secondary-rgb))',
-          }}
-        >
-          {displayData.data.type === 'start' ? (
-            <RiPlayFill size={20} />
-          ) : (
-            <RiFlagFill size={20} />
-          )}
-        </div>
-      );
-    } else {
-      // SearchItem route
-      return (
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            backgroundColor: 'rgba(var(--color-secondary-rgb), 0.1)',
-            color: 'rgb(var(--color-secondary-rgb))',
-          }}
-        >
-          <RiBusFill size={20} />
-        </div>
-      );
     }
+
+    // Bus, endpoint y SearchItem route comparten el mismo estilo
+    let iconContent: React.ReactNode;
+    if (displayData.type === 'endpoint') {
+      iconContent =
+        displayData.data.type === 'start' ? (
+          <RiPlayFill size={20} />
+        ) : (
+          <RiFlagFill size={20} />
+        );
+    } else {
+      iconContent = <RiBusFill size={20} />;
+    }
+
+    return (
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={secondaryIconStyle}
+      >
+        {iconContent}
+      </div>
+    );
   };
 
   const getTitle = () => {
@@ -328,16 +480,8 @@ export default function R2MMapInfoCard({
           border: `1px solid var(--color-border)`,
           boxShadow: 'var(--color-shadow)',
           transform: `translateX(${dragX}px) ${isDragging ? 'rotate(' + Math.max(-5, Math.min(5, dragX * 0.05)) + 'deg)' : ''}`,
-          transition: (() => {
-            if (isDragging) return 'none';
-            if (isClosing) return 'opacity 0.2s ease-out';
-            if (opacity === 0) return 'none';
-            return 'opacity 0.2s ease-in, transform 0.2s ease-out';
-          })(),
-          opacity: (() => {
-            if (isDragging) return Math.max(0.7, 1 - Math.abs(dragX) / 200);
-            return opacity;
-          })(),
+          transition: getTransition(),
+          opacity: getOpacity(),
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
