@@ -1,10 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { RiUser5Fill } from 'react-icons/ri';
-import {
-  getAvatarFromCache,
-  saveAvatarToCache,
-  cleanOldAvatarCache,
-} from '../services/avatarCacheService';
 
 interface R2MAvatarProps {
   readonly avatarUrl?: string | null;
@@ -15,7 +10,7 @@ interface R2MAvatarProps {
 }
 
 /**
- * Componente de avatar con caché automático y fallback a ícono por defecto
+ * Componente de avatar con fallback a ícono por defecto
  */
 export default function R2MAvatar({
   avatarUrl,
@@ -24,58 +19,7 @@ export default function R2MAvatar({
   iconSize = 32,
   badge,
 }: R2MAvatarProps) {
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    // Limpiar caché antiguo al montar el componente
-    cleanOldAvatarCache();
-  }, []);
-
-  useEffect(() => {
-    if (!avatarUrl || hasError) {
-      setImageSrc(null);
-      return;
-    }
-
-    // Verificar si la imagen está en caché
-    const cachedImage = getAvatarFromCache(avatarUrl);
-    if (cachedImage) {
-      setImageSrc(cachedImage);
-      return;
-    }
-
-    // Si no está en caché, cargar la imagen
-    const loadImage = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(avatarUrl);
-
-        if (!response.ok) {
-          throw new Error('Failed to load image');
-        }
-
-        const blob = await response.blob();
-
-        // Guardar en caché
-        await saveAvatarToCache(avatarUrl, blob);
-
-        // Convertir a base64 para mostrar
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImageSrc(reader.result as string);
-          setIsLoading(false);
-        };
-        reader.readAsDataURL(blob);
-      } catch {
-        setHasError(true);
-        setIsLoading(false);
-      }
-    };
-
-    loadImage();
-  }, [avatarUrl, hasError]);
 
   return (
     <div
@@ -86,12 +30,12 @@ export default function R2MAvatar({
         className="rounded-full flex items-center justify-center overflow-hidden w-full h-full"
         style={{
           backgroundColor:
-            imageSrc && !hasError ? 'transparent' : 'var(--color-surface)',
+            avatarUrl && !hasError ? 'transparent' : 'var(--color-surface)',
         }}
       >
-        {imageSrc && !hasError && !isLoading ? (
+        {avatarUrl && !hasError ? (
           <img
-            src={imageSrc}
+            src={avatarUrl}
             alt={userName}
             className="w-full h-full object-cover"
             onError={() => setHasError(true)}

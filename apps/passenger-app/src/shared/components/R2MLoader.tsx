@@ -12,8 +12,8 @@ export default function R2MLoader() {
       >
         <defs>
           <linearGradient id="grad" x1={0} y1={0} x2={0} y2={1}>
-            <stop offset="0%" stopColor="#163172" />
-            <stop offset="100%" stopColor="#D6E4F0" />
+            <stop offset="0%" stopColor="var(--color-loader-dark)" />
+            <stop offset="100%" stopColor="var(--color-loader-light)" />
           </linearGradient>
           <mask id="mask1">
             <rect x={0} y={0} width={160} height={160} fill="url(#grad)" />
@@ -32,7 +32,7 @@ export default function R2MLoader() {
               cy={80}
               r={72}
               fill="none"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               strokeWidth={16}
               strokeDasharray="452.39 452.39"
               strokeDashoffset={452}
@@ -51,7 +51,7 @@ export default function R2MLoader() {
               cy={80}
               r={72}
               fill="none"
-              stroke="#163172"
+              stroke="var(--color-loader-dark)"
               strokeWidth={16}
               strokeDasharray="452.39 452.39"
               strokeDashoffset={452}
@@ -72,49 +72,49 @@ export default function R2MLoader() {
           >
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(-135,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(-90,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(-45,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(0,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(45,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(90,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(135,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#D6E4F0"
+              stroke="var(--color-loader-light)"
               points="0,2 0,14"
               transform="rotate(180,0,0) translate(0,40)"
             />
@@ -132,49 +132,49 @@ export default function R2MLoader() {
           >
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(-135,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(-90,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(-45,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(0,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(45,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(90,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(135,0,0) translate(0,40)"
             />
             <polyline
               className="r2m-loader__tick"
-              stroke="#1E56A0"
+              stroke="var(--color-loader-medium)"
               points="0,2 0,14"
               transform="rotate(180,0,0) translate(0,40)"
             />
@@ -186,11 +186,11 @@ export default function R2MLoader() {
           <g transform="translate(64,28)">
             <g className="r2m-loader__arrows" transform="rotate(45,16,52)">
               <path
-                fill="#1E56A0"
+                fill="var(--color-loader-medium)"
                 d="M17.998,1.506l13.892,43.594c.455,1.426-.56,2.899-1.998,2.899H2.108c-1.437,0-2.452-1.473-1.998-2.899L14.002,1.506c.64-2.008,3.356-2.008,3.996,0Z"
               />
               <path
-                fill="#D6E4F0"
+                fill="var(--color-loader-light)"
                 d="M14.009,102.499L.109,58.889c-.453-1.421,.559-2.889,1.991-2.889H29.899c1.433,0,2.444,1.468,1.991,2.889l-13.899,43.61c-.638,2.001-3.345,2.001-3.983,0Z"
               />
             </g>
@@ -202,11 +202,11 @@ export default function R2MLoader() {
           <g transform="translate(64,28)">
             <g className="r2m-loader__arrows" transform="rotate(45,16,52)">
               <path
-                fill="#163172"
+                fill="var(--color-loader-dark)"
                 d="M17.998,1.506l13.892,43.594c.455,1.426-.56,2.899-1.998,2.899H2.108c-1.437,0-2.452-1.473-1.998-2.899L14.002,1.506c.64-2.008,3.356-2.008,3.996,0Z"
               />
               <path
-                fill="#1E56A0"
+                fill="var(--color-loader-medium)"
                 d="M14.009,102.499L.109,58.889c-.453-1.421,.559-2.889,1.991-2.889H29.899c1.433,0,2.444,1.468,1.991,2.889l-13.899,43.61c-.638,2.001-3.345,2.001-3.983,0Z"
               />
             </g>

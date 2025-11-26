@@ -152,11 +152,25 @@ export default function R2MSearchOverlay({
         {/* Loading indicator */}
         {isSearching && showResults && !showFilters && (
           <div
-            className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 
-                         rounded-xl shadow-lg z-50 p-4 text-center"
+            className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-lg z-50 p-4 text-center"
+            style={{
+              backgroundColor: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+            }}
           >
-            <div className="flex items-center justify-center gap-2 text-gray-500">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full r2m-loading-spinner" />
+            <div
+              className="flex items-center justify-center gap-2"
+              style={{ color: 'var(--color-terciary)' }}
+            >
+              <div
+                className="border-2 border-t-transparent rounded-full animate-spin"
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderColor: 'var(--color-terciary)',
+                  borderTopColor: 'transparent',
+                }}
+              />
               <span className="text-sm">Buscando...</span>
             </div>
           </div>

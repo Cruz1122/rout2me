@@ -15,6 +15,7 @@ import RouteGuard from './components/RouteGuard';
 import RecoveryRedirect from './features/auth/components/RecoveryRedirect';
 import { useActiveTab } from './features/system/hooks/useActiveTab';
 import OAuthHandler from './features/auth/components/OAuthHandler';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
 const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
@@ -24,8 +25,20 @@ const ProfilePage = lazy(() => import('./features/user/pages/ProfilePage'));
 const LogoutConfirmationPage = lazy(
   () => import('./features/user/pages/LogoutConfirmationPage'),
 );
+const LeaveOrganizationConfirmationPage = lazy(
+  () => import('./features/user/pages/LeaveOrganizationConfirmationPage'),
+);
+const JoinOrganizationPage = lazy(
+  () => import('./features/user/pages/JoinOrganizationPage'),
+);
 const ChangePasswordPage = lazy(
   () => import('./features/user/pages/ChangePasswordPage'),
+);
+const EditProfilePage = lazy(
+  () => import('./features/user/pages/EditProfilePage'),
+);
+const ThemeSelectionPage = lazy(
+  () => import('./features/user/pages/ThemeSelectionPage'),
 );
 const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
@@ -133,98 +146,123 @@ function TabsWithIcons() {
 
 export default function App() {
   return (
-    <IonApp>
-      <IonReactRouter>
-        <OAuthHandler />
-        <RecoveryRedirect />
-        <IonRouterOutlet>
-          <Route exact path="/location-permission">
-            <Suspense fallback={<GlobalLoader />}>
-              <LocationPermissionPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/welcome">
-            <Suspense fallback={<GlobalLoader />}>
-              <WelcomePage />
-            </Suspense>
-          </Route>
-          <Route exact path="/login">
-            <Suspense fallback={<GlobalLoader />}>
-              <LoginPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/register">
-            <Suspense fallback={<GlobalLoader />}>
-              <RegisterPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/2fa">
-            <Suspense fallback={<GlobalLoader />}>
-              <TwoFAPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/forgot-password">
-            <Suspense fallback={<GlobalLoader />}>
-              <ForgotPasswordPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/reset-password">
-            <Suspense fallback={<GlobalLoader />}>
-              <ResetPasswordPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/expired-link">
-            <Suspense fallback={<GlobalLoader />}>
-              <ExpiredLinkPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/auth/confirm">
-            <Suspense fallback={<GlobalLoader />}>
-              <ConfirmAccountPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/perfil/cerrar-sesion">
-            <Suspense fallback={<GlobalLoader />}>
-              <LogoutConfirmationPage />
-            </Suspense>
-          </Route>
-          <Route
-            exact
-            path="/"
-            render={() => {
-              // Verificar si hay un hash de recuperación o error
-              const hash = globalThis.location.hash;
-              if (hash) {
-                const params = new URLSearchParams(hash.substring(1));
-                const type = params.get('type');
-                const error = params.get('error');
-                const errorCode = params.get('error_code');
+    <ThemeProvider>
+      <IonApp>
+        <IonReactRouter>
+          <OAuthHandler />
+          <RecoveryRedirect />
+          <IonRouterOutlet>
+            <Route exact path="/location-permission">
+              <Suspense fallback={<GlobalLoader />}>
+                <LocationPermissionPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/welcome">
+              <Suspense fallback={<GlobalLoader />}>
+                <WelcomePage />
+              </Suspense>
+            </Route>
+            <Route exact path="/login">
+              <Suspense fallback={<GlobalLoader />}>
+                <LoginPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/register">
+              <Suspense fallback={<GlobalLoader />}>
+                <RegisterPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/2fa">
+              <Suspense fallback={<GlobalLoader />}>
+                <TwoFAPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/forgot-password">
+              <Suspense fallback={<GlobalLoader />}>
+                <ForgotPasswordPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/reset-password">
+              <Suspense fallback={<GlobalLoader />}>
+                <ResetPasswordPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/expired-link">
+              <Suspense fallback={<GlobalLoader />}>
+                <ExpiredLinkPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/auth/confirm">
+              <Suspense fallback={<GlobalLoader />}>
+                <ConfirmAccountPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/perfil/cerrar-sesion">
+              <Suspense fallback={<GlobalLoader />}>
+                <LogoutConfirmationPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/perfil/abandonar-organizacion">
+              <Suspense fallback={<GlobalLoader />}>
+                <LeaveOrganizationConfirmationPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/perfil/unirse-organizacion">
+              <Suspense fallback={<GlobalLoader />}>
+                <JoinOrganizationPage />
+              </Suspense>
+            </Route>
+            <Route exact path="/perfil/editar">
+              <Suspense fallback={<GlobalLoader />}>
+                <EditProfilePage />
+              </Suspense>
+            </Route>
+            <Route exact path="/perfil/tema">
+              <Suspense fallback={<GlobalLoader />}>
+                <ThemeSelectionPage />
+              </Suspense>
+            </Route>
+            <Route
+              exact
+              path="/"
+              render={() => {
+                // Verificar si hay un hash de recuperación o error
+                const hash = globalThis.location.hash;
+                if (hash) {
+                  const params = new URLSearchParams(hash.substring(1));
+                  const type = params.get('type');
+                  const error = params.get('error');
+                  const errorCode = params.get('error_code');
 
-                // Si hay un error de token expirado
-                if (error === 'access_denied' && errorCode === 'otp_expired') {
-                  console.log(
-                    '❌ Token expirado detectado, redirigiendo a /expired-link',
-                  );
-                  return <Redirect to="/expired-link" />;
-                }
+                  // Si hay un error de token expirado
+                  if (
+                    error === 'access_denied' &&
+                    errorCode === 'otp_expired'
+                  ) {
+                    console.log(
+                      '❌ Token expirado detectado, redirigiendo a /expired-link',
+                    );
+                    return <Redirect to="/expired-link" />;
+                  }
 
-                // Si es un enlace de recuperación válido
-                if (type === 'recovery') {
-                  console.log(
-                    '🔐 Recuperación detectada en raíz, redirigiendo a /reset-password con hash',
-                  );
-                  // Preservar el hash en la redirección
-                  return <Redirect to={`/reset-password${hash}`} />;
+                  // Si es un enlace de recuperación válido
+                  if (type === 'recovery') {
+                    console.log(
+                      '🔐 Recuperación detectada en raíz, redirigiendo a /reset-password con hash',
+                    );
+                    // Preservar el hash en la redirección
+                    return <Redirect to={`/reset-password${hash}`} />;
+                  }
                 }
-              }
-              return <Redirect to="/location-permission" />;
-            }}
-          />
-          <Route>
-            <TabsWithIcons />
-          </Route>
-        </IonRouterOutlet>
-      </IonReactRouter>
-    </IonApp>
+                return <Redirect to="/location-permission" />;
+              }}
+            />
+            <Route>
+              <TabsWithIcons />
+            </Route>
+          </IonRouterOutlet>
+        </IonReactRouter>
+      </IonApp>
+    </ThemeProvider>
   );
 }

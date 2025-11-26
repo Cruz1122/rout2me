@@ -214,13 +214,13 @@ export default function R2MInput({
   const handleEyeMouseLeave = () => setIsEyeHovered(false);
 
   const getBorderColor = () => {
-    if (hasError) return '#ef4444';
+    if (hasError) return 'rgba(var(--color-error-rgb), 1)';
     if (isFocused) return 'rgba(var(--color-secondary-rgb), 0.5)';
-    return 'rgba(var(--color-surface-rgb), 0.5)';
+    return 'var(--color-input-border)';
   };
 
   const getBoxShadow = () => {
-    if (hasError) return '0 0 0 3px rgba(239, 68, 68, 0.1)';
+    if (hasError) return '0 0 0 3px rgba(var(--color-error-rgb), 0.15)';
     if (isFocused) return '0 0 0 3px rgba(var(--color-secondary-rgb), 0.1)';
     return '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
   };
@@ -232,7 +232,7 @@ export default function R2MInput({
       <div
         className={`r2m-input-container ${isFocused ? 'focused' : ''} ${type === 'password' ? 'password-field' : ''} ${hasError ? 'error' : ''}`}
         style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: 'var(--color-input-bg)',
           border: `1px solid ${getBorderColor()}`,
           boxShadow: getBoxShadow(),
         }}

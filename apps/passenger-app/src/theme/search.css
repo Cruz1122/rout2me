@@ -1,5 +1,11 @@
 /* Search Components Styles */
 
+/* Placeholder styling for search inputs */
+input[type="search"]::placeholder {
+  color: var(--color-terciary);
+  opacity: 1;
+}
+
 /* Smooth animations for search overlay */
 .r2m-search-overlay {
   transition: all 0.2s ease-in-out;
@@ -111,12 +117,12 @@
 }
 
 .r2m-results-list::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--color-border);
   border-radius: 3px;
 }
 
 .r2m-results-list::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--color-terciary);
 }
 
 /* Improved touch targets for mobile */

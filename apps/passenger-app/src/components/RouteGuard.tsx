@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '../features/auth/hooks/useAuth';
+import R2MLoader from '../shared/components/R2MLoader';
 
 interface RouteGuardProps {
   readonly children: React.ReactNode;
@@ -11,13 +12,18 @@ interface RouteGuardProps {
  */
 export default function RouteGuard({ children }: RouteGuardProps) {
   const { isAuthenticated, isLoading } = useAuth();
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
     // No hacer nada mientras está cargando
-    if (isLoading) return;
+    if (isLoading) {
+      hasRedirected.current = false;
+      return;
+    }
 
-    // Si no está autenticado, redirigir a welcome
-    if (!isAuthenticated) {
+    // Si no está autenticado, redirigir a welcome (solo una vez)
+    if (!isAuthenticated && !hasRedirected.current) {
+      hasRedirected.current = true;
       console.log('Usuario no autenticado, redirigiendo a /welcome');
       globalThis.location.href = '/welcome';
     }
@@ -27,12 +33,7 @@ export default function RouteGuard({ children }: RouteGuardProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p style={{ color: 'var(--color-terciary)' }}>
-            Verificando sesión...
-          </p>
-        </div>
+        <R2MLoader />
       </div>
     );
   }

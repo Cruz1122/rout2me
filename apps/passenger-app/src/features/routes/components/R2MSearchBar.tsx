@@ -12,6 +12,7 @@ import {
 import { IoSearchOutline, IoSearch } from 'react-icons/io5';
 import type { R2MSearchBarProps } from '../../../shared/types/search';
 import FilterSwitcher, { type FilterOption } from './FilterSwitcher';
+import '../../../theme/search.css';
 
 type FilterType = 'all' | 'stops' | 'routes';
 
@@ -184,10 +185,9 @@ export default function R2MSearchBar({
             bg-white backdrop-blur-lg rounded-2xl
           `}
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
-            boxShadow:
-              '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            backgroundColor: 'var(--color-input-bg)',
+            border: `1px solid var(--color-border)`,
+            boxShadow: 'var(--color-shadow)',
             transform: isExpanded ? 'scale(1.02)' : 'scale(1)',
             opacity: isFocused || value || isClicking ? 1 : 0.4,
           }}
@@ -201,8 +201,8 @@ export default function R2MSearchBar({
             style={{
               color:
                 isFocused || value
-                  ? 'rgb(var(--color-primary-rgb))'
-                  : 'rgb(107, 114, 128)',
+                  ? 'var(--color-primary)'
+                  : 'var(--color-terciary)',
             }}
           >
             {isFocused || value ? (
@@ -234,6 +234,9 @@ export default function R2MSearchBar({
               focus:outline-none transition-all duration-300 ease-in-out
               ${isExpanded ? 'rounded-2xl' : 'rounded-full'}
             `}
+            style={{
+              color: 'var(--color-text)',
+            }}
           />
 
           {/* Filter Button */}
@@ -252,8 +255,8 @@ export default function R2MSearchBar({
                 : 'rotate(0deg) scale(1)',
               color:
                 showFilters || isClicking
-                  ? 'rgb(var(--color-primary-rgb))'
-                  : 'rgb(107, 114, 128)',
+                  ? 'var(--color-primary)'
+                  : 'var(--color-terciary)',
             }}
           >
             {showFilters ? (
@@ -267,11 +270,12 @@ export default function R2MSearchBar({
         {/* Filters Dropdown - Inline */}
         {shouldRenderFilters && (
           <div
-            className={`absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl 
+            className={`absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-xl 
                        overflow-hidden z-50 w-full ${isFilterClosing ? 'animate-slide-up-fade' : 'animate-slide-down'}`}
             style={{
-              border: `1px solid rgba(var(--color-surface-rgb), 0.5)`,
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              backgroundColor: 'var(--color-card)',
+              border: `1px solid var(--color-border)`,
+              boxShadow: 'var(--color-shadow-lg)',
             }}
           >
             <div className="p-4">
@@ -283,15 +287,22 @@ export default function R2MSearchBar({
                   onFilterChange={handleTypeChange}
                 />
 
-                <div className="border-t border-gray-100 pt-3">
-                  <div className="block text-xs font-medium text-gray-600 mb-3">
+                <div
+                  className="pt-3"
+                  style={{ borderTop: '1px solid var(--color-border)' }}
+                >
+                  <div
+                    className="block text-xs font-medium mb-3"
+                    style={{ color: 'var(--color-text)' }}
+                  >
                     Rango de Tarifa (COP)
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                     <div className="flex-1">
                       <label
                         htmlFor="fare-min"
-                        className="block text-xs text-gray-500 mb-1"
+                        className="block text-xs mb-1"
+                        style={{ color: 'var(--color-terciary)' }}
                       >
                         Mínimo
                       </label>
@@ -310,21 +321,26 @@ export default function R2MSearchBar({
                           {
                             '--tw-ring-color':
                               'rgba(var(--color-primary-rgb), 0.3)',
-                            borderColor: 'rgba(var(--color-surface-rgb), 0.5)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            borderColor: 'var(--color-border)',
+                            backgroundColor: 'var(--color-input-bg)',
+                            color: 'var(--color-text)',
                           } as React.CSSProperties
                         }
                       />
                     </div>
 
                     <div className="hidden sm:flex items-center justify-center px-2">
-                      <div className="w-4 h-px bg-gray-300"></div>
+                      <div
+                        className="w-4 h-px"
+                        style={{ backgroundColor: 'var(--color-border)' }}
+                      ></div>
                     </div>
 
                     <div className="flex-1">
                       <label
                         htmlFor="fare-max"
-                        className="block text-xs text-gray-500 mb-1"
+                        className="block text-xs mb-1"
+                        style={{ color: 'var(--color-terciary)' }}
                       >
                         Máximo
                       </label>
@@ -343,8 +359,9 @@ export default function R2MSearchBar({
                           {
                             '--tw-ring-color':
                               'rgba(var(--color-primary-rgb), 0.3)',
-                            borderColor: 'rgba(var(--color-surface-rgb), 0.5)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            borderColor: 'var(--color-border)',
+                            backgroundColor: 'var(--color-input-bg)',
+                            color: 'var(--color-text)',
                           } as React.CSSProperties
                         }
                       />

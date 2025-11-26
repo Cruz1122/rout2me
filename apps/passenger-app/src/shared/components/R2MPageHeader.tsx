@@ -9,9 +9,10 @@ interface R2MPageHeaderProps {
 export default function R2MPageHeader({ title }: R2MPageHeaderProps) {
   return (
     <div
-      className="sticky top-0 z-50 bg-white backdrop-blur-lg"
+      className="sticky top-0 z-50 backdrop-blur-lg"
       style={{
-        borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+        borderBottom: '1px solid var(--color-border)',
+        backgroundColor: 'var(--color-card)',
       }}
     >
       <div className="flex items-center justify-center h-14">

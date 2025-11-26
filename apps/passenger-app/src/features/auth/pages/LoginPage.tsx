@@ -5,12 +5,7 @@ import {
   useIonRouter,
   useIonViewDidEnter,
 } from '@ionic/react';
-import {
-  RiGoogleFill,
-  RiMicrosoftFill,
-  RiArrowLeftLine,
-  RiLoaderLine,
-} from 'react-icons/ri';
+import { RiGoogleFill, RiMicrosoftFill, RiArrowLeftLine } from 'react-icons/ri';
 import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
@@ -145,7 +140,11 @@ export default function LoginPage() {
 
   return (
     <IonPage>
-      <IonContent fullscreen className="ion-padding">
+      <IonContent
+        fullscreen
+        className="ion-padding"
+        style={{ '--background': 'var(--color-bg)' }}
+      >
         {/* Notificación de error */}
         <ErrorNotification error={error} onClose={clearError} />
         {/* Botón de retroceso */}
@@ -154,7 +153,7 @@ export default function LoginPage() {
           onClick={() => router.push('/welcome', 'back')}
           className="absolute top-4 left-4 z-5 p-2 rounded-full transition-colors"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: 'rgba(var(--color-card-rgb), 0.9)',
           }}
           tabIndex={-1}
           aria-label="Volver atrás"
@@ -270,13 +269,10 @@ export default function LoginPage() {
                   }}
                 >
                   {isGoogleLoading ? (
-                    <div className="mb-2 flex items-center justify-center">
-                      <RiLoaderLine
-                        className="animate-spin"
-                        size={32}
-                        style={{ color: 'white' }}
-                      />
-                    </div>
+                    <div
+                      className="mb-2 border-4 border-white border-t-transparent rounded-full animate-spin"
+                      style={{ width: '32px', height: '32px' }}
+                    />
                   ) : (
                     <div
                       className="mb-2 flex items-center justify-center relative"
@@ -310,13 +306,10 @@ export default function LoginPage() {
                   }}
                 >
                   {isMicrosoftLoading ? (
-                    <div className="mb-2 flex items-center justify-center">
-                      <RiLoaderLine
-                        className="animate-spin"
-                        size={32}
-                        style={{ color: 'white' }}
-                      />
-                    </div>
+                    <div
+                      className="mb-2 border-4 border-white border-t-transparent rounded-full animate-spin"
+                      style={{ width: '32px', height: '32px' }}
+                    />
                   ) : (
                     <div
                       className="mb-2 flex items-center justify-center relative"

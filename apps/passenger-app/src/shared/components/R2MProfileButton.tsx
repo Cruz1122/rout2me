@@ -7,6 +7,7 @@ interface R2MProfileButtonProps {
   readonly description?: string;
   readonly onClick: () => void;
   readonly variant?: 'default' | 'danger';
+  readonly disabled?: boolean;
 }
 
 /**
@@ -19,16 +20,31 @@ export default function R2MProfileButton({
   description,
   onClick,
   variant = 'default',
+  disabled = false,
 }: R2MProfileButtonProps) {
   const isDanger = variant === 'danger';
-  const iconColor = isDanger ? '#DC2626' : 'var(--color-primary)';
-  const textColor = isDanger ? '#DC2626' : 'var(--color-text)';
-  const hoverBg = isDanger ? 'hover:!bg-red-50' : 'hover:!bg-gray-50';
+  const iconColor = disabled
+    ? 'var(--color-terciary)'
+    : isDanger
+      ? 'var(--color-error)'
+      : 'var(--color-primary)';
+  const textColor = disabled
+    ? 'var(--color-terciary)'
+    : isDanger
+      ? 'var(--color-error)'
+      : 'var(--color-text)';
+  const hoverBg =
+    disabled || isDanger
+      ? ''
+      : 'hover:!bg-[rgba(var(--color-surface-rgb),0.6)]';
 
   return (
     <button
       onClick={onClick}
-      className={`!w-full !flex !items-center !gap-3 !p-2 !rounded-xl !transition-colors !border-none !bg-transparent !cursor-pointer !text-left ${hoverBg}`}
+      disabled={disabled}
+      className={`!w-full !flex !items-center !gap-3 !p-2 !rounded-xl !transition-colors !border-none !bg-transparent !text-left ${hoverBg} ${
+        disabled ? '!cursor-not-allowed !opacity-60' : '!cursor-pointer'
+      }`}
       style={{
         color: textColor,
       }}

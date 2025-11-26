@@ -39,9 +39,10 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const fetchUserInfo = async () => {
       if (!accessToken) {
-        setError('No hay sesión activa');
         setIsLoading(false);
         return;
       }
@@ -52,18 +53,27 @@ export default function ProfilePage() {
         const data = await getUserInfo(accessToken);
         setUserInfo(data);
       } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : 'Error al cargar información del usuario';
-        setError(errorMessage);
-        console.error('Error fetching user info:', err);
+        // Esperar 1 segundo antes de mostrar el error
+        timeoutId = setTimeout(() => {
+          const errorMessage =
+            err instanceof Error
+              ? err.message
+              : 'Error al cargar información del usuario';
+          setError(errorMessage);
+          console.error('Error fetching user info:', err);
+        }, 1000);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUserInfo();
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [accessToken]);
 
   const handleLogout = () => {
@@ -74,7 +84,15 @@ export default function ProfilePage() {
     router.push('/perfil/cambiar-password', 'forward');
   };
 
+  const handleEditProfile = () => {
+    router.push('/perfil/editar', 'forward');
+  };
+
   const handleSettingsClick = (setting: string) => {
+    if (setting === 'edit') {
+      handleEditProfile();
+      return;
+    }
     // Placeholder para funcionalidad futura
     console.log(`Navegando a configuración: ${setting}`);
   };
@@ -93,8 +111,14 @@ export default function ProfilePage() {
   };
 
   const handleOrganizationClick = (action: string) => {
-    // Placeholder para funcionalidad futura
-    console.log(`Acción de organización: ${action}`);
+    if (action === 'leave') {
+      router.push('/perfil/abandonar-organizacion', 'forward');
+    } else if (action === 'join') {
+      router.push('/perfil/unirse-organizacion', 'forward');
+    } else {
+      // Placeholder para otras acciones futuras
+      console.log(`Acción de organización: ${action}`);
+    }
   };
 
   const getRoleBadgeColor = (role: string): string => {
@@ -115,7 +139,8 @@ export default function ProfilePage() {
     );
   }
 
-  if (error || !userInfo) {
+  // Solo mostrar error si realmente hay un error, no cuando está cargando
+  if (error) {
     return (
       <IonPage>
         <IonContent>
@@ -129,8 +154,21 @@ export default function ProfilePage() {
               className="text-lg font-medium"
               style={{ color: 'var(--color-text)' }}
             >
-              {error || 'No se pudo cargar la información del usuario'}
+              {error}
             </p>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  // Si no hay userInfo y no hay error, seguir mostrando el loader
+  if (!userInfo) {
+    return (
+      <IonPage>
+        <IonContent>
+          <div className="flex items-center justify-center h-full">
+            <R2MLoader />
           </div>
         </IonContent>
       </IonPage>
@@ -154,7 +192,7 @@ export default function ProfilePage() {
           <div
             className="rounded-2xl p-4 shadow-sm"
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-card)',
               boxShadow:
                 '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}
@@ -211,7 +249,7 @@ export default function ProfilePage() {
           <div
             className="rounded-2xl p-4 shadow-sm"
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-card)',
               boxShadow:
                 '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}
@@ -232,7 +270,7 @@ export default function ProfilePage() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
                     style={{
                       backgroundColor: 'var(--color-primary)',
-                      color: '#FFFFFF',
+                      color: 'var(--color-on-primary)',
                     }}
                   >
                     <RiBuilding2Line size={16} />
@@ -246,7 +284,7 @@ export default function ProfilePage() {
                     className="inline-flex items-center px-3 py-1.5 rounded-full"
                     style={{
                       backgroundColor: getRoleBadgeColor(organization.org_role),
-                      color: '#FFFFFF',
+                      color: 'var(--color-on-primary)',
                     }}
                   >
                     <span className="text-sm font-medium">
@@ -330,7 +368,7 @@ export default function ProfilePage() {
           <div
             className="rounded-2xl p-4 shadow-sm"
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-card)',
               boxShadow:
                 '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}
@@ -356,7 +394,7 @@ export default function ProfilePage() {
                 icon={<RiMoonLine size={20} />}
                 title="Tema"
                 description="Cambiar entre claro y oscuro"
-                onClick={() => handleSettingsClick('theme')}
+                onClick={() => router.push('/perfil/tema', 'forward')}
               />
 
               {/* Privacidad */}
@@ -373,7 +411,7 @@ export default function ProfilePage() {
           <div
             className="rounded-2xl p-4 shadow-sm"
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-card)',
               boxShadow:
                 '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}

@@ -224,19 +224,22 @@ export default function LivePage() {
 
   return (
     <IonPage>
-      <IonContent>
+      <IonContent style={{ '--background': 'var(--color-bg)' }}>
         {isNavigating && <GlobalLoader />}
         <R2MPageHeader title="Buses en tiempo real" />
 
         {/* Barra de búsqueda y filtros */}
-        <div className="px-4 pt-4 pb-3 bg-white">
+        <div
+          className="px-4 pt-4 pb-3"
+          style={{ backgroundColor: 'var(--color-card)' }}
+        >
           {/* Barra de búsqueda */}
           <div className="relative mb-3">
             <div
               className="relative flex items-center transition-all duration-300"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid rgba(var(--color-surface-rgb), 0.3)',
+                backgroundColor: 'var(--color-card)',
+                border: '1px solid rgba(var(--color-terciary-rgb), 0.3)',
                 borderRadius: '16px',
               }}
             >
@@ -265,7 +268,8 @@ export default function LivePage() {
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
                 placeholder="Buscar bus por ruta o placa..."
-                className="w-full h-12 pl-12 pr-4 bg-transparent focus:outline-none text-gray-900"
+                className="w-full h-12 pl-12 pr-4 bg-transparent focus:outline-none"
+                style={{ color: 'var(--color-text)' }}
               />
             </div>
           </div>
@@ -383,8 +387,8 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
     <div
       className="p-4 rounded-xl cursor-pointer hover:shadow-md transition-shadow"
       style={{
-        backgroundColor: 'white',
-        border: '1px solid var(--color-surface)',
+        backgroundColor: 'var(--color-card)',
+        border: '1px solid rgba(var(--color-terciary-rgb), 0.2)',
       }}
       onClick={onClick}
     >

@@ -5,6 +5,7 @@ interface UserLocationMarkerOptions {
   autoUpdate?: boolean;
   updateInterval?: number;
   enabled?: boolean;
+  theme?: 'light' | 'dark';
 }
 
 /**
@@ -15,7 +16,12 @@ export function useUserLocationMarker(
   mapInstance: React.RefObject<MlMap | null>,
   options: UserLocationMarkerOptions = {},
 ) {
-  const { autoUpdate = true, updateInterval = 10000, enabled = true } = options;
+  const {
+    autoUpdate = true,
+    updateInterval = 10000,
+    enabled = true,
+    theme = 'light',
+  } = options;
 
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const lastValidPosition = useRef<{ lng: number; lat: number } | null>(null);
@@ -44,13 +50,22 @@ export function useUserLocationMarker(
 
       // Crear elemento con estilos inline para evitar problemas CSS
       const el = document.createElement('div');
+      // En dark mode: marcador blanco con borde oscuro
+      // En light mode: marcador azul con borde blanco
+      const isDark = theme === 'dark';
+      const backgroundColor = isDark ? '#FFFFFF' : '#1E56A0';
+      const borderColor = isDark ? '#1E293B' : '#FFFFFF';
+      const pulseColor = isDark
+        ? 'rgba(255, 255, 255, 0.7)'
+        : 'rgba(30, 86, 160, 0.7)';
+
       el.style.cssText = `
         width: 20px;
         height: 20px;
         border-radius: 50%;
-        background-color: #1E56A0;
-        border: 3px solid white;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(30, 86, 160, 0.7);
+        background-color: ${backgroundColor};
+        border: 3px solid ${borderColor};
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3), 0 0 0 0 ${pulseColor};
         cursor: pointer;
         animation: pulse-marker 2s infinite;
         z-index: 1000;
@@ -72,7 +87,7 @@ export function useUserLocationMarker(
 
       return marker;
     },
-    [mapInstance],
+    [mapInstance, theme],
   );
 
   /**
@@ -239,6 +254,17 @@ export function useUserLocationMarker(
       if (intervalId) clearInterval(intervalId);
     };
   }, [autoUpdate, enabled, updateInterval, getCurrentLocation, mapInstance]);
+
+  // Actualizar marcador cuando cambie el tema
+  useEffect(() => {
+    if (markerRef.current && lastValidPosition.current) {
+      const { lng, lat } = lastValidPosition.current;
+      // Remover marcador antiguo
+      removeMarker();
+      // Recrear con nuevo tema
+      markerRef.current = createMarker(lng, lat);
+    }
+  }, [theme, createMarker, removeMarker]);
 
   // Limpieza al desmontar
   useEffect(() => {

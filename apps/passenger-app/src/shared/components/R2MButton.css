@@ -16,8 +16,8 @@
 /* Variantes */
 .r2m-button-primary {
   background-color: var(--color-primary);
-  color: #FFFFFF;
-  box-shadow: 0 10px 25px -5px rgba(22, 49, 114, 0.3);
+  color: var(--color-on-primary);
+  box-shadow: var(--color-shadow);
 }
 
 .r2m-button-primary:hover:not(.r2m-button-disabled) {
@@ -33,8 +33,8 @@
 
 .r2m-button-secondary {
   background-color: var(--color-secondary);
-  color: #FFFFFF;
-  box-shadow: 0 10px 25px -5px rgba(30, 86, 160, 0.3);
+  color: var(--color-on-secondary);
+  box-shadow: var(--color-shadow);
 }
 
 .r2m-button-secondary:hover:not(.r2m-button-disabled) {

@@ -25,7 +25,10 @@ export default function FilterSwitcher<T extends string>({
   };
 
   return (
-    <div className="flex items-center bg-gray-100 rounded-xl p-1.5 gap-1.5">
+    <div
+      className="flex items-center rounded-xl p-1.5 gap-1.5"
+      style={{ backgroundColor: 'var(--color-bg)' }}
+    >
       {options.map((filter) => {
         const IconOutline = filter.iconOutline;
         const IconFilled = filter.iconFilled;
@@ -39,7 +42,7 @@ export default function FilterSwitcher<T extends string>({
             style={{
               color: isSelected
                 ? 'rgb(var(--color-primary-rgb))'
-                : 'rgb(107, 114, 128)',
+                : 'var(--color-terciary)',
             }}
           >
             <div className="relative w-5 h-5">

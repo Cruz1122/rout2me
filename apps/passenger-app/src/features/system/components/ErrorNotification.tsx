@@ -61,9 +61,9 @@ export default function ErrorNotification({
           isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
         style={{
-          backgroundColor: '#fef2f2',
-          borderLeftColor: '#ef4444',
-          border: '1px solid #fecaca',
+          backgroundColor: 'rgba(var(--color-error-rgb), 0.05)',
+          borderLeftColor: 'var(--color-error)',
+          border: '1px solid rgba(var(--color-error-rgb), 0.3)',
         }}
       >
         {/* Icono de error */}
@@ -72,7 +72,10 @@ export default function ErrorNotification({
             isVisible ? 'scale-100 rotate-0' : 'scale-75 rotate-12'
           }`}
         >
-          <RiErrorWarningLine size={20} style={{ color: '#ef4444' }} />
+          <RiErrorWarningLine
+            size={20}
+            style={{ color: 'var(--color-error)' }}
+          />
         </div>
 
         {/* Contenido del error */}
@@ -81,10 +84,13 @@ export default function ErrorNotification({
             isVisible ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0'
           }`}
         >
-          <p className="text-sm font-medium" style={{ color: '#dc2626' }}>
+          <p
+            className="text-sm font-medium"
+            style={{ color: 'var(--color-error)' }}
+          >
             Error
           </p>
-          <p className="text-sm mt-1" style={{ color: '#991b1b' }}>
+          <p className="text-sm mt-1" style={{ color: 'var(--color-error)' }}>
             {error}
           </p>
         </div>
@@ -98,7 +104,7 @@ export default function ErrorNotification({
           className={`flex-shrink-0 ml-3 p-1 rounded-full hover:bg-red-100 transition-all duration-200 delay-200 ${
             isVisible ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
           } hover:scale-110 active:scale-95`}
-          style={{ color: '#dc2626' }}
+          style={{ color: 'var(--color-error)' }}
         >
           <RiCloseLine size={16} />
         </button>

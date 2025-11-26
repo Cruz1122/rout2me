@@ -39,14 +39,35 @@ import {
 import { recentSearchesStorage } from '../../routes/services/recentSearchService';
 import { createStopMarkerElement } from '../../routes/utils/markerUtils';
 import type { SearchItem } from '../../../shared/types/search';
+import {
+  getStadiaApiKey,
+  isMapMatchingAvailable,
+} from '../../../config/config';
+import { useTheme } from '../../../contexts/ThemeContext';
+import type { MarkerSelection } from '../../routes/components/R2MMapInfoCard';
+import type { Stop } from '../../routes/services/routeService';
+import type { Bus } from '../../routes/services/busService';
 import '../../../debug/paradasDebug'; // Importar script de debug
 import '../../../debug/apiTest'; // Importar script de prueba de API
 
+// Helper para obtener colores de rutas desde CSS variables
+const getRouteColor = (variable: string, fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(variable)
+    .trim();
+  return value || fallback;
+};
+
 export default function HomePage() {
+  const { theme } = useTheme();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<MlMap | null>(null);
   const currentMarker = useRef<maplibregl.Marker | null>(null);
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<MarkerSelection | null>(
+    null,
+  );
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -57,6 +78,7 @@ export default function HomePage() {
     autoUpdate: true,
     updateInterval: 10000, // Actualizar cada 10 segundos
     enabled: isMapReady, // Solo activar cuando el mapa esté listo
+    theme, // Pasar el tema para que el marcador cambie de color
   });
   interface RouteFromNavigation {
     id: string;
@@ -85,9 +107,34 @@ export default function HomePage() {
     useState<BusFromNavigation | null>(null);
 
   const { triggerResize } = useMapResize(mapInstance);
+
+  // Callbacks para manejar clics en marcadores
+  const handleStopClick = useCallback((stop: Stop, routeId: string) => {
+    setSelectedMarker({ type: 'stop', data: stop });
+    setSelectedItem(null); // Limpiar selectedItem si existe
+  }, []);
+
+  const handleBusClick = useCallback((bus: Bus) => {
+    setSelectedMarker({ type: 'bus', data: bus });
+    setSelectedItem(null); // Limpiar selectedItem si existe
+  }, []);
+
+  const handleEndpointClick = useCallback(
+    (type: 'start' | 'end', coordinates: [number, number], routeId: string) => {
+      setSelectedMarker({ type: 'endpoint', data: { type, coordinates } });
+      setSelectedItem(null); // Limpiar selectedItem si existe
+    },
+    [],
+  );
+
   const { addRouteToMap, clearAllRoutes, fitBoundsToRoute, highlightRoute } =
-    useRouteDrawing(mapInstance);
-  const { addBusesToMap, clearAllBuses } = useBusMapping(mapInstance);
+    useRouteDrawing(mapInstance, {
+      onStopClick: handleStopClick,
+      onEndpointClick: handleEndpointClick,
+    });
+  const { addBusesToMap, clearAllBuses } = useBusMapping(mapInstance, {
+    onBusClick: handleBusClick,
+  });
 
   // Función para cargar buses de una ruta específica
   const loadBusesForRoute = useCallback(
@@ -170,13 +217,11 @@ export default function HomePage() {
         setIsMapLoading(true);
 
         try {
-          // Obtener la API key desde las variables de entorno
-          const apiKey = import.meta.env.VITE_STADIA_API_KEY;
+          // Obtener la API key desde la configuración centralizada
+          const apiKey = getStadiaApiKey();
 
           // Determinar si aplicar map matching basado en la disponibilidad de API key
-          const shouldApplyMapMatching = Boolean(
-            apiKey && apiKey.trim() !== '',
-          );
+          const shouldApplyMapMatching = isMapMatchingAvailable();
 
           // Procesar la ruta con coordenadas del backend
           // Aplicar map matching si hay API key disponible
@@ -191,10 +236,10 @@ export default function HomePage() {
             item.id,
             processedRoute.matchedGeometry.coordinates as [number, number][],
             {
-              color: '#1E56A0',
+              color: getRouteColor('--color-route-default', '#1E56A0'),
               width: 4,
               opacity: 0.9,
-              outlineColor: '#ffffff',
+              outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
               outlineWidth: 8,
             },
             // Pasar las paradas si están disponibles
@@ -235,15 +280,19 @@ export default function HomePage() {
           }, 2000);
 
           setSelectedItem(item);
+          setSelectedMarker(null); // Limpiar selectedMarker cuando se selecciona desde búsqueda
         } catch {
           // Error silencioso
           // Fallback: usar coordenadas originales si falla el procesamiento
+          // Dibujar la ruta en el mapa usando colores del tema actual
           addRouteToMap(item.id, item.coordinates, {
-            color: '#1E56A0',
+            color: getRouteColor('--color-route-default', '#1E56A0'),
             width: 4,
             opacity: 0.9,
-            outlineColor: '#ffffff',
+            outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
             outlineWidth: 8,
+            stopColor: getRouteColor('--color-route-stop', '#FF6B35'),
+            endpointColor: getRouteColor('--color-route-endpoint', '#1E56A0'),
           });
           fitBoundsToRoute(item.coordinates, true); // hasInfoCard = true
           highlightRoute(item.id, true);
@@ -267,6 +316,7 @@ export default function HomePage() {
           }, 2000);
 
           setSelectedItem(item);
+          setSelectedMarker(null); // Limpiar selectedMarker cuando se selecciona desde búsqueda
         } finally {
           setIsMapLoading(false);
         }
@@ -428,18 +478,27 @@ export default function HomePage() {
 
     const map = new maplibregl.Map({
       container: mapRef.current,
-      // Tiles optimizadas de CARTO pero con mejor configuración de caché
+      // Tiles de CARTO en alta resolución: Positron para modo claro, Dark Matter para modo oscuro
       style: {
         version: 8,
         sources: {
-          'carto-light': {
+          'carto-tiles': {
             type: 'raster',
-            tiles: [
-              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-            ],
-            tileSize: 256,
+            tiles:
+              theme === 'dark'
+                ? [
+                    'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                    'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                    'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                    'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                  ]
+                : [
+                    'https://a.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
+                    'https://b.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
+                    'https://c.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
+                    'https://d.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
+                  ],
+            tileSize: 512, // Tiles @2x son 512x512
             attribution: '© OpenStreetMap contributors © CARTO',
             maxzoom: 19,
             // Configuración mejorada para caché
@@ -448,9 +507,9 @@ export default function HomePage() {
         },
         layers: [
           {
-            id: 'carto-light-layer',
+            id: 'carto-tiles-layer',
             type: 'raster',
-            source: 'carto-light',
+            source: 'carto-tiles',
             // Optimizar transiciones
             paint: {
               'raster-fade-duration': 300,
@@ -477,6 +536,15 @@ export default function HomePage() {
     map.on('load', () => {
       setIsMapLoading(false);
       setIsMapReady(true); // Marcar el mapa como listo para activar el marcador
+
+      // En modo oscuro, aplicar un ligero tinte Fiord al mapa base
+      if (theme === 'dark') {
+        try {
+          map.setPaintProperty('carto-tiles-layer', 'raster-opacity', 0.85);
+        } catch {
+          // Si por alguna razón la capa aún no existe, no romper la carga
+        }
+      }
 
       // Mover geolocalización a DESPUÉS de render (no bloqueante)
       setTimeout(() => {
@@ -562,9 +630,9 @@ export default function HomePage() {
         // Mostrar loader mientras se procesa
         setIsMapLoading(true);
 
-        // Obtener la API key desde las variables de entorno
-        const apiKey = import.meta.env.VITE_STADIA_API_KEY;
-        const shouldApplyMapMatching = Boolean(apiKey && apiKey.trim() !== '');
+        // Obtener la API key desde la configuración centralizada
+        const apiKey = getStadiaApiKey();
+        const shouldApplyMapMatching = isMapMatchingAvailable();
 
         // Procesar la ruta con coordenadas
         const processedRoute = await processRouteWithCoordinates(
@@ -592,16 +660,18 @@ export default function HomePage() {
           })),
         };
 
-        // Dibujar la ruta en el mapa
+        // Dibujar la ruta en el mapa usando colores del tema actual
         addRouteToMap(
           searchItem.id,
           processedRoute.matchedGeometry.coordinates as [number, number][],
           {
-            color: '#1E56A0',
+            color: getRouteColor('--color-route-default', '#1E56A0'),
             width: 4,
             opacity: 0.9,
-            outlineColor: '#ffffff',
+            outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
             outlineWidth: 8,
+            stopColor: getRouteColor('--color-route-stop', '#FF6B35'),
+            endpointColor: getRouteColor('--color-route-endpoint', '#1E56A0'),
           },
           searchItem.routeStops?.map((stop) => ({
             id: stop.id,
@@ -658,12 +728,15 @@ export default function HomePage() {
           })),
         };
 
+        // Dibujar la ruta en el mapa usando colores del tema actual (fallback)
         addRouteToMap(searchItem.id, searchItem.coordinates!, {
-          color: '#1E56A0',
+          color: getRouteColor('--color-route-default', '#1E56A0'),
           width: 4,
           opacity: 0.9,
-          outlineColor: '#ffffff',
+          outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
           outlineWidth: 8,
+          stopColor: getRouteColor('--color-route-stop', '#FF6B35'),
+          endpointColor: getRouteColor('--color-route-endpoint', '#1E56A0'),
         });
         fitBoundsToRoute(searchItem.coordinates!, true); // hasInfoCard = true
         highlightRoute(searchItem.id, true);
@@ -707,9 +780,6 @@ export default function HomePage() {
           currentMarker.current = null;
         }
 
-        // Mostrar loader mientras se procesa
-        setIsMapLoading(true);
-
         // Cargar la ruta completa para mostrar su geometría
         let routeVariantId = busFromNavigation.id;
 
@@ -743,11 +813,9 @@ export default function HomePage() {
             const routePath = route.path || route.variants?.[0]?.path;
 
             if (routePath && routePath.length > 0) {
-              // Obtener la API key desde las variables de entorno
-              const apiKey = import.meta.env.VITE_STADIA_API_KEY;
-              const shouldApplyMapMatching = Boolean(
-                apiKey && apiKey.trim() !== '',
-              );
+              // Obtener la API key desde la configuración centralizada
+              const apiKey = getStadiaApiKey();
+              const shouldApplyMapMatching = isMapMatchingAvailable();
 
               // Procesar la ruta con map matching si está disponible
               let processedPath = routePath;
@@ -787,10 +855,13 @@ export default function HomePage() {
                 searchItem.id,
                 processedPath,
                 {
-                  color: '#10B981', // Verde para rutas de buses
+                  color: '#10B981', // Verde para rutas de buses (mantener verde)
                   width: 4,
                   opacity: 0.5, // Opacidad menor para ruta y paradas
-                  outlineColor: '#ffffff',
+                  outlineColor: getRouteColor(
+                    '--color-route-outline',
+                    '#ffffff',
+                  ),
                   outlineWidth: 4, // Contorno reducido para buses
                   stopColor: '#10B981', // Color verde para marcadores de paradas
                   stopOpacity: 0.5, // Opacidad menor para marcadores de paradas
@@ -820,14 +891,9 @@ export default function HomePage() {
           // Error silencioso
         }
 
-        // Mostrar loader mientras se cargan los buses
-        setIsMapLoading(true);
-
         // Cargar buses para esta ruta usando el ID de la variante
+        // No mostrar loader aquí para evitar parpadeo - los buses se cargan en segundo plano
         await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
-
-        // Ocultar loader después de cargar los buses
-        setIsMapLoading(false);
 
         // Esperar unos segundos antes de hacer zoom al bus destacado
         // Esto permite que el usuario vea toda la ruta primero
@@ -849,24 +915,15 @@ export default function HomePage() {
         // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
       } catch {
         // Error silencioso
-        setIsMapLoading(false);
       } finally {
-        // Limpiar después de procesar (el loader ya se desactiva después de cargar buses)
+        // Limpiar después de procesar
         setBusFromNavigation(null);
       }
     };
 
     processBusFromNavigation();
-  }, [
-    busFromNavigation,
-    mapInstance,
-    clearAllRoutes,
-    clearAllBuses,
-    loadBusesForRoute,
-    addRouteToMap,
-    fitBoundsToRoute,
-    highlightRoute,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busFromNavigation]);
 
   useIonViewDidEnter(() => {
     if (mapInstance.current) {
@@ -895,6 +952,8 @@ export default function HomePage() {
             left: 0,
             zIndex: 1,
             touchAction: 'pan-x pan-y',
+            backgroundColor:
+              theme === 'dark' ? 'var(--color-map-fiord)' : 'var(--color-bg)',
           }}
         />
 
@@ -1031,9 +1090,11 @@ export default function HomePage() {
 
         <R2MMapInfoCard
           selectedItem={selectedItem}
+          selectedMarker={selectedMarker}
           onClose={() => {
             const lastSelected = selectedItem;
             setSelectedItem(null);
+            setSelectedMarker(null);
             // Mantener el marcador del paradero hasta que se seleccione otra cosa
             if (lastSelected?.type !== 'stop' && currentMarker.current) {
               currentMarker.current.remove();

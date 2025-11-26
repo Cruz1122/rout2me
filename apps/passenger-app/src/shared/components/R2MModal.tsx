@@ -38,13 +38,20 @@ export default function R2MModal({
 
       {/* Modal Content */}
       <div
-        className="relative w-full max-w-md mx-4 mb-4 bg-white rounded-t-2xl shadow-2xl animate-slide-up z-50"
-        style={{ maxHeight: '80vh' }}
+        className="relative w-full max-w-md mx-4 mb-4 rounded-t-2xl shadow-2xl animate-slide-up z-50"
+        style={{
+          maxHeight: '80vh',
+          backgroundColor: 'var(--color-card)',
+          color: 'var(--color-text)',
+        }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div
+          className="flex items-center justify-between p-6 border-b"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
           <div className="flex items-center gap-3">
             {icon && (
               <div
@@ -55,13 +62,28 @@ export default function R2MModal({
               </div>
             )}
             <div>
-              <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-              {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+              <h2
+                className="text-lg font-bold"
+                style={{ color: 'var(--color-text)' }}
+              >
+                {title}
+              </h2>
+              {subtitle && (
+                <p
+                  className="text-sm"
+                  style={{ color: 'var(--color-terciary)' }}
+                >
+                  {subtitle}
+                </p>
+              )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            style={{
+              color: 'var(--color-terciary)',
+            }}
           >
             <RiCloseLine size={20} />
           </button>

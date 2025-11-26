@@ -1,4 +1,3 @@
-import { RiLoaderLine } from 'react-icons/ri';
 import './R2MButton.css';
 
 interface R2MButtonProps {
@@ -33,6 +32,14 @@ export default function R2MButton({
     return classes.join(' ');
   };
 
+  const getSpinnerColor = () => {
+    if (variant === 'primary' || variant === 'secondary')
+      return 'var(--color-on-primary)';
+    if (variant === 'outline' || variant === 'ghost')
+      return 'var(--color-primary)';
+    return 'var(--color-primary)';
+  };
+
   return (
     <button
       type={type}
@@ -41,9 +48,15 @@ export default function R2MButton({
       className={getClassNames()}
     >
       {loading ? (
-        <div className="flex items-center justify-center">
-          <RiLoaderLine className="animate-spin" size={20} />
-        </div>
+        <div
+          className="border-2 border-current border-t-transparent rounded-full animate-spin"
+          style={{
+            width: '20px',
+            height: '20px',
+            borderColor: getSpinnerColor(),
+            borderTopColor: 'transparent',
+          }}
+        />
       ) : (
         children
       )}

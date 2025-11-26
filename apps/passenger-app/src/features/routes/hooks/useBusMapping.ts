@@ -3,7 +3,10 @@ import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import { createRoot } from 'react-dom/client';
 import { RiBus2Fill } from 'react-icons/ri';
 import type { Bus } from '../services/busService';
-import { createPopupHTML } from '../utils/popupUtils';
+
+export interface BusMappingCallbacks {
+  onBusClick?: (bus: Bus) => void;
+}
 
 // Funciones auxiliares para simplificar el código
 function getStatusColor(status: Bus['status']): string {
@@ -122,7 +125,10 @@ function createBusMarkerElement(bus: Bus, isHighlighted = false): HTMLElement {
   return element;
 }
 
-export function useBusMapping(mapInstance: React.RefObject<MlMap | null>) {
+export function useBusMapping(
+  mapInstance: React.RefObject<MlMap | null>,
+  callbacks?: BusMappingCallbacks,
+) {
   const busMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
 
   const removeBusFromMap = useCallback(
@@ -166,39 +172,27 @@ export function useBusMapping(mapInstance: React.RefObject<MlMap | null>) {
       removeBusFromMap(bus.id);
 
       // Crear marcador personalizado para el bus
+      const markerElement = createBusMarkerElement(bus, isHighlighted);
+
+      // Agregar event listener para clic en el marcador
+      markerElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (callbacks?.onBusClick) {
+          callbacks.onBusClick(bus);
+        }
+      });
+
       const marker = new maplibregl.Marker({
-        element: createBusMarkerElement(bus, isHighlighted),
+        element: markerElement,
         anchor: 'center',
       })
         .setLngLat([bus.location.longitude, bus.location.latitude])
         .addTo(mapInstance.current);
 
-      // Agregar popup con información del bus
-      const popup = new maplibregl.Popup({
-        offset: 25,
-        closeButton: false,
-        closeOnClick: true,
-      }).setHTML(
-        createPopupHTML({
-          title: `Bus ${bus.routeNumber}`,
-          subtitle: bus.routeName,
-          items: [
-            { label: 'Placa', value: bus.plate },
-            {
-              label: 'Estado',
-              value: getStatusLabel(bus.status),
-              color: getStatusColor(bus.status),
-            },
-          ],
-        }),
-      );
-
-      marker.setPopup(popup);
-
       // Guardar referencia del marcador
       busMarkers.current.set(bus.id, marker);
     },
-    [mapInstance, removeBusFromMap],
+    [mapInstance, removeBusFromMap, callbacks],
   );
 
   const addBusesToMap = useCallback(
@@ -233,29 +227,16 @@ export function useBusMapping(mapInstance: React.RefObject<MlMap | null>) {
 
         // Actualizar elemento visual si el estado cambió
         const newElement = createBusMarkerElement(bus);
+
+        // Agregar event listener para clic en el marcador actualizado
+        newElement.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (callbacks?.onBusClick) {
+            callbacks.onBusClick(bus);
+          }
+        });
+
         existingMarker.getElement().replaceWith(newElement);
-
-        // Actualizar popup
-        const popup = new maplibregl.Popup({
-          offset: 25,
-          closeButton: false,
-          closeOnClick: true,
-        }).setHTML(
-          createPopupHTML({
-            title: `Bus ${bus.routeNumber}`,
-            subtitle: bus.routeName,
-            items: [
-              { label: 'Placa', value: bus.plate },
-              {
-                label: 'Estado',
-                value: getStatusLabel(bus.status),
-                color: getStatusColor(bus.status),
-              },
-            ],
-          }),
-        );
-
-        existingMarker.setPopup(popup);
       } else {
         // Si no existe el marcador, crearlo
         addBusToMap(bus);

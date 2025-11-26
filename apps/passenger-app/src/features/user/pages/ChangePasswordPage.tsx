@@ -141,7 +141,6 @@ export default function ChangePasswordPage() {
     }
 
     if (!accessToken) {
-      handleError(new Error('No hay sesión activa'));
       return;
     }
 

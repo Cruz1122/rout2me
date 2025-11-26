@@ -10,7 +10,7 @@
 }
 
 .r2m-input-required {
-  color: #ef4444;
+  color: var(--color-error);
   font-weight: 500;
 }
 
@@ -147,7 +147,7 @@
 .r2m-input-field:-webkit-autofill:hover,
 .r2m-input-field:-webkit-autofill:focus,
 .r2m-input-field:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.95) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--color-input-bg) inset !important;
   -webkit-text-fill-color: var(--color-text) !important;
   transition: background-color 5000s ease-in-out 0s;
 }
@@ -205,13 +205,13 @@
 
 /* Estilos para campos con error */
 .r2m-input-container.error {
-  border-color: #ef4444 !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+  border-color: var(--color-error) !important;
+  box-shadow: 0 0 0 3px rgba(var(--color-error-rgb), 0.15) !important;
 }
 
 .r2m-input-container.error .r2m-input-icon .icon-line,
 .r2m-input-container.error .r2m-input-icon .icon-fill {
-  color: #ef4444 !important;
+  color: var(--color-error) !important;
 }
 
 .r2m-input-container.error .r2m-input-prefix {
@@ -220,7 +220,7 @@
 }
 
 .r2m-input-container.error .r2m-input-prefix-text {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 /* Estilos para mensajes de error */
@@ -231,7 +231,7 @@
 
 .r2m-input-error-text {
   font-size: 12px;
-  color: #ef4444;
+  color: var(--color-error);
   font-weight: 500;
   line-height: 1.4;
 }

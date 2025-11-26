@@ -44,19 +44,23 @@ export default function LogoutConfirmationPage() {
 
   return (
     <IonPage>
-      <IonContent fullscreen className="ion-padding">
+      <IonContent
+        fullscreen
+        className="ion-padding"
+        style={{ '--background': 'var(--color-bg)' }}
+      >
         {/* Botón de retroceso */}
         <button
           ref={backButtonRef}
           onClick={handleGoBack}
           className="absolute top-4 left-4 z-50 p-2 rounded-full transition-colors"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: 'rgba(var(--color-card-rgb), 0.9)',
           }}
           tabIndex={-1}
           aria-label="Volver atrás"
         >
-          <RiArrowLeftLine size={24} style={{ color: '#DC2626' }} />
+          <RiArrowLeftLine size={24} style={{ color: 'var(--color-error)' }} />
         </button>
 
         <div
@@ -74,16 +78,21 @@ export default function LogoutConfirmationPage() {
               <div className="mb-6 flex justify-center">
                 <div
                   className="w-20 h-20 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: 'rgba(220, 38, 38, 0.1)' }}
+                  style={{
+                    backgroundColor: 'rgba(var(--color-error-rgb), 0.1)',
+                  }}
                 >
-                  <RiLogoutBoxRLine size={40} style={{ color: '#DC2626' }} />
+                  <RiLogoutBoxRLine
+                    size={40}
+                    style={{ color: 'var(--color-error)' }}
+                  />
                 </div>
               </div>
 
               {/* Título */}
               <p
                 className="font-bold mb-3"
-                style={{ color: '#DC2626', fontSize: '24px' }}
+                style={{ color: 'var(--color-error)', fontSize: '24px' }}
               >
                 Cerrar sesión
               </p>
@@ -112,9 +121,10 @@ export default function LogoutConfirmationPage() {
                   onClick={handleConfirmLogout}
                   className="w-full h-14 !rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all duration-300 border-none cursor-pointer"
                   style={{
-                    backgroundColor: '#DC2626',
-                    color: '#FFFFFF',
-                    boxShadow: '0 10px 25px -5px rgba(220, 38, 38, 0.3)',
+                    backgroundColor: 'var(--color-error)',
+                    color: 'var(--color-on-primary)',
+                    boxShadow:
+                      '0 10px 25px -5px rgba(var(--color-error-rgb), 0.3)',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#B91C1C';

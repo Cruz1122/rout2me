@@ -130,12 +130,12 @@ export default function R2MResultsList({
   return (
     <div
       ref={listRef}
-      className="absolute top-full left-0 right-0 mt-2 max-w-2xl mx-auto bg-white rounded-xl 
+      className="absolute top-full left-0 right-0 mt-2 max-w-2xl mx-auto rounded-xl 
                  shadow-lg z-50 max-h-52 overflow-y-auto r2m-results-list animate-slide-down"
       style={{
-        border: `1px solid rgba(var(--color-surface-rgb), 0.3)`,
-        boxShadow:
-          '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        backgroundColor: 'var(--color-card)',
+        border: `1px solid var(--color-border)`,
+        boxShadow: 'var(--color-shadow)',
       }}
       role="listbox"
       aria-label="Resultados de búsqueda"
@@ -171,15 +171,30 @@ export default function R2MResultsList({
           className={`
             r2m-result-item flex items-center gap-3 px-3 py-3 cursor-pointer transition-all duration-200
             r2m-touch-target
-            ${index === activeIndex ? 'active' : 'hover:bg-gray-50/30'}
+            ${index === activeIndex ? 'active' : ''}
             ${index === 0 ? 'rounded-t-xl' : ''}
-            ${index === items.length - 1 ? 'rounded-b-xl' : 'border-b border-gray-100/30'}
+            ${index === items.length - 1 ? 'rounded-b-xl' : ''}
           `}
           style={{
             backgroundColor:
               index === activeIndex
-                ? 'rgba(var(--color-primary-rgb), 0.05)'
+                ? 'rgba(var(--color-primary-rgb), 0.1)'
                 : 'transparent',
+            borderBottom:
+              index < items.length - 1
+                ? '1px solid var(--color-border)'
+                : 'none',
+          }}
+          onMouseEnter={(e) => {
+            if (index !== activeIndex) {
+              e.currentTarget.style.backgroundColor =
+                'rgba(var(--color-primary-rgb), 0.05)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (index !== activeIndex) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
           }}
           role="option"
           aria-selected={index === activeIndex}
@@ -192,7 +207,10 @@ export default function R2MResultsList({
             <div className="flex items-center justify-between min-w-0">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-base text-gray-900 truncate leading-tight">
+                  <p
+                    className="font-semibold text-base truncate leading-tight"
+                    style={{ color: 'var(--color-text)' }}
+                  >
                     {item.name}
                   </p>
                   {isRecentItem(item) && (
@@ -211,17 +229,28 @@ export default function R2MResultsList({
                     >
                       <RiTimeLine
                         size={16}
-                        style={{ color: 'rgb(var(--color-primary-rgb))' }}
+                        style={{ color: 'var(--color-primary)' }}
                       />
                     </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-gray-500 font-mono">
+                  <span
+                    className="text-sm font-mono"
+                    style={{ color: 'var(--color-terciary)' }}
+                  >
                     {item.code}
                   </span>
-                  <span className="text-sm text-gray-300">•</span>
-                  <span className="text-sm text-gray-400 capitalize">
+                  <span
+                    className="text-sm"
+                    style={{ color: 'var(--color-border)' }}
+                  >
+                    •
+                  </span>
+                  <span
+                    className="text-sm capitalize"
+                    style={{ color: 'var(--color-terciary)' }}
+                  >
                     {item.type === 'stop' ? 'Paradero' : 'Ruta'}
                   </span>
                 </div>

@@ -25,7 +25,7 @@ export const R2MPopup: React.FC<R2MPopupProps> = ({
       <div
         style={{
           fontWeight: 600,
-          color: '#1F2937',
+          color: 'var(--color-text)',
           marginBottom: subtitle ? '4px' : '8px',
           fontSize: '16px',
         }}
@@ -37,7 +37,7 @@ export const R2MPopup: React.FC<R2MPopupProps> = ({
         <div
           style={{
             fontSize: '14px',
-            color: '#6B7280',
+            color: 'var(--color-terciary)',
             marginBottom: '8px',
           }}
         >
@@ -50,7 +50,7 @@ export const R2MPopup: React.FC<R2MPopupProps> = ({
           key={index}
           style={{
             fontSize: '14px',
-            color: '#374151',
+            color: 'var(--color-text)',
             marginBottom: index < items.length - 1 ? '4px' : '0',
           }}
         >

@@ -213,18 +213,21 @@ export default function RoutesPage() {
 
   return (
     <IonPage>
-      <IonContent>
+      <IonContent style={{ '--background': 'var(--color-bg)' }}>
         <R2MPageHeader title="Rutas" />
 
         {/* Barra de búsqueda y filtros */}
-        <div className="px-4 pt-4 pb-3 bg-white">
+        <div
+          className="px-4 pt-4 pb-3"
+          style={{ backgroundColor: 'var(--color-card)' }}
+        >
           {/* Barra de búsqueda */}
           <div className="relative mb-3">
             <div
               className="relative flex items-center transition-all duration-300"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid rgba(var(--color-surface-rgb), 0.3)',
+                backgroundColor: 'var(--color-card)',
+                border: '1px solid rgba(var(--color-terciary-rgb), 0.3)',
                 borderRadius: '16px',
               }}
             >
@@ -253,7 +256,8 @@ export default function RoutesPage() {
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
                 placeholder="Buscar ruta por número o destino..."
-                className="w-full h-12 pl-12 pr-4 bg-transparent focus:outline-none text-gray-900"
+                className="w-full h-12 pl-12 pr-4 bg-transparent focus:outline-none"
+                style={{ color: 'var(--color-text)' }}
               />
             </div>
           </div>
@@ -353,10 +357,12 @@ function FareInfoCard() {
   return (
     <div
       className="mx-4 my-4 p-4 rounded-xl"
-      style={{ backgroundColor: 'var(--color-bg)' }}
+      style={{ backgroundColor: 'var(--color-card)' }}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">Tarifas de Transporte</h3>
+        <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>
+          Tarifas de Transporte
+        </h3>
         <button
           onClick={() => setShowInfo(!showInfo)}
           className="w-6 h-6 !rounded-full flex items-center justify-center transition-all duration-200"
@@ -414,13 +420,18 @@ function FareInfoCard() {
           <div key={fare.type} className="text-center">
             <div
               className="mb-2 p-2 rounded-lg"
-              style={{ backgroundColor: 'var(--color-secondary)' }}
+              style={{ backgroundColor: 'var(--color-primary)' }}
             >
-              <p className="text-xl font-bold" style={{ color: fare.color }}>
+              <p className="text-xl font-bold" style={{ color: 'white' }}>
                 ${fare.price.toLocaleString('es-CO')}
               </p>
             </div>
-            <p className="text-xs text-gray-600 font-medium">{fare.type}</p>
+            <p
+              className="text-xs font-medium"
+              style={{ color: 'var(--color-text)' }}
+            >
+              {fare.type}
+            </p>
           </div>
         ))}
       </div>
@@ -449,12 +460,14 @@ function RouteSection({
     <div
       className="p-4 rounded-xl"
       style={{
-        backgroundColor: 'white',
-        border: '1px solid rgba(0, 0, 0, 0.06)',
+        backgroundColor: 'var(--color-card)',
+        border: '1px solid rgba(var(--color-terciary-rgb), 0.1)',
       }}
     >
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold">{title}</h2>
+        <h2 className="font-semibold" style={{ color: 'var(--color-text)' }}>
+          {title}
+        </h2>
         {showViewMore && (
           <button
             onClick={onViewMore}
@@ -503,8 +516,8 @@ function RouteCard({
     <div
       className="p-4 rounded-xl cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
       style={{
-        backgroundColor: 'white',
-        border: '1px solid var(--color-surface)',
+        backgroundColor: 'var(--color-card)',
+        border: '1px solid rgba(var(--color-terciary-rgb), 0.2)',
       }}
       onClick={() => onViewRoute(route)}
       role="button"

@@ -1,8 +1,19 @@
 import { useRef, useCallback } from 'react';
 import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import type { Stop } from '../services/routeService';
-import { createPopupHTML } from '../utils/popupUtils';
-import { createStopMarkerElement } from '../utils/markerUtils';
+import {
+  createStopMarkerElement,
+  createEndpointMarkerElement,
+} from '../utils/markerUtils';
+
+// Helper para obtener colores de rutas desde CSS variables
+const getRouteColor = (variable: string, fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(variable)
+    .trim();
+  return value || fallback;
+};
 
 export interface RouteDrawingOptions {
   color?: string;
@@ -16,7 +27,19 @@ export interface RouteDrawingOptions {
   showShadow?: boolean;
 }
 
-export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
+export interface RouteDrawingCallbacks {
+  onStopClick?: (stop: Stop, routeId: string) => void;
+  onEndpointClick?: (
+    type: 'start' | 'end',
+    coordinates: [number, number],
+    routeId: string,
+  ) => void;
+}
+
+export function useRouteDrawing(
+  mapInstance: React.RefObject<MlMap | null>,
+  callbacks?: RouteDrawingCallbacks,
+) {
   const routeSources = useRef<Set<string>>(new Set());
   const routeLayers = useRef<Set<string>>(new Set());
   const stopMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
@@ -104,25 +127,51 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
     (
       routeId: string,
       coordinates: [number, number][],
-      markerColor = '#1E56A0',
+      markerColor?: string,
     ) => {
       if (!mapInstance.current || coordinates.length < 2) return;
 
       const startPoint = coordinates[0];
       const endPoint = coordinates.at(-1)!;
 
-      // Punto de inicio - Marcador azul estándar
-      const startMarker = new maplibregl.Marker({
+      // Crear marcadores personalizados para origen y destino
+      const startMarkerElement = createEndpointMarkerElement({
+        type: 'start',
         color: markerColor,
-        scale: 1.2,
+      });
+
+      const endMarkerElement = createEndpointMarkerElement({
+        type: 'end',
+        color: markerColor,
+      });
+
+      // Agregar event listeners para clics en los marcadores
+      startMarkerElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (callbacks?.onEndpointClick) {
+          callbacks.onEndpointClick('start', startPoint, routeId);
+        }
+      });
+
+      endMarkerElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (callbacks?.onEndpointClick) {
+          callbacks.onEndpointClick('end', endPoint, routeId);
+        }
+      });
+
+      // Punto de inicio - Marcador personalizado
+      const startMarker = new maplibregl.Marker({
+        element: startMarkerElement,
+        anchor: 'center',
       })
         .setLngLat(startPoint)
         .addTo(mapInstance.current);
 
-      // Punto de fin - Marcador azul estándar
+      // Punto de fin - Marcador personalizado
       const endMarker = new maplibregl.Marker({
-        color: markerColor,
-        scale: 1.2,
+        element: endMarkerElement,
+        anchor: 'center',
       })
         .setLngLat(endPoint)
         .addTo(mapInstance.current);
@@ -139,7 +188,7 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       mapWithMarkers._routeMarkers[`start-${routeId}`] = startMarker;
       mapWithMarkers._routeMarkers[`end-${routeId}`] = endMarker;
     },
-    [mapInstance],
+    [mapInstance, callbacks],
   );
 
   const addStopsToMap = useCallback(
@@ -158,36 +207,33 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
         const markerId = `stop-${routeId}-${stop.id}`;
 
         // Crear marcador personalizado para parada con color y opacidad personalizados
+        // Usar colores del tema actual
+        const markerElement = createStopMarkerElement({
+          color: stopColor || getRouteColor('--color-route-stop', '#FF6B35'),
+          opacity: stopOpacity ?? 1,
+          highlight: false,
+        });
+
+        // Agregar event listener para clic en el marcador
+        markerElement.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (callbacks?.onStopClick) {
+            callbacks.onStopClick(stop, routeId);
+          }
+        });
+
         const marker = new maplibregl.Marker({
-          element: createStopMarkerElement({
-            color: stopColor || '#FF6B35',
-            opacity: stopOpacity ?? 1,
-          }),
+          element: markerElement,
           anchor: 'center',
         })
           .setLngLat(stop.location)
           .addTo(mapInstance.current);
 
-        // Agregar popup con información de la parada
-        const popup = new maplibregl.Popup({
-          offset: 25,
-          closeButton: false,
-          closeOnClick: true,
-        }).setHTML(
-          createPopupHTML({
-            title: stop.name,
-            subtitle: `Parada ${index + 1}`,
-            items: [],
-          }),
-        );
-
-        marker.setPopup(popup);
-
         // Guardar referencia del marcador
         stopMarkers.current.set(markerId, marker);
       }
     },
-    [mapInstance, removeStopsFromMap],
+    [mapInstance, removeStopsFromMap, callbacks],
   );
 
   const addRouteToMap = useCallback(
@@ -202,10 +248,10 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       }
 
       const {
-        color = '#1E56A0',
+        color = getRouteColor('--color-route-default', '#1E56A0'),
         width = 6,
         opacity = 0.9,
-        outlineColor = '#ffffff',
+        outlineColor = getRouteColor('--color-route-outline', '#ffffff'),
         outlineWidth = 10,
         stopColor,
         stopOpacity,
@@ -309,7 +355,11 @@ export function useRouteDrawing(mapInstance: React.RefObject<MlMap | null>) {
       });
 
       // Agregar puntos de inicio y fin
-      addRouteEndpoints(routeId, coordinates, endpointColor || '#1E56A0');
+      addRouteEndpoints(
+        routeId,
+        coordinates,
+        endpointColor || getRouteColor('--color-route-endpoint', '#1E56A0'),
+      );
 
       // Agregar paradas si están disponibles
       if (stops && stops.length > 0) {
