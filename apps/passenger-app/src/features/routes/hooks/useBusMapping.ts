@@ -52,20 +52,6 @@ const fadeInMarker = (marker: maplibregl.Marker): void => {
   });
 };
 
-// Funciones auxiliares para simplificar el código
-function getStatusColor(status: Bus['status']): string {
-  switch (status) {
-    case 'active':
-      return '#10B981'; // Verde para activo
-    case 'nearby':
-      return '#F59E0B'; // Amarillo para cercano
-    case 'offline':
-      return '#9CA3AF'; // Gris para offline
-    default:
-      return '#9CA3AF';
-  }
-}
-
 /**
  * Obtiene el color basado en la ocupación del bus
  */
@@ -79,19 +65,6 @@ function getOccupancyColor(occupancy: Bus['occupancy']): string {
       return '#EF4444'; // Rojo
     default:
       return '#9CA3AF'; // Gris
-  }
-}
-
-function getStatusLabel(status: Bus['status']): string {
-  switch (status) {
-    case 'active':
-      return 'En línea';
-    case 'nearby':
-      return 'Cercano';
-    case 'offline':
-      return 'Inactivo';
-    default:
-      return 'Inactivo';
   }
 }
 

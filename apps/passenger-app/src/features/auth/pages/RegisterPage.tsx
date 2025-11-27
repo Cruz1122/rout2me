@@ -21,7 +21,6 @@ import R2MCodeInput from '../../../shared/components/R2MCodeInput';
 import ErrorNotification from '../../../features/system/components/ErrorNotification';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 import { signupUser, validateAuthConfig } from '../services/authService';
-import { useTheme } from '../../../contexts/ThemeContext';
 import '../../../shared/components/R2MInput.css';
 
 // Tipos para el registro
@@ -42,7 +41,6 @@ type AccountPurpose = 'personal' | 'organization';
 export default function RegisterPage() {
   const router = useIonRouter();
   const { error, handleError, clearError } = useErrorNotification();
-  const { theme } = useTheme();
 
   // Estados para las fases
   const [currentPhase, setCurrentPhase] = useState(1);

@@ -320,7 +320,6 @@ export default function RoutesPage() {
                     key={route.id}
                     route={route}
                     onViewRoute={handleViewRoute}
-                    allRoutes={routes}
                   />
                 ))}
               </div>
@@ -461,7 +460,6 @@ function RouteSection({
   onViewMore,
   showViewMore,
   onViewRoute,
-  allRoutes,
 }: RouteSectionProps) {
   return (
     <div
@@ -497,12 +495,7 @@ function RouteSection({
       ) : (
         <div className="space-y-3">
           {routes.map((route) => (
-            <RouteCard
-              key={route.id}
-              route={route}
-              onViewRoute={onViewRoute}
-              allRoutes={allRoutes}
-            />
+            <RouteCard key={route.id} route={route} onViewRoute={onViewRoute} />
           ))}
         </div>
       )}
@@ -513,22 +506,13 @@ function RouteSection({
 function RouteCard({
   route,
   onViewRoute,
-  allRoutes,
 }: {
   readonly route: Route;
   readonly onViewRoute: (route: Route) => void;
-  readonly allRoutes?: Route[];
 }) {
   const { theme } = useTheme();
   // Obtener el color de la ruta
   const routeColor = route.color || generateRouteColor(route.code);
-
-  // Agrupar variantes por código de ruta
-  const variants = allRoutes
-    ? allRoutes.filter((r) => r.code === route.code)
-    : [route];
-
-  const variantCount = variants.length;
 
   return (
     <div

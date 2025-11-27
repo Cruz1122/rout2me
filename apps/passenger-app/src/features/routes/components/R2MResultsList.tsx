@@ -161,7 +161,13 @@ export default function R2MResultsList({
             e.preventDefault();
             onSelect(item);
           }}
-          onMouseEnter={() => setActiveIndex(index)}
+          onMouseEnter={(e) => {
+            setActiveIndex(index);
+            if (index !== activeIndex) {
+              e.currentTarget.style.backgroundColor =
+                'rgba(var(--color-primary-rgb), 0.05)';
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -184,12 +190,6 @@ export default function R2MResultsList({
               index < items.length - 1
                 ? '1px solid var(--color-border)'
                 : 'none',
-          }}
-          onMouseEnter={(e) => {
-            if (index !== activeIndex) {
-              e.currentTarget.style.backgroundColor =
-                'rgba(var(--color-primary-rgb), 0.05)';
-            }
           }}
           onMouseLeave={(e) => {
             if (index !== activeIndex) {

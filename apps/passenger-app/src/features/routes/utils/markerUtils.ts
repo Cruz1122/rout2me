@@ -49,7 +49,6 @@ export function createEndpointMarkerElement(
   const { color, opacity = 1 } = options;
   const finalColor =
     color || getRouteColor('--color-route-endpoint', '#1E56A0');
-  const borderColor = getRouteColor('--color-route-outline', '#ffffff');
   const shadowColor = getRouteColor(
     '--color-shadow',
     '0 2px 8px rgba(0, 0, 0, 0.3)',
@@ -104,7 +103,6 @@ export function createStopMarkerElement(
   // Obtener colores del tema actual
   const stopColor =
     options.color || getRouteColor('--color-route-stop', '#FF6B35');
-  const borderColor = getRouteColor('--color-route-outline', '#ffffff');
   const successColorRGB = getRouteColorRGB(
     '--color-success-rgb',
     '22, 163, 74',

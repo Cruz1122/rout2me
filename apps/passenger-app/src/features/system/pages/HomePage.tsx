@@ -109,7 +109,7 @@ export default function HomePage() {
   const { triggerResize } = useMapResize(mapInstance);
 
   // Callbacks para manejar clics en marcadores
-  const handleStopClick = useCallback((stop: Stop, routeId: string) => {
+  const handleStopClick = useCallback((stop: Stop) => {
     setSelectedMarker({ type: 'stop', data: stop });
     setSelectedItem(null); // Limpiar selectedItem si existe
   }, []);
@@ -120,7 +120,7 @@ export default function HomePage() {
   }, []);
 
   const handleEndpointClick = useCallback(
-    (type: 'start' | 'end', coordinates: [number, number], routeId: string) => {
+    (type: 'start' | 'end', coordinates: [number, number]) => {
       setSelectedMarker({ type: 'endpoint', data: { type, coordinates } });
       setSelectedItem(null); // Limpiar selectedItem si existe
     },

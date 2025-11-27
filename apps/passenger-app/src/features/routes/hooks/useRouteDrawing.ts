@@ -135,9 +135,7 @@ export function useRouteDrawing(
         if (mapInstance.current.getLayer(layerId)) {
           // Animar opacidad a 0 usando setPaintProperty con transición
           try {
-            mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0, {
-              duration: FADE_OUT_DURATION,
-            });
+            mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0);
           } catch {
             // Si falla, continuar sin animación
           }
@@ -291,18 +289,13 @@ export function useRouteDrawing(
   );
 
   const addStopsToMap = useCallback(
-    async (
-      routeId: string,
-      stops: Stop[],
-      stopColor?: string,
-      stopOpacity?: number,
-    ) => {
+    async (routeId: string, stops: Stop[], stopColor?: string) => {
       if (!mapInstance.current || !stops || stops.length === 0) return;
 
       // Limpiar paradas existentes para esta ruta (con animación)
       await removeStopsFromMap(routeId);
 
-      for (const [index, stop] of stops.entries()) {
+      for (const stop of stops) {
         const markerId = `stop-${routeId}-${stop.id}`;
 
         // Crear marcador personalizado para parada con opacidad inicial 0
@@ -356,7 +349,6 @@ export function useRouteDrawing(
         outlineColor = getRouteColor('--color-route-outline', '#ffffff'),
         outlineWidth = 10,
         stopColor,
-        stopOpacity,
         endpointColor,
         showShadow = true,
       } = options;
@@ -468,7 +460,6 @@ export function useRouteDrawing(
               shadowLayerId,
               'line-opacity',
               0.3,
-              { duration: FADE_IN_DURATION },
             );
           }
           if (mapInstance.current?.getLayer(outlineLayerId)) {
@@ -476,7 +467,6 @@ export function useRouteDrawing(
               outlineLayerId,
               'line-opacity',
               1,
-              { duration: FADE_IN_DURATION },
             );
           }
           if (mapInstance.current?.getLayer(mainLayerId)) {
@@ -484,7 +474,6 @@ export function useRouteDrawing(
               mainLayerId,
               'line-opacity',
               opacity,
-              { duration: FADE_IN_DURATION },
             );
           }
           if (mapInstance.current?.getLayer(glowLayerId)) {
@@ -492,7 +481,6 @@ export function useRouteDrawing(
               glowLayerId,
               'line-opacity',
               opacity * 0.33,
-              { duration: FADE_IN_DURATION },
             );
           }
         });
@@ -507,7 +495,7 @@ export function useRouteDrawing(
 
       // Agregar paradas si están disponibles (con animación)
       if (stops && stops.length > 0) {
-        await addStopsToMap(routeId, stops, stopColor, stopOpacity);
+        await addStopsToMap(routeId, stops, stopColor);
       }
 
       routeSources.current.add(sourceId);
@@ -531,9 +519,7 @@ export function useRouteDrawing(
     for (const layerId of layersToRemove) {
       if (mapInstance.current.getLayer(layerId)) {
         try {
-          mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0, {
-            duration: FADE_OUT_DURATION,
-          });
+          mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0);
         } catch {
           // Si falla, continuar sin animación
         }
