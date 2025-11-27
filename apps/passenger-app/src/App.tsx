@@ -19,7 +19,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
 const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
-const LivePage = lazy(() => import('./features/routes/pages/LivePage'));
+const BusesPage = lazy(() => import('./features/routes/pages/BusesPage'));
 const AlertsPage = lazy(() => import('./features/system/pages/AlertsPage'));
 const ProfilePage = lazy(() => import('./features/user/pages/ProfilePage'));
 const LogoutConfirmationPage = lazy(
@@ -77,9 +77,9 @@ function TabsWithIcons() {
               <RoutesPage />
             </Suspense>
           </Route>
-          <Route exact path="/en-vivo">
+          <Route exact path="/buses">
             <Suspense fallback={<GlobalLoader />}>
-              <LivePage />
+              <BusesPage />
             </Suspense>
           </Route>
           <Route exact path="/alertas">
@@ -117,12 +117,9 @@ function TabsWithIcons() {
             />
             <IonLabel>Rutas</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="en-vivo" href="/en-vivo">
-            <AnimatedTabIcon
-              iconName="bus"
-              isActive={activeTab === 'en-vivo'}
-            />
-            <IonLabel>En vivo</IonLabel>
+          <IonTabButton tab="buses" href="/buses">
+            <AnimatedTabIcon iconName="bus" isActive={activeTab === 'buses'} />
+            <IonLabel>Buses</IonLabel>
           </IonTabButton>
           <IonTabButton tab="alertas" href="/alertas">
             <AnimatedTabIcon

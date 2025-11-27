@@ -553,27 +553,6 @@ export default function HomePage() {
       setIsMapLoading(false);
       setIsMapReady(true); // Marcar el mapa como listo para activar el marcador
 
-      // En modo oscuro, aplicar tinte negro #131517 al mapa base
-      if (theme === 'dark') {
-        try {
-          map.setPaintProperty('carto-tiles-layer', 'raster-opacity', 0.9);
-          map.setPaintProperty(
-            'carto-tiles-layer',
-            'raster-brightness-min',
-            0.1,
-          );
-          map.setPaintProperty(
-            'carto-tiles-layer',
-            'raster-brightness-max',
-            0.3,
-          );
-          map.setPaintProperty('carto-tiles-layer', 'raster-contrast', -0.2);
-          map.setPaintProperty('carto-tiles-layer', 'raster-saturation', -0.5);
-        } catch {
-          // Si por alguna razón la capa aún no existe, no romper la carga
-        }
-      }
-
       // Mover geolocalización a DESPUÉS de render (no bloqueante)
       setTimeout(() => {
         if (navigator.geolocation) {
@@ -633,7 +612,7 @@ export default function HomePage() {
       delete (globalThis as { routeData?: RouteFromNavigation }).routeData;
     }
 
-    // Manejar bus que viene desde LivePage
+    // Manejar bus que viene desde BusesPage
     const busData = (globalThis as { busData?: BusFromNavigation }).busData;
     if (busData) {
       setBusFromNavigation(busData);

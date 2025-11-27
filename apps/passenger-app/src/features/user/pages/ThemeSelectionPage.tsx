@@ -105,6 +105,12 @@ const ThemeSelectionPage: React.FC = () => {
                   style={{
                     borderRadius: '16px',
                     backgroundColor: 'var(--color-card)',
+                    boxShadow:
+                      theme === 'dark'
+                        ? theme === 'light'
+                          ? '0 4px 12px rgba(255, 255, 255, 0.3)'
+                          : '0 2px 8px rgba(255, 255, 255, 0.2)'
+                        : undefined,
                   }}
                 >
                   <div
@@ -137,7 +143,12 @@ const ThemeSelectionPage: React.FC = () => {
                   </div>
                   <h3
                     className="font-semibold text-lg text-center"
-                    style={{ color: 'var(--color-text)' }}
+                    style={{
+                      color:
+                        theme === 'light'
+                          ? 'var(--color-text)'
+                          : 'var(--color-terciary)',
+                    }}
                   >
                     Claro
                   </h3>
@@ -155,6 +166,12 @@ const ThemeSelectionPage: React.FC = () => {
                   style={{
                     borderRadius: '16px',
                     backgroundColor: 'var(--color-card)',
+                    boxShadow:
+                      theme === 'dark'
+                        ? theme === 'dark'
+                          ? '0 4px 12px rgba(255, 255, 255, 0.3)'
+                          : '0 2px 8px rgba(255, 255, 255, 0.2)'
+                        : undefined,
                   }}
                 >
                   <div

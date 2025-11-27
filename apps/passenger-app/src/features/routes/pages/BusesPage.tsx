@@ -59,7 +59,7 @@ const FILTER_OPTIONS: readonly FilterOption<FilterTab>[] = [
   },
 ] as const;
 
-export default function LivePage() {
+export default function BusesPage() {
   const router = useIonRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab | null>(null);
@@ -390,7 +390,10 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
       className="p-4 rounded-xl cursor-pointer hover:shadow-md transition-shadow"
       style={{
         backgroundColor: 'var(--color-card)',
-        border: '1px solid rgba(var(--color-terciary-rgb), 0.2)',
+        border:
+          theme === 'dark'
+            ? '1px solid var(--color-border)'
+            : '1px solid rgba(var(--color-terciary-rgb), 0.2)',
       }}
       onClick={onClick}
     >

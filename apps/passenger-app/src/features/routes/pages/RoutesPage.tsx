@@ -519,7 +519,10 @@ function RouteCard({
       className="p-4 rounded-xl cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
       style={{
         backgroundColor: 'var(--color-card)',
-        border: '1px solid rgba(var(--color-terciary-rgb), 0.2)',
+        border:
+          theme === 'dark'
+            ? '1px solid var(--color-border)'
+            : '1px solid rgba(var(--color-terciary-rgb), 0.2)',
       }}
       onClick={() => onViewRoute(route)}
       role="button"

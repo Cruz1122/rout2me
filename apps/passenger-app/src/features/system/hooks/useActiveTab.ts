@@ -14,8 +14,8 @@ export function useActiveTab() {
       case '/rutas':
         setActiveTab('rutas');
         break;
-      case '/en-vivo':
-        setActiveTab('en-vivo');
+      case '/buses':
+        setActiveTab('buses');
         break;
       case '/alertas':
         setActiveTab('alertas');
@@ -32,7 +32,7 @@ export function useActiveTab() {
           path &&
           (path.startsWith('/inicio') ||
             path.startsWith('/rutas') ||
-            path.startsWith('/en-vivo') ||
+            path.startsWith('/buses') ||
             path.startsWith('/alertas') ||
             path.startsWith('/perfil'))
         ) {

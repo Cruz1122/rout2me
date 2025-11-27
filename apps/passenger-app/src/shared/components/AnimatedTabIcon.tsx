@@ -39,7 +39,7 @@ export default function AnimatedTabIcon({
     // Verificar si el botón padre tiene la clase tab-selected
     const checkIonicActive = () => {
       const tabButton = document.querySelector(
-        `ion-tab-button[tab="${iconName === 'home' ? 'inicio' : iconName === 'route' ? 'rutas' : iconName === 'bus' ? 'en-vivo' : iconName === 'notification' ? 'alertas' : 'perfil'}"]`,
+        `ion-tab-button[tab="${iconName === 'home' ? 'inicio' : iconName === 'route' ? 'rutas' : iconName === 'bus' ? 'buses' : iconName === 'notification' ? 'alertas' : 'perfil'}"]`,
       );
       if (tabButton) {
         setIsIonicActive(tabButton.classList.contains('tab-selected'));
@@ -51,7 +51,7 @@ export default function AnimatedTabIcon({
     // Observar cambios en las clases
     const observer = new MutationObserver(checkIonicActive);
     const tabButton = document.querySelector(
-      `ion-tab-button[tab="${iconName === 'home' ? 'inicio' : iconName === 'route' ? 'rutas' : iconName === 'bus' ? 'en-vivo' : iconName === 'notification' ? 'alertas' : 'perfil'}"]`,
+      `ion-tab-button[tab="${iconName === 'home' ? 'inicio' : iconName === 'route' ? 'rutas' : iconName === 'bus' ? 'buses' : iconName === 'notification' ? 'alertas' : 'perfil'}"]`,
     );
     if (tabButton) {
       observer.observe(tabButton, {

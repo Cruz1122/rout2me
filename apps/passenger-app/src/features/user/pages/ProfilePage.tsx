@@ -30,10 +30,12 @@ import R2MPageHeader from '../../../shared/components/R2MPageHeader';
 import R2MProfileButton from '../../../shared/components/R2MProfileButton';
 import R2MAvatar from '../../../shared/components/R2MAvatar';
 import OrganizationBadge from '../components/OrganizationBadge';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 export default function ProfilePage() {
   const router = useIonRouter();
   const { accessToken } = useAuth();
+  const { theme } = useTheme();
   const [userInfo, setUserInfo] = useState<UserResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -193,8 +195,12 @@ export default function ProfilePage() {
             className="rounded-2xl p-4 shadow-sm"
             style={{
               backgroundColor: 'var(--color-card)',
+              border:
+                theme === 'dark' ? '1px solid var(--color-border)' : 'none',
               boxShadow:
-                '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                theme === 'dark'
+                  ? undefined
+                  : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}
           >
             <div className="flex items-center gap-4">
@@ -250,8 +256,12 @@ export default function ProfilePage() {
             className="rounded-2xl p-4 shadow-sm"
             style={{
               backgroundColor: 'var(--color-card)',
+              border:
+                theme === 'dark' ? '1px solid var(--color-border)' : 'none',
               boxShadow:
-                '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                theme === 'dark'
+                  ? undefined
+                  : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}
           >
             <p
@@ -369,8 +379,12 @@ export default function ProfilePage() {
             className="rounded-2xl p-4 shadow-sm"
             style={{
               backgroundColor: 'var(--color-card)',
+              border:
+                theme === 'dark' ? '1px solid var(--color-border)' : 'none',
               boxShadow:
-                '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                theme === 'dark'
+                  ? undefined
+                  : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}
           >
             <p
@@ -412,8 +426,12 @@ export default function ProfilePage() {
             className="rounded-2xl p-4 shadow-sm"
             style={{
               backgroundColor: 'var(--color-card)',
+              border:
+                theme === 'dark' ? '1px solid var(--color-border)' : 'none',
               boxShadow:
-                '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                theme === 'dark'
+                  ? undefined
+                  : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             }}
           >
             <p
