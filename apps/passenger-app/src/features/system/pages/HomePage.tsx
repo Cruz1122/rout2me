@@ -127,11 +127,16 @@ export default function HomePage() {
     [],
   );
 
-  const { addRouteToMap, clearAllRoutes, fitBoundsToRoute, highlightRoute } =
-    useRouteDrawing(mapInstance, {
-      onStopClick: handleStopClick,
-      onEndpointClick: handleEndpointClick,
-    });
+  const {
+    addRouteToMap,
+    clearAllRoutes,
+    fitBoundsToRoute,
+    highlightRoute,
+    getRouteIdForStop,
+  } = useRouteDrawing(mapInstance, {
+    onStopClick: handleStopClick,
+    onEndpointClick: handleEndpointClick,
+  });
   const { addBusesToMap, clearAllBuses } = useBusMapping(mapInstance, {
     onBusClick: handleBusClick,
   });
@@ -165,9 +170,22 @@ export default function HomePage() {
           type: 'stop',
         });
 
-        // Limpiar rutas y buses anteriores al seleccionar una parada (con animación)
-        await clearAllRoutes();
-        await clearAllBuses();
+        // Verificar si la parada pertenece a una ruta actualmente graficada
+        const routeIdForStop = getRouteIdForStop(item.id);
+        const stopBelongsToCurrentRoute =
+          routeIdForStop !== null &&
+          selectedItem?.type === 'route' &&
+          selectedItem?.id === routeIdForStop;
+
+        // Si la parada pertenece a la ruta actual, NO limpiar rutas ni marcadores
+        if (!stopBelongsToCurrentRoute) {
+          // Limpiar rutas y buses anteriores al seleccionar una parada (con animación)
+          await clearAllRoutes();
+          await clearAllBuses();
+        } else {
+          // Solo limpiar buses, mantener la ruta y sus marcadores
+          await clearAllBuses();
+        }
 
         if (currentMarker.current) {
           currentMarker.current.remove();
@@ -179,31 +197,35 @@ export default function HomePage() {
           duration: 1000,
         });
 
-        // Crear marcador con opacidad inicial 0 para fade-in
-        const markerElement = createStopMarkerElement({
-          highlight: true,
-          opacity: 0, // Iniciar con opacidad 0 para fade-in
-        });
-
-        currentMarker.current = new maplibregl.Marker({
-          element: markerElement,
-          anchor: 'center',
-        })
-          .setLngLat([item.lng, item.lat])
-          .addTo(mapInstance.current);
-
-        // Animar fade-in del marcador
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (currentMarker.current) {
-              const element = currentMarker.current.getElement();
-              if (element) {
-                element.style.transition = 'opacity 300ms ease-in-out';
-                element.style.opacity = '1';
-              }
-            }
+        // Si la parada pertenece a la ruta actual, no crear un marcador adicional
+        // ya que el marcador de la parada ya existe en el mapa
+        if (!stopBelongsToCurrentRoute) {
+          // Crear marcador con opacidad inicial 0 para fade-in
+          const markerElement = createStopMarkerElement({
+            highlight: true,
+            opacity: 0, // Iniciar con opacidad 0 para fade-in
           });
-        });
+
+          currentMarker.current = new maplibregl.Marker({
+            element: markerElement,
+            anchor: 'center',
+          })
+            .setLngLat([item.lng, item.lat])
+            .addTo(mapInstance.current);
+
+          // Animar fade-in del marcador
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (currentMarker.current) {
+                const element = currentMarker.current.getElement();
+                if (element) {
+                  element.style.transition = 'opacity 300ms ease-in-out';
+                  element.style.opacity = '1';
+                }
+              }
+            });
+          });
+        }
 
         setSelectedItem(item);
       } else if (
@@ -211,12 +233,26 @@ export default function HomePage() {
         'coordinates' in item &&
         item.coordinates
       ) {
+        // Verificar si la ruta ya está graficada en el mapa
+        const routeLayerId = `route-main-${item.id}`;
+        const routeExistsInMap =
+          mapInstance.current?.getLayer(routeLayerId) !== undefined;
+
         // Guardar la ruta como reciente
         recentRoutesStorage.saveRecentRoute(item.id);
         recentSearchesStorage.saveRecentSearch({
           id: item.id,
           type: 'route',
         });
+
+        // Si la ruta ya está en el mapa, solo actualizar el estado y evitar el fade
+        if (routeExistsInMap) {
+          setSelectedItem(item);
+          setSelectedMarker(null);
+          // Asegurar que la ruta esté resaltada
+          highlightRoute(item.id, true);
+          return;
+        }
 
         // Limpiar marcadores de paradas y buses
         if (currentMarker.current) {
@@ -345,6 +381,8 @@ export default function HomePage() {
       fitBoundsToRoute,
       highlightRoute,
       loadBusesForRoute,
+      getRouteIdForStop,
+      selectedItem,
     ],
   );
 
@@ -627,6 +665,34 @@ export default function HomePage() {
 
     const processRouteFromNavigation = async () => {
       try {
+        // Verificar si la ruta ya está graficada en el mapa
+        const routeLayerId = `route-main-${routeFromNavigation.id}`;
+        const routeExistsInMap =
+          mapInstance.current?.getLayer(routeLayerId) !== undefined;
+
+        // Si la ruta ya está en el mapa, solo actualizar el estado y evitar el fade
+        if (routeExistsInMap) {
+          // Crear objeto SearchItem compatible para actualizar el estado
+          const searchItem: SearchItem = {
+            id: routeFromNavigation.id,
+            type: 'route',
+            name: routeFromNavigation.name,
+            code: routeFromNavigation.code,
+            tags: [],
+            coordinates: routeFromNavigation.path,
+            color: routeFromNavigation.color || 'var(--color-secondary)',
+            routeStops: routeFromNavigation.stops?.map((stop) => ({
+              id: stop.id,
+              name: stop.name,
+              location: stop.location,
+            })),
+          };
+          setSelectedItem(searchItem);
+          highlightRoute(routeFromNavigation.id, true);
+          setRouteFromNavigation(null);
+          return;
+        }
+
         // Limpiar rutas anteriores (con animación)
         await clearAllRoutes();
         if (currentMarker.current) {
@@ -779,16 +845,9 @@ export default function HomePage() {
 
     const processBusFromNavigation = async () => {
       try {
-        // Limpiar rutas y buses anteriores (con animación)
-        await clearAllRoutes();
-        await clearAllBuses();
-        if (currentMarker.current) {
-          currentMarker.current.remove();
-          currentMarker.current = null;
-        }
-
         // Cargar la ruta completa para mostrar su geometría
         let routeVariantId = busFromNavigation.id;
+        let routeExistsInMap = false;
 
         try {
           const routes = await fetchAllRoutesData();
@@ -813,6 +872,10 @@ export default function HomePage() {
           }
 
           if (route && route.path && route.path.length > 0) {
+            // Verificar si la ruta ya está graficada en el mapa usando el ID de la ruta encontrada
+            const routeLayerId = `route-main-${route.id}`;
+            routeExistsInMap =
+              mapInstance.current?.getLayer(routeLayerId) !== undefined;
             // Obtener el color de la ruta
             const routeColor = route.color || generateRouteColor(route.code);
 
@@ -820,6 +883,17 @@ export default function HomePage() {
             const routePath = route.path || route.variants?.[0]?.path;
 
             if (routePath && routePath.length > 0) {
+              // Si la ruta ya está en el mapa, no limpiar ni redibujar
+              if (!routeExistsInMap) {
+                // Limpiar rutas y buses anteriores (con animación)
+                await clearAllRoutes();
+                await clearAllBuses();
+                if (currentMarker.current) {
+                  currentMarker.current.remove();
+                  currentMarker.current = null;
+                }
+              }
+
               // Obtener la API key desde la configuración centralizada
               const apiKey = getStadiaApiKey();
               const shouldApplyMapMatching = isMapMatchingAvailable();
@@ -857,40 +931,43 @@ export default function HomePage() {
                 })),
               };
 
-              // Agregar la ruta al mapa con opacidad menor y color verde (solo para buses, con animación)
-              await addRouteToMap(
-                searchItem.id,
-                processedPath,
-                {
-                  color: '#10B981', // Verde para rutas de buses (mantener verde)
-                  width: 4,
-                  opacity: 0.5, // Opacidad menor para ruta y paradas
-                  outlineColor: getRouteColor(
-                    '--color-route-outline',
-                    '#ffffff',
-                  ),
-                  outlineWidth: 4, // Contorno reducido para buses
-                  stopColor: '#10B981', // Color verde para marcadores de paradas
-                  stopOpacity: 0.5, // Opacidad menor para marcadores de paradas
-                  endpointColor: '#10B981',
-                  showShadow: false,
-                },
-                // Agregar paradas de la ruta (con opacidad menor)
-                route.stops?.map((stop) => ({
-                  id: stop.id,
-                  name: stop.name,
-                  created_at: stop.created_at || new Date().toISOString(),
-                  location: stop.location,
-                })),
-              );
+              // Solo agregar la ruta al mapa si no es la misma ruta que ya está graficada
+              if (!routeExistsInMap) {
+                // Agregar la ruta al mapa con opacidad menor y color verde (solo para buses, con animación)
+                await addRouteToMap(
+                  searchItem.id,
+                  processedPath,
+                  {
+                    color: '#10B981', // Verde para rutas de buses (mantener verde)
+                    width: 4,
+                    opacity: 0.5, // Opacidad menor para ruta y paradas
+                    outlineColor: getRouteColor(
+                      '--color-route-outline',
+                      '#ffffff',
+                    ),
+                    outlineWidth: 4, // Contorno reducido para buses
+                    stopColor: '#10B981', // Color verde para marcadores de paradas
+                    stopOpacity: 0.5, // Opacidad menor para marcadores de paradas
+                    endpointColor: '#10B981',
+                    showShadow: false,
+                  },
+                  // Agregar paradas de la ruta (con opacidad menor)
+                  route.stops?.map((stop) => ({
+                    id: stop.id,
+                    name: stop.name,
+                    created_at: stop.created_at || new Date().toISOString(),
+                    location: stop.location,
+                  })),
+                );
 
-              // Ajustar el mapa para mostrar toda la ruta
-              fitBoundsToRoute(processedPath, true); // hasInfoCard = true
+                // Ajustar el mapa para mostrar toda la ruta
+                fitBoundsToRoute(processedPath, true); // hasInfoCard = true
 
-              // NO resaltar la ruta (ya tiene color verde y opacidad menor)
-              // highlightRoute(searchItem.id, true);
+                // NO resaltar la ruta (ya tiene color verde y opacidad menor)
+                // highlightRoute(searchItem.id, true);
 
-              setSelectedItem(searchItem);
+                setSelectedItem(searchItem);
+              }
               routeVariantId = route.id;
             }
           }
@@ -902,10 +979,10 @@ export default function HomePage() {
         // No mostrar loader aquí para evitar parpadeo - los buses se cargan en segundo plano
         await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
 
-        // Esperar unos segundos antes de hacer zoom al bus destacado
-        // Esto permite que el usuario vea toda la ruta primero
+        // Esperar un momento antes de hacer zoom al bus destacado
+        // Esto permite que el usuario vea la ruta brevemente antes de enfocar el bus
         setTimeout(() => {
-          // Centrar la cámara en el bus específico después de unos segundos
+          // Centrar la cámara en el bus específico con animación rápida
           if (busFromNavigation.busLocation && mapInstance.current) {
             mapInstance.current.flyTo({
               center: [
@@ -913,10 +990,10 @@ export default function HomePage() {
                 busFromNavigation.busLocation.latitude,
               ],
               zoom: 16,
-              duration: 500,
+              duration: 500, // Animación más rápida
             });
           }
-        }, 3000); // Esperar 3 segundos antes de hacer zoom
+        }, 1500); // Reducido de 3 segundos a 1 segundo
 
         // NO re-renderizar el marcador - mantener el marcador existente intacto
         // El marcador de ubicación ya tiene su posición correcta y no debe tocarse

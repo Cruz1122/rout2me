@@ -87,6 +87,7 @@ export function useRouteDrawing(
   const routeSources = useRef<Set<string>>(new Set());
   const routeLayers = useRef<Set<string>>(new Set());
   const stopMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
+  const isClearingRef = useRef<boolean>(false);
 
   const removeStopsFromMap = useCallback(
     async (routeId: string) => {
@@ -195,18 +196,47 @@ export function useRouteDrawing(
 
       // Remover marcadores de inicio y fin después de la animación
       if (markers) {
-        if (
-          markers[`start-${routeId}`] &&
-          typeof markers[`start-${routeId}`].remove === 'function'
-        ) {
-          markers[`start-${routeId}`].remove();
+        // Capturar referencias antes de eliminar para evitar problemas de sincronización
+        const startMarker = markers[`start-${routeId}`];
+        const endMarker = markers[`end-${routeId}`];
+
+        if (startMarker) {
+          try {
+            // Intentar remover el marcador directamente
+            startMarker.remove();
+          } catch (error) {
+            // Si falla, intentar verificar si el elemento existe y forzar eliminación
+            try {
+              const element = startMarker.getElement();
+              if (element) {
+                // Si el elemento existe pero remove() falló, intentar remover del DOM directamente
+                element.remove();
+              }
+            } catch {
+              // Ignorar errores si el marcador ya fue eliminado
+            }
+          }
+          // Eliminar de la referencia incluso si falló la eliminación física
           delete markers[`start-${routeId}`];
         }
-        if (
-          markers[`end-${routeId}`] &&
-          typeof markers[`end-${routeId}`].remove === 'function'
-        ) {
-          markers[`end-${routeId}`].remove();
+
+        if (endMarker) {
+          try {
+            // Intentar remover el marcador directamente
+            endMarker.remove();
+          } catch (error) {
+            // Si falla, intentar verificar si el elemento existe y forzar eliminación
+            try {
+              const element = endMarker.getElement();
+              if (element) {
+                // Si el elemento existe pero remove() falló, intentar remover del DOM directamente
+                element.remove();
+              }
+            } catch {
+              // Ignorar errores si el marcador ya fue eliminado
+            }
+          }
+          // Eliminar de la referencia incluso si falló la eliminación física
           delete markers[`end-${routeId}`];
         }
       }
@@ -359,8 +389,70 @@ export function useRouteDrawing(
       const mainLayerId = `route-main-${routeId}`;
       const glowLayerId = `route-glow-${routeId}`;
 
-      // Limpiar ruta existente si ya existe (con animación)
-      await removeRouteFromMap(routeId);
+      // PRIMERO: Limpiar TODOS los marcadores y rutas existentes antes de agregar la nueva
+      // Esto asegura que no queden marcadores huérfanos de rutas anteriores
+      // Limpiar todas las capas y fuentes existentes
+      const existingSources = Array.from(routeSources.current);
+      const existingLayers = Array.from(routeLayers.current);
+
+      // Remover todas las capas
+      for (const layerId of existingLayers) {
+        if (mapInstance.current.getLayer(layerId)) {
+          try {
+            mapInstance.current.removeLayer(layerId);
+          } catch {
+            // Ignorar errores
+          }
+        }
+      }
+
+      // Remover todas las fuentes
+      for (const sourceId of existingSources) {
+        if (mapInstance.current.getSource(sourceId)) {
+          try {
+            mapInstance.current.removeSource(sourceId);
+          } catch {
+            // Ignorar errores
+          }
+        }
+      }
+
+      // Limpiar TODOS los marcadores de inicio/fin
+      const mapWithMarkers = mapInstance.current as MlMap & {
+        _routeMarkers?: Record<string, maplibregl.Marker>;
+      };
+      if (mapWithMarkers._routeMarkers) {
+        for (const markerId in mapWithMarkers._routeMarkers) {
+          const marker = mapWithMarkers._routeMarkers[markerId];
+          if (marker) {
+            try {
+              marker.remove();
+            } catch {
+              // Ignorar errores
+            }
+          }
+        }
+        mapWithMarkers._routeMarkers = {};
+      }
+
+      // Limpiar TODOS los marcadores de paradas
+      for (const [markerId, marker] of stopMarkers.current) {
+        try {
+          marker.remove();
+        } catch {
+          // Ignorar errores
+        }
+      }
+      stopMarkers.current.clear();
+
+      // Limpiar referencias
+      routeSources.current.clear();
+      routeLayers.current.clear();
+
+      // Verificar que el mapa todavía existe después de la limpieza
+      if (!mapInstance.current) {
+        return;
+      }
 
       // Agregar fuente de datos GeoJSON
       mapInstance.current.addSource(sourceId, {
@@ -506,93 +598,197 @@ export function useRouteDrawing(
       routeLayers.current.add(mainLayerId);
       routeLayers.current.add(glowLayerId);
     },
-    [mapInstance, addRouteEndpoints, removeRouteFromMap, addStopsToMap],
+    [mapInstance, addRouteEndpoints, addStopsToMap],
   );
 
   const clearAllRoutes = useCallback(async () => {
     if (!mapInstance.current) return;
 
-    const sourcesToRemove = Array.from(routeSources.current);
-    const layersToRemove = Array.from(routeLayers.current);
+    // Si ya hay una limpieza en curso, cancelarla y forzar eliminación inmediata
+    if (isClearingRef.current) {
+      // Forzar eliminación inmediata de todos los marcadores
+      const mapWithMarkers = mapInstance.current as MlMap & {
+        _routeMarkers?: Record<string, maplibregl.Marker>;
+      };
+      const markers = mapWithMarkers._routeMarkers;
 
-    // Animar fade-out de todas las capas
-    for (const layerId of layersToRemove) {
-      if (mapInstance.current.getLayer(layerId)) {
+      // Remover todos los marcadores de inicio/fin inmediatamente
+      if (markers) {
+        for (const markerId in markers) {
+          if (markers[markerId]) {
+            try {
+              const element = markers[markerId].getElement();
+              if (element) {
+                element.style.transition = 'none';
+                element.style.opacity = '0';
+              }
+              markers[markerId].remove();
+            } catch {
+              // Ignorar errores
+            }
+          }
+        }
+        mapWithMarkers._routeMarkers = {};
+      }
+
+      // Remover todos los marcadores de paradas inmediatamente
+      for (const [markerId, marker] of stopMarkers.current) {
         try {
-          mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0);
+          const element = marker.getElement();
+          if (element) {
+            element.style.transition = 'none';
+            element.style.opacity = '0';
+          }
+          marker.remove();
         } catch {
-          // Si falla, continuar sin animación
+          // Ignorar errores
         }
       }
+      stopMarkers.current.clear();
     }
 
-    // Animar fade-out de todos los marcadores de rutas
-    const mapWithMarkers = mapInstance.current as MlMap & {
-      _routeMarkers?: Record<string, maplibregl.Marker>;
-    };
-    const markers = mapWithMarkers._routeMarkers;
-    const endpointFadeOutPromises: Promise<void>[] = [];
+    // Marcar que estamos limpiando
+    isClearingRef.current = true;
 
-    if (markers) {
-      for (const markerId in markers) {
-        if (
-          markers[markerId] &&
-          typeof markers[markerId].remove === 'function'
-        ) {
-          endpointFadeOutPromises.push(fadeOutMarker(markers[markerId]));
+    try {
+      const sourcesToRemove = Array.from(routeSources.current);
+      const layersToRemove = Array.from(routeLayers.current);
+
+      // Animar fade-out de todas las capas
+      for (const layerId of layersToRemove) {
+        if (mapInstance.current.getLayer(layerId)) {
+          try {
+            mapInstance.current.setPaintProperty(layerId, 'line-opacity', 0);
+          } catch {
+            // Si falla, continuar sin animación
+          }
         }
       }
-    }
 
-    // Animar fade-out de todos los marcadores de paradas
-    const stopFadeOutPromises: Promise<void>[] = [];
-    for (const marker of stopMarkers.current.values()) {
-      stopFadeOutPromises.push(fadeOutMarker(marker));
-    }
+      // Animar fade-out de todos los marcadores de rutas
+      const mapWithMarkers = mapInstance.current as MlMap & {
+        _routeMarkers?: Record<string, maplibregl.Marker>;
+      };
+      const markers = mapWithMarkers._routeMarkers;
 
-    // Esperar a que terminen todas las animaciones
-    await Promise.all([
-      new Promise((resolve) => setTimeout(resolve, FADE_OUT_DURATION)),
-      ...endpointFadeOutPromises,
-      ...stopFadeOutPromises,
-    ]);
+      // Capturar todos los marcadores ANTES de las animaciones para asegurar que se eliminen todos
+      const endpointMarkersToRemove: Array<{
+        markerId: string;
+        marker: maplibregl.Marker;
+      }> = [];
 
-    // Remover todas las capas después de la animación
-    for (const layerId of layersToRemove) {
-      if (mapInstance.current.getLayer(layerId)) {
-        mapInstance.current.removeLayer(layerId);
-      }
-    }
-
-    // Remover todas las fuentes
-    for (const sourceId of sourcesToRemove) {
-      if (mapInstance.current.getSource(sourceId)) {
-        mapInstance.current.removeSource(sourceId);
-      }
-    }
-
-    // Remover todos los marcadores de rutas después de la animación
-    if (markers) {
-      for (const markerId in markers) {
-        if (
-          markers[markerId] &&
-          typeof markers[markerId].remove === 'function'
-        ) {
-          markers[markerId].remove();
+      if (markers) {
+        for (const markerId in markers) {
+          if (markers[markerId]) {
+            endpointMarkersToRemove.push({
+              markerId,
+              marker: markers[markerId],
+            });
+          }
         }
       }
-      mapWithMarkers._routeMarkers = {};
-    }
 
-    // Remover todos los marcadores de paradas después de la animación
-    for (const marker of stopMarkers.current.values()) {
-      marker.remove();
-    }
-    stopMarkers.current.clear();
+      const endpointFadeOutPromises: Promise<void>[] = [];
+      for (const { marker } of endpointMarkersToRemove) {
+        if (typeof marker.remove === 'function') {
+          try {
+            endpointFadeOutPromises.push(fadeOutMarker(marker));
+          } catch {
+            // Si falla la animación, continuar
+          }
+        }
+      }
 
-    // Limpiar referencias
-    routeSources.current.clear();
-    routeLayers.current.clear();
+      // Animar fade-out de todos los marcadores de paradas
+      const stopFadeOutPromises: Promise<void>[] = [];
+      const stopMarkersToRemove = Array.from(stopMarkers.current.values());
+      for (const marker of stopMarkersToRemove) {
+        try {
+          stopFadeOutPromises.push(fadeOutMarker(marker));
+        } catch {
+          // Si falla la animación, continuar
+        }
+      }
+
+      // Esperar a que terminen todas las animaciones (con timeout de seguridad)
+      await Promise.race([
+        Promise.all([
+          new Promise((resolve) => setTimeout(resolve, FADE_OUT_DURATION)),
+          ...endpointFadeOutPromises,
+          ...stopFadeOutPromises,
+        ]),
+        new Promise((resolve) => setTimeout(resolve, FADE_OUT_DURATION * 2)),
+      ]);
+
+      // Remover todas las capas después de la animación
+      for (const layerId of layersToRemove) {
+        if (mapInstance.current?.getLayer(layerId)) {
+          try {
+            mapInstance.current.removeLayer(layerId);
+          } catch {
+            // Ignorar errores si la capa ya no existe
+          }
+        }
+      }
+
+      // Remover todas las fuentes
+      for (const sourceId of sourcesToRemove) {
+        if (mapInstance.current?.getSource(sourceId)) {
+          try {
+            mapInstance.current.removeSource(sourceId);
+          } catch {
+            // Ignorar errores si la fuente ya no existe
+          }
+        }
+      }
+
+      // Remover todos los marcadores de inicio/fin después de la animación
+      // Usar la lista capturada para asegurar que se eliminen todos
+      for (const { markerId, marker } of endpointMarkersToRemove) {
+        try {
+          // Intentar remover el marcador directamente
+          // No verificar parentElement porque puede estar en proceso de eliminación
+          marker.remove();
+        } catch (error) {
+          // Si falla, intentar verificar si el elemento existe y forzar eliminación
+          try {
+            const element = marker.getElement();
+            if (element) {
+              // Si el elemento existe pero remove() falló, intentar remover del DOM directamente
+              element.remove();
+            }
+          } catch {
+            // Ignorar errores si el marcador ya fue eliminado
+          }
+        }
+        // Eliminar de la referencia incluso si falló la eliminación física
+        if (markers && markers[markerId]) {
+          delete markers[markerId];
+        }
+      }
+
+      // Limpiar completamente el objeto de marcadores
+      if (mapWithMarkers._routeMarkers) {
+        mapWithMarkers._routeMarkers = {};
+      }
+
+      // Remover todos los marcadores de paradas después de la animación
+      for (const marker of stopMarkersToRemove) {
+        try {
+          marker.remove();
+        } catch {
+          // Ignorar errores
+        }
+      }
+      stopMarkers.current.clear();
+
+      // Limpiar referencias
+      routeSources.current.clear();
+      routeLayers.current.clear();
+    } finally {
+      // Marcar que terminamos de limpiar
+      isClearingRef.current = false;
+    }
   }, [mapInstance]);
 
   const fitBoundsToRoute = useCallback(
@@ -671,6 +867,21 @@ export function useRouteDrawing(
     [mapInstance],
   );
 
+  // Función para verificar si una parada pertenece a una ruta actualmente graficada
+  const getRouteIdForStop = useCallback((stopId: string): string | null => {
+    // Buscar en los marcadores de paradas si existe uno con este stopId
+    for (const [markerId, marker] of stopMarkers.current) {
+      if (markerId.endsWith(`-${stopId}`)) {
+        // Extraer el routeId del markerId (formato: stop-{routeId}-{stopId})
+        const parts = markerId.split('-');
+        if (parts.length >= 3 && parts[0] === 'stop') {
+          return parts.slice(1, -1).join('-'); // Unir todas las partes excepto 'stop' y el último (stopId)
+        }
+      }
+    }
+    return null;
+  }, []);
+
   return {
     addRouteToMap,
     removeRouteFromMap,
@@ -679,5 +890,6 @@ export function useRouteDrawing(
     highlightRoute,
     addStopsToMap,
     removeStopsFromMap,
+    getRouteIdForStop,
   };
 }

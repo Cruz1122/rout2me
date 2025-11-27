@@ -194,7 +194,7 @@ export default function R2MMapInfoCard({
 
     // Si hay contenido y cambió la clave
     if (previousKey !== currentKey) {
-      // Limpiar timers pendientes
+      // Limpiar timers pendientes INMEDIATAMENTE
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -204,13 +204,31 @@ export default function R2MMapInfoCard({
         autoCloseTimerRef.current = null;
       }
 
-      if (previousKey === null) {
-        // Primera aparición: entrar directamente
-        startEnterAnimation(currentKey);
-      } else {
-        // Cambio de contenido: fade out → cambio → fade in
-        handleContentChange(currentKey);
-      }
+      // Si está en proceso de cerrar (exiting), cancelar la animación de salida
+      // y reiniciar inmediatamente con el nuevo contenido
+      setAnimationState((currentState) => {
+        if (currentState === 'exiting') {
+          // Cancelar la animación de salida y entrar inmediatamente con el nuevo contenido
+          // Actualizar la referencia antes de iniciar la animación
+          previousDisplayKeyRef.current = currentKey;
+          // Iniciar animación de entrada inmediatamente (sin esperar a que termine el exit)
+          startEnterAnimation(currentKey);
+          return 'entering';
+        } else {
+          // Actualizar la referencia antes de manejar el cambio
+          previousDisplayKeyRef.current = currentKey;
+
+          if (previousKey === null) {
+            // Primera aparición: entrar directamente
+            startEnterAnimation(currentKey);
+            return currentState;
+          } else {
+            // Cambio de contenido: fade out → cambio → fade in
+            handleContentChange(currentKey);
+            return currentState;
+          }
+        }
+      });
     }
     // Si la clave no cambió, no hacer nada (mantener estado actual)
 
@@ -587,6 +605,7 @@ export default function R2MMapInfoCard({
             style={{ backgroundColor: 'var(--color-border)' }}
           >
             <div
+              key={displayKey} // Key única para reiniciar la animación cuando cambia el contenido
               className="h-full rounded-full animate-shrink-progress"
               style={{
                 animationDuration: '5s',
