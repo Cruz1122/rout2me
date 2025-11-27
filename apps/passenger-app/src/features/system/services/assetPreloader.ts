@@ -46,7 +46,33 @@ export class AssetPreloader {
   }
 
   /**
-   * Inicia la precarga de todos los assets críticos
+   * Helper para agregar timeout a promesas
+   */
+  private withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    errorMessage: string,
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(errorMessage)), timeoutMs),
+      ),
+    ]);
+  }
+
+  /**
+   * Verifica si hay conexión a internet
+   */
+  private isOnline(): boolean {
+    if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
+      return navigator.onLine;
+    }
+    return true; // Asumir online si no se puede verificar
+  }
+
+  /**
+   * Inicia la precarga de todos los assets críticos (no bloqueante)
    */
   async preloadAll(): Promise<void> {
     if (this.isPreloading) {
@@ -57,6 +83,13 @@ export class AssetPreloader {
     this.preloadProgress = 0;
 
     try {
+      // Verificar conexión antes de precargar
+      if (!this.isOnline()) {
+        console.log('Sin conexión, omitiendo precarga de assets');
+        this.preloadProgress = 100;
+        return;
+      }
+
       const tasks = [
         this.preloadCriticalImages(),
         this.preloadMapTiles(),
@@ -64,13 +97,13 @@ export class AssetPreloader {
         this.preloadIcons(),
       ];
 
-      // Ejecutar todas las tareas en paralelo
+      // Ejecutar todas las tareas en paralelo con timeouts individuales
       await Promise.allSettled(tasks);
 
       this.preloadProgress = 100;
       console.log('Precarga de assets completada');
     } catch (error) {
-      console.error('Error durante la precarga:', error);
+      console.warn('Error durante la precarga (no crítico):', error);
     } finally {
       this.isPreloading = false;
     }
@@ -85,38 +118,64 @@ export class AssetPreloader {
     }
 
     try {
-      await imageCacheService.preloadImages(this.preloadConfig.criticalImages, {
-        maxWidth: 800,
-        maxHeight: 600,
-        quality: 0.8,
-        format: 'webp',
-      });
+      await this.withTimeout(
+        imageCacheService.preloadImages(this.preloadConfig.criticalImages, {
+          maxWidth: 800,
+          maxHeight: 600,
+          quality: 0.8,
+          format: 'webp',
+        }),
+        5000, // 5 segundos máximo
+        'Timeout precargando imágenes críticas',
+      );
 
       this.updateProgress(25);
     } catch (error) {
-      console.error('Error al precargar imágenes críticas:', error);
+      console.warn('Error o timeout al precargar imágenes críticas:', error);
     }
   }
 
   /**
    * Precarga tiles de mapa para el área principal
+   * Esta función se ejecuta en background y no bloquea la carga inicial
    */
   private async preloadMapTiles(): Promise<void> {
     try {
+      // Verificar conexión antes de precargar tiles
+      if (!this.isOnline()) {
+        console.log('Sin conexión, omitiendo precarga de tiles');
+        return;
+      }
+
       const { center, zoom, radius } = this.preloadConfig.mapTiles;
 
-      // Precargar tiles para diferentes niveles de zoom
+      // Precargar tiles para diferentes niveles de zoom con timeout total
       const zoomLevels = [zoom - 1, zoom, zoom + 1];
 
-      for (const z of zoomLevels) {
-        if (z >= 5 && z <= 19) {
-          await mapTileCacheService.preloadTiles(center, z, radius);
+      // Limitar tiempo total de precarga de tiles a 10 segundos
+      const preloadPromise = (async () => {
+        for (const z of zoomLevels) {
+          if (z >= 5 && z <= 19) {
+            try {
+              await mapTileCacheService.preloadTiles(center, z, radius);
+            } catch (error) {
+              console.warn(`Error precargando tiles en zoom ${z}:`, error);
+              // Continuar con el siguiente nivel de zoom
+            }
+          }
         }
-      }
+      })();
+
+      await this.withTimeout(
+        preloadPromise,
+        10000, // 10 segundos máximo para todos los tiles
+        'Timeout precargando tiles de mapa',
+      );
 
       this.updateProgress(50);
     } catch (error) {
-      console.error('Error al precargar tiles de mapa:', error);
+      console.warn('Error o timeout al precargar tiles de mapa:', error);
+      // No es crítico, el mapa puede cargar tiles bajo demanda
     }
   }
 
@@ -145,7 +204,13 @@ export class AssetPreloader {
    */
   private async preloadFont(fontUrl: string): Promise<void> {
     try {
-      const response = await fetch(fontUrl);
+      const fetchPromise = fetch(fontUrl);
+      const response = await this.withTimeout(
+        fetchPromise,
+        3000, // 3 segundos máximo por fuente
+        `Timeout precargando fuente ${fontUrl}`,
+      );
+
       if (response.ok) {
         const fontBlob = await response.blob();
         const fontFace = new FontFace(
@@ -156,7 +221,7 @@ export class AssetPreloader {
         document.fonts.add(fontFace);
       }
     } catch (error) {
-      console.warn(`Error al precargar fuente ${fontUrl}:`, error);
+      console.warn(`Error o timeout al precargar fuente ${fontUrl}:`, error);
     }
   }
 

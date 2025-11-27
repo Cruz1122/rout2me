@@ -3,6 +3,8 @@ import {
   authStorage,
   createAuthSession,
   logoutUser,
+  getCurrentSession,
+  convertSupabaseSessionToAuthSession,
 } from '../services/authService';
 import type { AuthSession, LoginResponse } from '../services/authService';
 
@@ -15,40 +17,113 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
 
   /**
-   * Verifica y carga la sesión desde localStorage
+   * Helper para agregar timeout a promesas
    */
-  const checkSession = useCallback(() => {
+  const withTimeout = useCallback(
+    <T>(
+      promise: Promise<T>,
+      timeoutMs: number,
+      errorMessage: string,
+    ): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(errorMessage)), timeoutMs),
+        ),
+      ]);
+    },
+    [],
+  );
+
+  /**
+   * Verifica y carga la sesión desde localStorage o Supabase (no bloqueante)
+   */
+  const checkSession = useCallback(async () => {
     try {
+      // Primero verificar localStorage (rápido, no requiere red)
       const savedSession = authStorage.getSession();
 
       if (savedSession && authStorage.isSessionValid()) {
         setSession(savedSession);
         setIsAuthenticated(true);
         console.log(
-          'Sesión válida encontrada:',
+          'Sesión válida encontrada en localStorage:',
           savedSession.user.user_metadata.name,
         );
-      } else {
-        // Limpiar sesión expirada o inválida
-        authStorage.clearSession();
-        setSession(null);
-        setIsAuthenticated(false);
-        console.log('No hay sesión válida');
+        // Marcar como no cargando inmediatamente si tenemos sesión local
+        setIsLoading(false);
+        return;
       }
+
+      // Si no hay sesión válida en localStorage, verificar Supabase con timeout
+      console.log(
+        'No hay sesión válida en localStorage, verificando Supabase...',
+      );
+
+      try {
+        const supabaseSession = await withTimeout(
+          getCurrentSession(),
+          3000, // 3 segundos máximo para verificar sesión
+          'Timeout verificando sesión en Supabase',
+        );
+
+        if (supabaseSession) {
+          try {
+            // Convertir la sesión de Supabase a nuestro formato
+            const authSession =
+              convertSupabaseSessionToAuthSession(supabaseSession);
+
+            // Verificar si la sesión es válida antes de guardarla
+            const now = Math.floor(Date.now() / 1000);
+            if (authSession.expires_at > now) {
+              // Guardar la sesión restaurada en localStorage
+              authStorage.saveSession(authSession);
+              setSession(authSession);
+              setIsAuthenticated(true);
+              console.log(
+                'Sesión restaurada desde Supabase:',
+                authSession.user.user_metadata.name,
+              );
+              return;
+            } else {
+              console.log('Sesión de Supabase expirada');
+            }
+          } catch (error) {
+            console.error('Error convirtiendo sesión de Supabase:', error);
+          }
+        }
+      } catch (error) {
+        // Si falla la verificación de Supabase (timeout o error de red),
+        // no es crítico - la app puede funcionar sin sesión
+        console.warn('Error o timeout verificando sesión en Supabase:', error);
+      }
+
+      // No hay sesión válida en ningún lugar, limpiar todo
+      authStorage.clearSession();
+      setSession(null);
+      setIsAuthenticated(false);
+      console.log('No hay sesión válida');
     } catch (error) {
       console.error('Error verificando sesión:', error);
       authStorage.clearSession();
       setSession(null);
       setIsAuthenticated(false);
+    } finally {
+      // Siempre marcar como no cargando, incluso si hay errores
+      setIsLoading(false);
     }
-  }, []);
+  }, [withTimeout]);
 
   /**
    * Efecto para verificar la sesión al montar el componente
+   * La verificación se hace de forma no bloqueante
    */
   useEffect(() => {
-    checkSession();
-    setIsLoading(false);
+    // Iniciar verificación en background, no bloquear render
+    checkSession().catch((error) => {
+      console.error('Error crítico verificando sesión:', error);
+      setIsLoading(false);
+    });
   }, [checkSession]);
 
   /**

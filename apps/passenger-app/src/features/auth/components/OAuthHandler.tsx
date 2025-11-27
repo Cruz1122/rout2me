@@ -44,10 +44,19 @@ export default function OAuthHandler() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (session && !authStorage.isSessionValid()) {
+      if (session) {
         try {
-          const authSession = convertSupabaseSessionToAuthSession(session);
-          authStorage.saveSession(authSession);
+          // Verificar si la sesión de localStorage es válida
+          const savedSession = authStorage.getSession();
+          const hasValidLocalSession =
+            savedSession && authStorage.isSessionValid();
+
+          // Si no hay sesión local válida, restaurar desde Supabase
+          if (!hasValidLocalSession) {
+            const authSession = convertSupabaseSessionToAuthSession(session);
+            authStorage.saveSession(authSession);
+            console.log('✅ Sesión restaurada desde Supabase en OAuthHandler');
+          }
         } catch (error) {
           console.error('❌ Error restaurando sesión:', error);
         }

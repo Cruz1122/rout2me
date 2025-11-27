@@ -30,6 +30,24 @@ export const config = {
     import.meta.env.DEV ||
     import.meta.env.MODE === 'development' ||
     window.location.hostname === 'localhost',
+
+  // Configuración de timeouts (en milisegundos)
+  timeouts: {
+    // Timeout para inicialización de servicios
+    serviceInit: 2000,
+    // Timeout para registro de Service Worker
+    serviceWorker: 3000,
+    // Timeout para verificación de sesión
+    sessionCheck: 3000,
+    // Timeout para precarga de imágenes
+    imagePreload: 5000,
+    // Timeout para precarga de tiles de mapa
+    tilePreload: 10000,
+    // Timeout para precarga de fuentes
+    fontPreload: 3000,
+    // Timeout para peticiones de red en general
+    networkRequest: 5000,
+  },
 } as const;
 
 /**

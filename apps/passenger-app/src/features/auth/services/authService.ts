@@ -1,4 +1,6 @@
 import { supabase } from '../../../config/supabaseClient';
+import { Browser } from '@capacitor/browser';
+import { isNativePlatform } from '../../../shared/utils/platform';
 
 // Servicio de autenticación para Supabase
 export interface SignupRequest {
@@ -221,22 +223,58 @@ export async function loginUser(
 
 /**
  * Inicia sesión con Google usando OAuth de Supabase
+ * En móvil usa el navegador nativo, en web usa el comportamiento estándar
  */
 export async function loginWithGoogle(): Promise<void> {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${globalThis.location.origin}/inicio`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    });
+    const redirectTo = `${globalThis.location.origin}/inicio`;
 
-    if (error) {
-      throw new Error(error.message || 'Error al iniciar sesión con Google');
+    // En plataforma nativa (móvil), usar navegador nativo
+    if (isNativePlatform()) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+          skipBrowserRedirect: true, // No abrir navegador automáticamente
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Error al iniciar sesión con Google');
+      }
+
+      if (data?.url) {
+        // Abrir la URL en el navegador nativo
+        await Browser.open({
+          url: data.url,
+          windowName: '_self',
+        });
+
+        // Escuchar cuando se cierre el navegador (el callback de OAuth lo manejará)
+        Browser.addListener('browserFinished', () => {
+          console.log('Navegador OAuth cerrado');
+        });
+      }
+    } else {
+      // En web, comportamiento estándar
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Error al iniciar sesión con Google');
+      }
     }
   } catch (error) {
     if (error instanceof Error) {
@@ -248,19 +286,56 @@ export async function loginWithGoogle(): Promise<void> {
 
 /**
  * Inicia sesión con Azure Microsoft usando OAuth de Supabase
+ * En móvil usa el navegador nativo, en web usa el comportamiento estándar
  */
 export async function loginWithMicrosoft(): Promise<void> {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'azure',
-      options: {
-        redirectTo: `${globalThis.location.origin}/inicio`,
-        scopes: 'email profile openid',
-      },
-    });
+    const redirectTo = `${globalThis.location.origin}/inicio`;
 
-    if (error) {
-      throw new Error(error.message || 'Error al iniciar sesión con Microsoft');
+    // En plataforma nativa (móvil), usar navegador nativo
+    if (isNativePlatform()) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          redirectTo,
+          scopes: 'email profile openid',
+          skipBrowserRedirect: true, // No abrir navegador automáticamente
+        },
+      });
+
+      if (error) {
+        throw new Error(
+          error.message || 'Error al iniciar sesión con Microsoft',
+        );
+      }
+
+      if (data?.url) {
+        // Abrir la URL en el navegador nativo
+        await Browser.open({
+          url: data.url,
+          windowName: '_self',
+        });
+
+        // Escuchar cuando se cierre el navegador (el callback de OAuth lo manejará)
+        Browser.addListener('browserFinished', () => {
+          console.log('Navegador OAuth cerrado');
+        });
+      }
+    } else {
+      // En web, comportamiento estándar
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          redirectTo,
+          scopes: 'email profile openid',
+        },
+      });
+
+      if (error) {
+        throw new Error(
+          error.message || 'Error al iniciar sesión con Microsoft',
+        );
+      }
     }
   } catch (error) {
     if (error instanceof Error) {

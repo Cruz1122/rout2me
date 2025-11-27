@@ -436,7 +436,7 @@ export function useRouteDrawing(
       }
 
       // Limpiar TODOS los marcadores de paradas
-      for (const [markerId, marker] of stopMarkers.current) {
+      for (const [, marker] of stopMarkers.current) {
         try {
           marker.remove();
         } catch {
@@ -632,7 +632,7 @@ export function useRouteDrawing(
       }
 
       // Remover todos los marcadores de paradas inmediatamente
-      for (const [markerId, marker] of stopMarkers.current) {
+      for (const [, marker] of stopMarkers.current) {
         try {
           const element = marker.getElement();
           if (element) {
@@ -870,7 +870,7 @@ export function useRouteDrawing(
   // Función para verificar si una parada pertenece a una ruta actualmente graficada
   const getRouteIdForStop = useCallback((stopId: string): string | null => {
     // Buscar en los marcadores de paradas si existe uno con este stopId
-    for (const [markerId, marker] of stopMarkers.current) {
+    for (const [markerId] of stopMarkers.current) {
       if (markerId.endsWith(`-${stopId}`)) {
         // Extraer el routeId del markerId (formato: stop-{routeId}-{stopId})
         const parts = markerId.split('-');

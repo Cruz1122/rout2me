@@ -107,9 +107,7 @@ const ThemeSelectionPage: React.FC = () => {
                     backgroundColor: 'var(--color-card)',
                     boxShadow:
                       theme === 'dark'
-                        ? theme === 'light'
-                          ? '0 4px 12px rgba(255, 255, 255, 0.3)'
-                          : '0 2px 8px rgba(255, 255, 255, 0.2)'
+                        ? '0 2px 8px rgba(255, 255, 255, 0.2)'
                         : undefined,
                   }}
                 >

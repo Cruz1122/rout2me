@@ -16,6 +16,7 @@ import RecoveryRedirect from './features/auth/components/RecoveryRedirect';
 import { useActiveTab } from './features/system/hooks/useActiveTab';
 import OAuthHandler from './features/auth/components/OAuthHandler';
 import { ThemeProvider } from './contexts/ThemeContext';
+import BackButtonHandler from './features/system/components/BackButtonHandler';
 
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
 const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
@@ -146,6 +147,7 @@ export default function App() {
     <ThemeProvider>
       <IonApp>
         <IonReactRouter>
+          <BackButtonHandler />
           <OAuthHandler />
           <RecoveryRedirect />
           <IonRouterOutlet>

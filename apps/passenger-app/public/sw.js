@@ -110,6 +110,12 @@ self.addEventListener('fetch', (event) => {
   const resourceType = getResourceType(request.url);
   const strategy = CACHE_STRATEGIES[resourceType] || 'cache-first';
 
+  // Para tiles, usar estrategia más agresiva de caché
+  if (resourceType === 'tiles') {
+    event.respondWith(handleTileRequest(request));
+    return;
+  }
+
   // Aplicar estrategia de caché
   event.respondWith(handleRequest(request, strategy, resourceType));
 });
@@ -210,6 +216,52 @@ async function handleRequest(request, strategy, resourceType) {
 }
 
 /**
+ * Maneja peticiones de tiles con estrategia optimizada para offline
+ */
+async function handleTileRequest(request) {
+  const cache = await caches.open(TILE_CACHE_NAME);
+  const cachedResponse = await cache.match(request);
+
+  // Si hay caché, devolverlo inmediatamente
+  if (cachedResponse) {
+    // Intentar actualizar en background (no bloqueante)
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          cache.put(request, response.clone());
+        }
+      })
+      .catch(() => {
+        // Ignorar errores de actualización en background
+      });
+
+    return cachedResponse;
+  }
+
+  // Si no hay caché, intentar obtener de la red
+  try {
+    const networkResponse = await fetch(request);
+
+    // Guardar en caché si la respuesta es válida
+    if (networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+
+    return networkResponse;
+  } catch (error) {
+    console.warn('Error al obtener tile de la red:', error);
+    // Devolver respuesta vacía en lugar de error para que el mapa siga funcionando
+    return new Response('', {
+      status: 200,
+      statusText: 'OK',
+      headers: {
+        'Content-Type': 'image/png',
+      },
+    });
+  }
+}
+
+/**
  * Estrategia Cache First
  */
 async function cacheFirstStrategy(request, cacheName) {
@@ -240,12 +292,17 @@ async function cacheFirstStrategy(request, cacheName) {
 }
 
 /**
- * Estrategia Network First
+ * Estrategia Network First con mejor soporte offline
  */
 async function networkFirstStrategy(request, cacheName) {
   try {
-    // Intentar obtener de la red primero
-    const networkResponse = await fetch(request);
+    // Intentar obtener de la red primero con timeout
+    const networkResponse = await Promise.race([
+      fetch(request),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), 5000),
+      ),
+    ]);
 
     if (networkResponse.ok) {
       // Guardar en caché
@@ -269,10 +326,20 @@ async function networkFirstStrategy(request, cacheName) {
       console.warn('Error al acceder al caché:', cacheError);
     }
 
-    // Si no hay caché, devolver error
-    return new Response('Recurso no disponible', {
-      status: 503,
-      statusText: 'Service Unavailable',
+    // Si no hay caché, devolver error solo si es crítico
+    // Para recursos no críticos, devolver respuesta vacía
+    const resourceType = getResourceType(request.url);
+    if (resourceType === 'api') {
+      return new Response('Recurso no disponible', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+    }
+
+    // Para otros recursos, devolver respuesta vacía para no bloquear la app
+    return new Response('', {
+      status: 200,
+      statusText: 'OK',
     });
   }
 }

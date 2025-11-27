@@ -47,8 +47,17 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import type { MarkerSelection } from '../../routes/components/R2MMapInfoCard';
 import type { Stop } from '../../routes/services/routeService';
 import type { Bus } from '../../routes/services/busService';
-import '../../../debug/paradasDebug'; // Importar script de debug
-import '../../../debug/apiTest'; // Importar script de prueba de API
+import { isDevelopment } from '../../../config/developmentConfig';
+
+// Importar scripts de debug solo en desarrollo
+if (isDevelopment()) {
+  import('../../../debug/paradasDebug').catch(() => {
+    // Ignorar errores de importación de debug
+  });
+  import('../../../debug/apiTest').catch(() => {
+    // Ignorar errores de importación de debug
+  });
+}
 
 // Helper para obtener colores de rutas desde CSS variables
 const getRouteColor = (variable: string, fallback: string): string => {
@@ -71,6 +80,9 @@ export default function HomePage() {
   const [mapBearing, setMapBearing] = useState(0);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
   const { error, showError, clearError } = useErrorNotification();
 
   // Hook para gestionar el marcador de ubicación del usuario
@@ -587,9 +599,25 @@ export default function HomePage() {
       renderWorldCopies: false, // Evitar renderizar copias del mundo
     });
 
+    // Manejar errores de carga de tiles (no críticos)
+    map.on('error', (e) => {
+      console.warn('Error en mapa (no crítico):', e.error);
+      setIsMapLoading(false);
+      // No bloquear la app por errores de tiles
+    });
+
+    // Detectar cuando faltan tiles (posible falta de conexión)
+    map.on('error', () => {
+      // Si hay error y no hay conexión, actualizar estado
+      if (!navigator.onLine) {
+        setIsOnline(false);
+      }
+    });
+
     map.on('load', () => {
       setIsMapLoading(false);
       setIsMapReady(true); // Marcar el mapa como listo para activar el marcador
+      setIsOnline(navigator.onLine);
 
       // Mover geolocalización a DESPUÉS de render (no bloqueante)
       setTimeout(() => {
@@ -622,10 +650,6 @@ export default function HomePage() {
       setIsMapLoading(false);
     });
 
-    map.on('error', () => {
-      setIsMapLoading(false);
-    });
-
     map.on('rotate', () => {
       setMapBearing(map.getBearing());
     });
@@ -639,6 +663,42 @@ export default function HomePage() {
       }
     };
   }, []); // Inicialización inmediata sin dependencias
+
+  // Detectar cambios en el estado de conexión
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Intentar recargar tiles si el mapa está listo
+      if (mapInstance.current) {
+        const style = mapInstance.current.getStyle();
+        if (style?.sources) {
+          Object.keys(style.sources).forEach((sourceId) => {
+            const source = mapInstance.current?.getSource(sourceId);
+            if (
+              source &&
+              'reload' in source &&
+              typeof source.reload === 'function'
+            ) {
+              (source as { reload: () => void }).reload();
+            }
+          });
+        }
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      console.warn('Conexión perdida, funcionando en modo offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Manejar ruta que viene desde RoutesPage
   useIonViewWillEnter(() => {
@@ -1042,6 +1102,26 @@ export default function HomePage() {
 
         {/* Indicador de carga del mapa */}
         {isMapLoading && <GlobalLoader />}
+
+        {/* Indicador de estado offline */}
+        {!isOnline && (
+          <div
+            className="fixed top-16 left-4 right-4 z-50 px-4 py-2 rounded-lg backdrop-blur-lg shadow-lg"
+            style={{
+              backgroundColor: 'rgba(var(--color-error-rgb), 0.9)',
+              border: '1px solid rgba(var(--color-error-rgb), 0.5)',
+              color: '#FFFFFF',
+            }}
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <span>⚠️</span>
+              <span>
+                Sin conexión a internet. Algunas funciones pueden estar
+                limitadas.
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="fixed top-4 left-4 right-4 z-50" slot="fixed">
           <R2MSearchOverlay
