@@ -1,6 +1,7 @@
 import { supabase } from '../../../config/supabaseClient';
 import { Browser } from '@capacitor/browser';
 import { isNativePlatform } from '../../../shared/utils/platform';
+import { getOAuthRedirectUrl } from '../../../shared/utils/oauthRedirect';
 
 // Servicio de autenticación para Supabase
 export interface SignupRequest {
@@ -227,19 +228,18 @@ export async function loginUser(
  */
 export async function loginWithGoogle(): Promise<void> {
   try {
-    const redirectTo = `${globalThis.location.origin}/inicio`;
+    const redirectTo = getOAuthRedirectUrl('/inicio');
 
-    // En plataforma nativa (móvil), usar navegador nativo
     if (isNativePlatform()) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
+          skipBrowserRedirect: true,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
           },
-          skipBrowserRedirect: true, // No abrir navegador automáticamente
         },
       });
 
@@ -247,24 +247,22 @@ export async function loginWithGoogle(): Promise<void> {
         throw new Error(error.message || 'Error al iniciar sesión con Google');
       }
 
-      if (data?.url) {
-        // Abrir la URL en el navegador nativo
-        await Browser.open({
-          url: data.url,
-          windowName: '_self',
-        });
-
-        // Escuchar cuando se cierre el navegador (el callback de OAuth lo manejará)
-        Browser.addListener('browserFinished', () => {
-          console.log('Navegador OAuth cerrado');
-        });
+      if (!data?.url) {
+        throw new Error(
+          'Supabase no entregó una URL de OAuth para abrir en el navegador nativo.',
+        );
       }
+
+      await Browser.open({
+        url: data.url,
+        windowName: '_self',
+      });
     } else {
-      // En web, comportamiento estándar
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
+          skipBrowserRedirect: false,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -290,16 +288,15 @@ export async function loginWithGoogle(): Promise<void> {
  */
 export async function loginWithMicrosoft(): Promise<void> {
   try {
-    const redirectTo = `${globalThis.location.origin}/inicio`;
+    const redirectTo = getOAuthRedirectUrl('/inicio');
 
-    // En plataforma nativa (móvil), usar navegador nativo
     if (isNativePlatform()) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'azure',
         options: {
           redirectTo,
+          skipBrowserRedirect: true,
           scopes: 'email profile openid',
-          skipBrowserRedirect: true, // No abrir navegador automáticamente
         },
       });
 
@@ -309,24 +306,22 @@ export async function loginWithMicrosoft(): Promise<void> {
         );
       }
 
-      if (data?.url) {
-        // Abrir la URL en el navegador nativo
-        await Browser.open({
-          url: data.url,
-          windowName: '_self',
-        });
-
-        // Escuchar cuando se cierre el navegador (el callback de OAuth lo manejará)
-        Browser.addListener('browserFinished', () => {
-          console.log('Navegador OAuth cerrado');
-        });
+      if (!data?.url) {
+        throw new Error(
+          'Supabase no entregó una URL de OAuth para abrir en el navegador nativo.',
+        );
       }
+
+      await Browser.open({
+        url: data.url,
+        windowName: '_self',
+      });
     } else {
-      // En web, comportamiento estándar
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'azure',
         options: {
           redirectTo,
+          skipBrowserRedirect: false,
           scopes: 'email profile openid',
         },
       });

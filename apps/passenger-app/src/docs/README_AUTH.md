@@ -25,6 +25,73 @@ VITE_STADIA_API_KEY=your-stadia-api-key-here
 ```
 
 ### **Cómo Obtener las Credenciales**
+### **Deep links para OAuth móvil (Android/iOS)**
+
+Para que Supabase pueda regresar correctamente a la app después de OAuth, se configuró el esquema nativo `rout2me://auth/callback`. Asegúrate de replicar estos pasos si recreas la plataforma móvil:
+
+1. **Capacitor (`capacitor.config.ts`)**
+
+```ts
+export default {
+  server: { androidScheme: 'https', iosScheme: 'https' },
+  plugins: {
+    App: { allowScheme: 'rout2me' },
+  },
+};
+```
+
+2. **Android (`android/app/src/main/AndroidManifest.xml`)**
+
+```xml
+<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="rout2me" android:host="auth" android:pathPrefix="/callback" />
+</intent-filter>
+```
+
+3. **Supabase Dashboard → Authentication → URL Configuration**
+
+Agrega la URL exacta `rout2me://auth/callback`.
+
+4. **Código**
+
+```ts
+const redirectTo = Capacitor.isNativePlatform()
+  ? 'rout2me://auth/callback'
+  : window.location.origin + '/inicio';
+
+if (Capacitor.isNativePlatform()) {
+  const { data } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo, skipBrowserRedirect: true },
+  });
+  await Browser.open({ url: data?.url!, windowName: '_self' });
+} else {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo, skipBrowserRedirect: false },
+  });
+}
+
+App.addListener('appUrlOpen', async ({ url }) => {
+  if (url?.startsWith('rout2me://auth/callback')) {
+    const parsed = new URL(url);
+    const code = parsed.searchParams.get('code');
+
+    if (code) {
+      await supabase.auth.exchangeCodeForSession({ authCode: code });
+    }
+
+    router.push('/inicio');
+  }
+});
+```
+
+> Este flujo está implementado en `authService.ts` y `features/auth/components/OAuthHandler.tsx`.
+
+### **Cómo Obtener las Credenciales**
 
 #### **1. BACKEND_AUTH_URL**
 - Ve a tu proyecto de Supabase

@@ -15,5 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    // Configurar para manejar deep links en móvil
+    flowType: 'pkce', // Usar PKCE para mejor seguridad y compatibilidad con móvil
   },
 });

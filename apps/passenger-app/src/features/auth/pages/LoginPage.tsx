@@ -5,6 +5,8 @@ import {
   useIonRouter,
   useIonViewDidEnter,
 } from '@ionic/react';
+import { Browser } from '@capacitor/browser';
+import type { PluginListenerHandle } from '@capacitor/core';
 import { RiGoogleFill, RiMicrosoftFill, RiArrowLeftLine } from 'react-icons/ri';
 import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
@@ -70,7 +72,6 @@ export default function LoginPage() {
     try {
       setIsGoogleLoading(true);
       await loginWithGoogle();
-      // El usuario será redirigido automáticamente al callback de Google
     } catch (error) {
       console.error('Error en login con Google:', error);
       handleError(error);
@@ -82,7 +83,6 @@ export default function LoginPage() {
     try {
       setIsMicrosoftLoading(true);
       await loginWithMicrosoft();
-      // El usuario será redirigido automáticamente al callback de Microsoft
     } catch (error) {
       console.error('Error en login con Microsoft:', error);
       handleError(error);
@@ -97,6 +97,26 @@ export default function LoginPage() {
       backButtonRef.current.tabIndex = 0;
     }
   });
+
+  // Inicializar listeners para limpiar los loaders cuando el navegador nativo se cierra
+  useEffect(() => {
+    let browserFinishedListener: PluginListenerHandle | null = null;
+
+    Browser.addListener('browserFinished', () => {
+      setIsGoogleLoading(false);
+      setIsMicrosoftLoading(false);
+    })
+      .then((listener) => {
+        browserFinishedListener = listener;
+      })
+      .catch(() => {
+        // ignorar si el plugin no está disponible en web
+      });
+
+    return () => {
+      browserFinishedListener?.remove();
+    };
+  }, []);
 
   // Inicializar el botón de retroceso como no focusable hasta que la página esté visible
   useEffect(() => {

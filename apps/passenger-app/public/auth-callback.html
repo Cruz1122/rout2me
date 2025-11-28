@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirigiendo...</title>
+    <script>
+        (function() {
+            // Extraer todos los parámetros de la URL (hash y query)
+            const hash = window.location.hash.substring(1);
+            const search = window.location.search.substring(1);
+            
+            // Construir el deep link con todos los parámetros
+            let deepLink = 'com.rout2me.passenger://inicio';
+            
+            if (hash) {
+                deepLink += '#' + hash;
+            }
+            if (search) {
+                deepLink += (hash ? '&' : '?') + search;
+            }
+            
+            console.log('🔗 Redirigiendo a deep link:', deepLink);
+            
+            // Intentar redirigir al deep link inmediatamente
+            // El sistema operativo interceptará esto y abrirá la app
+            try {
+                window.location.href = deepLink;
+            } catch (error) {
+                console.error('Error redirigiendo:', error);
+            }
+            
+            // Dar tiempo para que el sistema operativo procese el deep link
+            // Después de esto, el navegador debería cerrarse automáticamente
+            // o ser cerrado por Capacitor cuando detecte que la app se abrió
+        })();
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .message {
+            text-align: center;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="message">
+        <p>Redirigiendo a la aplicación...</p>
+    </div>
+</body>
+</html>
+

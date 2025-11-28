@@ -593,13 +593,10 @@ export default function R2MMapInfoCard({
 
         {/* Auto-close indicator */}
         <div
-          className="flex items-center gap-2 pt-2 border-t"
+          className="flex items-center justify-center gap-2 pt-2 border-t"
           style={{ borderColor: 'var(--color-border)' }}
         >
           <RiTimeLine size={12} style={{ color: 'var(--color-terciary)' }} />
-          <span className="text-xs text-terciary flex-1">
-            Se cerrará automáticamente
-          </span>
           <div
             className="w-12 h-0.5 rounded-full overflow-hidden"
             style={{ backgroundColor: 'var(--color-border)' }}
