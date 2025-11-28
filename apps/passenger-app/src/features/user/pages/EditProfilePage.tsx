@@ -47,6 +47,12 @@ export default function EditProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [originalProfileData, setOriginalProfileData] = useState<ProfileData>({
+    name: '',
+    phone: '',
+    avatarUrl: '',
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Función para formatear el teléfono como XXX XXX XXXX
@@ -92,11 +98,13 @@ export default function EditProfilePage() {
           // Formatear el teléfono como XXX XXX XXXX
           phone = formatPhoneNumber(phone);
 
-          setProfileData({
+          const initialData = {
             name: userInfo.user_metadata?.name || '',
             phone: phone,
             avatarUrl: userInfo.user_metadata?.avatar_url || '',
-          });
+          };
+          setProfileData(initialData);
+          setOriginalProfileData(initialData);
         }
       } catch (err) {
         if (isMounted) {
@@ -118,6 +126,15 @@ export default function EditProfilePage() {
   }, [accessToken]);
 
   const handleAvatarClick = () => {
+    setShowAvatarModal(true);
+  };
+
+  const handleCloseAvatarModal = () => {
+    setShowAvatarModal(false);
+  };
+
+  const handleCameraButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     fileInputRef.current?.click();
   };
 
@@ -148,9 +165,15 @@ export default function EditProfilePage() {
       const updatedUserInfo = await getUserInfo(accessToken);
 
       // Actualizar el estado local con los nuevos datos
+      const newAvatarUrl = updatedUserInfo.user_metadata?.avatar_url || '';
       setProfileData({
         ...profileData,
-        avatarUrl: updatedUserInfo.user_metadata?.avatar_url || '',
+        avatarUrl: newAvatarUrl,
+      });
+      // Actualizar también los datos originales para que el botón se deshabilite correctamente
+      setOriginalProfileData({
+        ...originalProfileData,
+        avatarUrl: newAvatarUrl,
       });
     } catch (err) {
       handleError(err);
@@ -197,6 +220,21 @@ export default function EditProfilePage() {
     }
     setFieldErrors({ ...fieldErrors, phone: undefined });
     return true;
+  };
+
+  const hasChanges = (): boolean => {
+    const currentName = profileData.name.trim();
+    const originalName = originalProfileData.name.trim();
+    const currentPhone = profileData.phone.replaceAll(/\D/g, '');
+    const originalPhone = originalProfileData.phone.replaceAll(/\D/g, '');
+    const currentAvatarUrl = profileData.avatarUrl;
+    const originalAvatarUrl = originalProfileData.avatarUrl;
+
+    return (
+      currentName !== originalName ||
+      currentPhone !== originalPhone ||
+      currentAvatarUrl !== originalAvatarUrl
+    );
   };
 
   const validateForm = (): boolean => {
@@ -323,7 +361,7 @@ export default function EditProfilePage() {
                     onClick={handleAvatarClick}
                     className="relative focus:outline-none"
                     disabled={isUploadingAvatar}
-                    aria-label="Cambiar foto de perfil"
+                    aria-label="Ver foto de perfil"
                   >
                     <R2MAvatar
                       avatarUrl={profileData.avatarUrl}
@@ -331,11 +369,15 @@ export default function EditProfilePage() {
                       size={80}
                       iconSize={40}
                     />
-                    <div
-                      className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center"
+                    <button
+                      type="button"
+                      onClick={handleCameraButtonClick}
+                      className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center focus:outline-none"
                       style={{
                         backgroundColor: 'var(--color-primary)',
                       }}
+                      disabled={isUploadingAvatar}
+                      aria-label="Cambiar foto de perfil"
                     >
                       {isUploadingAvatar ? (
                         <div
@@ -345,7 +387,7 @@ export default function EditProfilePage() {
                       ) : (
                         <RiCamera2Line size={16} color="white" />
                       )}
-                    </div>
+                    </button>
                   </button>
                   <input
                     ref={fileInputRef}
@@ -414,7 +456,7 @@ export default function EditProfilePage() {
                       type="submit"
                       variant="primary"
                       size="large"
-                      disabled={isLoading}
+                      disabled={isLoading || !hasChanges()}
                       loading={isLoading}
                       fullWidth
                     >
@@ -426,6 +468,48 @@ export default function EditProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Modal para visualizar avatar */}
+        {showAvatarModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop oscuro */}
+            <button
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50"
+              onClick={handleCloseAvatarModal}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  handleCloseAvatarModal();
+                }
+              }}
+              aria-label="Cerrar visualización de foto"
+            />
+            {/* Imagen centrada */}
+            <div
+              className="relative z-50 max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {profileData.avatarUrl ? (
+                <img
+                  src={profileData.avatarUrl}
+                  alt="Foto de perfil"
+                  className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                />
+              ) : (
+                <div
+                  className="w-64 h-64 rounded-full flex items-center justify-center text-6xl font-bold"
+                  style={{
+                    backgroundColor: 'var(--color-surface)',
+                    color: 'var(--color-terciary)',
+                  }}
+                >
+                  {profileData.name
+                    ? profileData.name.charAt(0).toUpperCase()
+                    : '?'}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </IonContent>
     </IonPage>
   );
