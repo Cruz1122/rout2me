@@ -8,41 +8,28 @@ import {
   useIonViewDidEnter,
   useIonViewWillEnter,
 } from '@ionic/react';
-import {
-  RiAddLine,
-  RiSubtractLine,
-  RiCompassLine,
-  RiDeleteBinLine,
-  RiFocus3Line,
-} from 'react-icons/ri';
-import maplibregl, { Map as MlMap } from 'maplibre-gl';
+import maplibregl from 'maplibre-gl';
 import R2MSearchOverlay from '../../routes/components/R2MSearchOverlay';
 import R2MMapInfoCard from '../../routes/components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
 import ErrorNotification from '../components/ErrorNotification';
+import MapContainer from '../components/MapContainer';
+import MapControls from '../components/MapControls';
+import { RouteHandler } from '../components/RouteHandler';
+import { BusHandler } from '../components/BusHandler';
 import useErrorNotification from '../hooks/useErrorNotification';
 import { useMapResize } from '../../../shared/hooks/useMapResize';
 import { useRouteDrawing } from '../../routes/hooks/useRouteDrawing';
 import { useBusMapping } from '../../routes/hooks/useBusMapping';
 import { useUserLocationMarker } from '../hooks/useUserLocationMarker';
-import { processRouteWithCoordinates } from '../../routes/services/mapMatchingService';
-import { mapTileCacheService } from '../../routes/services/mapTileCacheService';
+import { useMapInitialization } from '../hooks/useMapInitialization';
+import { useMapEventHandlers } from '../hooks/useMapEventHandlers';
+import { useRouteSelection } from '../hooks/useRouteSelection';
 import {
   fetchBuses,
   getBusesByRouteVariant,
 } from '../../routes/services/busService';
-import {
-  fetchAllRoutesData,
-  recentRoutesStorage,
-  generateRouteColor,
-} from '../../routes/services/routeService';
-import { recentSearchesStorage } from '../../routes/services/recentSearchService';
-import { createStopMarkerElement } from '../../routes/utils/markerUtils';
 import type { SearchItem } from '../../../shared/types/search';
-import {
-  getStadiaApiKey,
-  isMapMatchingAvailable,
-} from '../../../config/config';
 import { useTheme } from '../../../contexts/ThemeContext';
 import type { MarkerSelection } from '../../routes/components/R2MMapInfoCard';
 import type { Stop } from '../../routes/services/routeService';
@@ -59,64 +46,63 @@ if (isDevelopment()) {
   });
 }
 
-// Helper para obtener colores de rutas desde CSS variables
-const getRouteColor = (variable: string, fallback: string): string => {
-  if (typeof window === 'undefined') return fallback;
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(variable)
-    .trim();
-  return value || fallback;
-};
+interface RouteFromNavigation {
+  id: string;
+  code: string;
+  name: string;
+  path: [number, number][];
+  color?: string;
+  stops?: Array<{
+    id: string;
+    name: string;
+    location: [number, number];
+  }>;
+}
+
+interface BusFromNavigation {
+  id: string;
+  code: string;
+  name: string;
+  busId: string;
+  busLocation: { latitude: number; longitude: number } | null;
+}
 
 export default function HomePage() {
   const { theme } = useTheme();
   const mapRef = useRef<HTMLDivElement | null>(null);
-  const mapInstance = useRef<MlMap | null>(null);
   const currentMarker = useRef<maplibregl.Marker | null>(null);
   const [selectedItem, setSelectedItem] = useState<SearchItem | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<MarkerSelection | null>(
     null,
   );
-  const [mapBearing, setMapBearing] = useState(0);
-  const [isMapLoading, setIsMapLoading] = useState(true);
-  const [isMapReady, setIsMapReady] = useState(false);
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true,
-  );
-  const { error, showError, clearError } = useErrorNotification();
-
-  // Hook para gestionar el marcador de ubicación del usuario
-  const { centerOnUserLocation } = useUserLocationMarker(mapInstance, {
-    autoUpdate: true,
-    updateInterval: 10000, // Actualizar cada 10 segundos
-    enabled: isMapReady, // Solo activar cuando el mapa esté listo
-    theme, // Pasar el tema para que el marcador cambie de color
-  });
-  interface RouteFromNavigation {
-    id: string;
-    code: string;
-    name: string;
-    path: [number, number][];
-    color?: string;
-    stops?: Array<{
-      id: string;
-      name: string;
-      location: [number, number];
-    }>;
-  }
-
-  interface BusFromNavigation {
-    id: string;
-    code: string;
-    name: string;
-    busId: string;
-    busLocation: { latitude: number; longitude: number } | null;
-  }
-
   const [routeFromNavigation, setRouteFromNavigation] =
     useState<RouteFromNavigation | null>(null);
   const [busFromNavigation, setBusFromNavigation] =
     useState<BusFromNavigation | null>(null);
+  const { error, showError, clearError } = useErrorNotification();
+
+  // Hook para inicialización del mapa
+  const { mapInstance, isMapLoading, isMapReady, isOnline, setIsMapLoading } =
+    useMapInitialization(mapRef);
+
+  // Hook para eventos del mapa
+  const { mapBearing, setMapBearing, setupMapEvents } =
+    useMapEventHandlers(mapInstance);
+
+  // Configurar eventos cuando el mapa esté listo
+  useEffect(() => {
+    if (mapInstance.current && isMapReady) {
+      setupMapEvents(mapInstance.current);
+    }
+  }, [mapInstance, isMapReady, setupMapEvents]);
+
+  // Hook para gestionar el marcador de ubicación del usuario
+  const { centerOnUserLocation } = useUserLocationMarker(mapInstance, {
+    autoUpdate: true,
+    updateInterval: 10000,
+    enabled: isMapReady,
+    theme,
+  });
 
   const { triggerResize } = useMapResize(mapInstance);
 
@@ -172,231 +158,22 @@ export default function HomePage() {
     [addBusesToMap],
   );
 
-  const handleItemSelect = useCallback(
-    async (item: SearchItem) => {
-      if (!mapInstance.current) return;
-
-      if (item.type === 'stop' && 'lat' in item && 'lng' in item) {
-        recentSearchesStorage.saveRecentSearch({
-          id: item.id,
-          type: 'stop',
-        });
-
-        // Verificar si la parada pertenece a una ruta actualmente graficada
-        const routeIdForStop = getRouteIdForStop(item.id);
-        const stopBelongsToCurrentRoute =
-          routeIdForStop !== null &&
-          selectedItem?.type === 'route' &&
-          selectedItem?.id === routeIdForStop;
-
-        // Si la parada pertenece a la ruta actual, NO limpiar rutas ni marcadores
-        if (!stopBelongsToCurrentRoute) {
-          // Limpiar rutas y buses anteriores al seleccionar una parada (con animación)
-          await clearAllRoutes();
-          await clearAllBuses();
-        } else {
-          // Solo limpiar buses, mantener la ruta y sus marcadores
-          await clearAllBuses();
-        }
-
-        if (currentMarker.current) {
-          currentMarker.current.remove();
-        }
-
-        mapInstance.current.flyTo({
-          center: [item.lng, item.lat],
-          zoom: 17,
-          duration: 1000,
-        });
-
-        // Si la parada pertenece a la ruta actual, no crear un marcador adicional
-        // ya que el marcador de la parada ya existe en el mapa
-        if (!stopBelongsToCurrentRoute) {
-          // Crear marcador con opacidad inicial 0 para fade-in
-          const markerElement = createStopMarkerElement({
-            highlight: true,
-            opacity: 0, // Iniciar con opacidad 0 para fade-in
-          });
-
-          currentMarker.current = new maplibregl.Marker({
-            element: markerElement,
-            anchor: 'center',
-          })
-            .setLngLat([item.lng, item.lat])
-            .addTo(mapInstance.current);
-
-          // Animar fade-in del marcador
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              if (currentMarker.current) {
-                const element = currentMarker.current.getElement();
-                if (element) {
-                  element.style.transition = 'opacity 300ms ease-in-out';
-                  element.style.opacity = '1';
-                }
-              }
-            });
-          });
-        }
-
-        setSelectedItem(item);
-      } else if (
-        item.type === 'route' &&
-        'coordinates' in item &&
-        item.coordinates
-      ) {
-        // Verificar si la ruta ya está graficada en el mapa
-        const routeLayerId = `route-main-${item.id}`;
-        const routeExistsInMap =
-          mapInstance.current?.getLayer(routeLayerId) !== undefined;
-
-        // Guardar la ruta como reciente
-        recentRoutesStorage.saveRecentRoute(item.id);
-        recentSearchesStorage.saveRecentSearch({
-          id: item.id,
-          type: 'route',
-        });
-
-        // Si la ruta ya está en el mapa, solo actualizar el estado y evitar el fade
-        if (routeExistsInMap) {
-          setSelectedItem(item);
-          setSelectedMarker(null);
-          // Asegurar que la ruta esté resaltada
-          highlightRoute(item.id, true);
-          return;
-        }
-
-        // Limpiar marcadores de paradas y buses
-        if (currentMarker.current) {
-          currentMarker.current.remove();
-          currentMarker.current = null;
-        }
-
-        // Limpiar todas las rutas y buses anteriores antes de agregar la nueva (con animación)
-        await clearAllRoutes();
-        await clearAllBuses();
-
-        // Mostrar loader mientras se procesa el map matching
-        setIsMapLoading(true);
-
-        try {
-          // Obtener la API key desde la configuración centralizada
-          const apiKey = getStadiaApiKey();
-
-          // Determinar si aplicar map matching basado en la disponibilidad de API key
-          const shouldApplyMapMatching = isMapMatchingAvailable();
-
-          // Procesar la ruta con coordenadas del backend
-          // Aplicar map matching si hay API key disponible
-          const processedRoute = await processRouteWithCoordinates(
-            item.coordinates,
-            apiKey,
-            shouldApplyMapMatching, // Aplicar map matching si hay API key
-          );
-
-          // Usar las coordenadas procesadas para dibujar la ruta (con animación)
-          await addRouteToMap(
-            item.id,
-            processedRoute.matchedGeometry.coordinates as [number, number][],
-            {
-              color: getRouteColor('--color-route-default', '#1E56A0'),
-              width: 4,
-              opacity: 0.9,
-              outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
-              outlineWidth: 8,
-            },
-            // Pasar las paradas si están disponibles
-            item.routeStops?.map((stop) => ({
-              id: stop.id,
-              name: stop.name,
-              created_at: new Date().toISOString(),
-              location: stop.location,
-            })),
-          );
-
-          // Ajustar vista para mostrar toda la ruta
-          // Usar padding extra en la parte inferior para evitar que la card tape la ruta
-          fitBoundsToRoute(
-            processedRoute.matchedGeometry.coordinates as [number, number][],
-            true, // hasInfoCard = true, ya que siempre se muestra la card cuando se selecciona una ruta
-          );
-
-          // Resaltar la ruta seleccionada
-          highlightRoute(item.id, true);
-
-          // Cargar buses para esta ruta
-          await loadBusesForRoute(item.id);
-
-          // Precargar tiles después de ajustar la vista
-          setTimeout(() => {
-            if (mapInstance.current) {
-              const center = mapInstance.current.getCenter();
-              const zoom = mapInstance.current.getZoom();
-
-              // Precargar tiles para evitar lag visual
-              mapTileCacheService
-                .preloadTiles([center.lng, center.lat], zoom, 2)
-                .catch(() => {
-                  // Error silencioso
-                });
-            }
-          }, 2000);
-
-          setSelectedItem(item);
-          setSelectedMarker(null); // Limpiar selectedMarker cuando se selecciona desde búsqueda
-        } catch {
-          // Error silencioso
-          // Fallback: usar coordenadas originales si falla el procesamiento
-          // Dibujar la ruta en el mapa usando colores del tema actual (con animación)
-          await addRouteToMap(item.id, item.coordinates, {
-            color: getRouteColor('--color-route-default', '#1E56A0'),
-            width: 4,
-            opacity: 0.9,
-            outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
-            outlineWidth: 8,
-            stopColor: getRouteColor('--color-route-stop', '#FF6B35'),
-            endpointColor: getRouteColor('--color-route-endpoint', '#1E56A0'),
-          });
-          fitBoundsToRoute(item.coordinates, true); // hasInfoCard = true
-          highlightRoute(item.id, true);
-
-          // Cargar buses para esta ruta (fallback)
-          await loadBusesForRoute(item.id);
-
-          // Precargar tiles después de ajustar la vista (fallback)
-          setTimeout(() => {
-            if (mapInstance.current) {
-              const center = mapInstance.current.getCenter();
-              const zoom = mapInstance.current.getZoom();
-
-              // Precargar tiles para evitar lag visual
-              mapTileCacheService
-                .preloadTiles([center.lng, center.lat], zoom, 2)
-                .catch(() => {
-                  // Error silencioso
-                });
-            }
-          }, 2000);
-
-          setSelectedItem(item);
-          setSelectedMarker(null); // Limpiar selectedMarker cuando se selecciona desde búsqueda
-        } finally {
-          setIsMapLoading(false);
-        }
-      }
-    },
-    [
-      mapInstance,
-      addRouteToMap,
-      clearAllRoutes,
-      clearAllBuses,
-      fitBoundsToRoute,
-      highlightRoute,
-      loadBusesForRoute,
-      getRouteIdForStop,
-      selectedItem,
-    ],
-  );
+  // Hook para selección de rutas
+  const { handleItemSelect } = useRouteSelection({
+    mapInstance,
+    addRouteToMap,
+    clearAllRoutes,
+    clearAllBuses,
+    fitBoundsToRoute,
+    highlightRoute,
+    loadBusesForRoute,
+    getRouteIdForStop,
+    setIsMapLoading,
+    setSelectedItem,
+    setSelectedMarker,
+    selectedItem,
+    currentMarker,
+  });
 
   // El hook useUserLocationMarker maneja automáticamente la actualización del marcador
 
@@ -412,17 +189,17 @@ export default function HomePage() {
 
     // Usar el hook para centrar en la ubicación del usuario
     centerOnUserLocation(16);
-  }, [showError, centerOnUserLocation]);
+  }, [mapInstance, showError, centerOnUserLocation]);
 
   const handleZoomIn = useCallback(() => {
     if (!mapInstance.current) return;
     mapInstance.current.zoomIn({ duration: 300 });
-  }, []);
+  }, [mapInstance]);
 
   const handleZoomOut = useCallback(() => {
     if (!mapInstance.current) return;
     mapInstance.current.zoomOut({ duration: 300 });
-  }, []);
+  }, [mapInstance]);
 
   const [isDraggingCompass, setIsDraggingCompass] = useState(false);
   const [isClearingRoutes, setIsClearingRoutes] = useState(false);
@@ -466,30 +243,36 @@ export default function HomePage() {
       pitch: 0,
       duration: 500,
     });
-  }, []);
+  }, [mapInstance]);
 
-  const handleCompassMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!mapInstance.current) return;
-    e.preventDefault();
-    setIsDraggingCompass(true);
-    setDragStart({
-      x: e.clientX,
-      y: e.clientY,
-      bearing: mapInstance.current.getBearing(),
-    });
-  }, []);
+  const handleCompassMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!mapInstance.current) return;
+      e.preventDefault();
+      setIsDraggingCompass(true);
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+        bearing: mapInstance.current.getBearing(),
+      });
+    },
+    [mapInstance],
+  );
 
-  const handleCompassTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!mapInstance.current) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    setIsDraggingCompass(true);
-    setDragStart({
-      x: touch.clientX,
-      y: touch.clientY,
-      bearing: mapInstance.current.getBearing(),
-    });
-  }, []);
+  const handleCompassTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!mapInstance.current) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      setIsDraggingCompass(true);
+      setDragStart({
+        x: touch.clientX,
+        y: touch.clientY,
+        bearing: mapInstance.current.getBearing(),
+      });
+    },
+    [mapInstance],
+  );
 
   const handleCompassMove = useCallback(
     (clientX: number) => {
@@ -501,7 +284,7 @@ export default function HomePage() {
       mapInstance.current.setBearing(newBearing);
       setMapBearing(newBearing);
     },
-    [isDraggingCompass, dragStart],
+    [mapInstance, isDraggingCompass, dragStart, setMapBearing],
   );
 
   const handleCompassEnd = useCallback(() => {
@@ -538,168 +321,6 @@ export default function HomePage() {
     };
   }, [isDraggingCompass, handleCompassMove, handleCompassEnd]);
 
-  // Inicialización del mapa - optimizado para carga rápida
-  useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
-
-    const map = new maplibregl.Map({
-      container: mapRef.current,
-      // Tiles de CARTO en alta resolución: Positron para modo claro, Dark Matter para modo oscuro
-      style: {
-        version: 8,
-        sources: {
-          'carto-tiles': {
-            type: 'raster',
-            tiles:
-              theme === 'dark'
-                ? [
-                    'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                    'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                    'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                    'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                  ]
-                : [
-                    'https://a.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
-                    'https://b.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
-                    'https://c.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
-                    'https://d.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png',
-                  ],
-            tileSize: 512, // Tiles @2x son 512x512
-            attribution: '© OpenStreetMap contributors © CARTO',
-            maxzoom: 19,
-            // Configuración mejorada para caché
-            scheme: 'xyz',
-          },
-        },
-        layers: [
-          {
-            id: 'carto-tiles-layer',
-            type: 'raster',
-            source: 'carto-tiles',
-            // Optimizar transiciones
-            paint: {
-              'raster-fade-duration': 300,
-            },
-          },
-        ],
-      },
-      center: [-75.5138, 5.0703],
-      zoom: 15,
-      maxZoom: 19,
-      minZoom: 5, // Evitar cargar tiles innecesarios en zoom muy alejado
-      hash: false, // Deshabilitar URL hash para mejor rendimiento
-      trackResize: true,
-      // Opciones de rendimiento que no afectan calidad visual
-      fadeDuration: 300, // Animación de fade suave pero rápida
-      crossSourceCollisions: false, // Mejor rendimiento en labels
-      refreshExpiredTiles: false, // No refrescar tiles automáticamente
-      // Caché de tiles optimizado
-      maxTileCacheSize: 200, // Aumentar caché para reusar tiles
-      // Configuración adicional para evitar tiles faltantes
-      renderWorldCopies: false, // Evitar renderizar copias del mundo
-    });
-
-    // Manejar errores de carga de tiles (no críticos)
-    map.on('error', (e) => {
-      console.warn('Error en mapa (no crítico):', e.error);
-      setIsMapLoading(false);
-      // No bloquear la app por errores de tiles
-    });
-
-    // Detectar cuando faltan tiles (posible falta de conexión)
-    map.on('error', () => {
-      // Si hay error y no hay conexión, actualizar estado
-      if (!navigator.onLine) {
-        setIsOnline(false);
-      }
-    });
-
-    map.on('load', () => {
-      setIsMapLoading(false);
-      setIsMapReady(true); // Marcar el mapa como listo para activar el marcador
-      setIsOnline(navigator.onLine);
-
-      // Mover geolocalización a DESPUÉS de render (no bloqueante)
-      setTimeout(() => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const { latitude, longitude } = position.coords;
-              if (mapInstance.current) {
-                mapInstance.current.flyTo({
-                  center: [longitude, latitude],
-                  zoom: 15,
-                  duration: 1500,
-                });
-              }
-            },
-            () => {
-              // Si falla, mantener ubicación por defecto (Manizales)
-            },
-            {
-              enableHighAccuracy: false, // Cambiar a false para más velocidad inicial
-              timeout: 3000, // Reducir timeout
-              maximumAge: 30000, // Permitir caché de ubicación
-            },
-          );
-        }
-      }, 100); // Delay para no bloquear el render inicial
-    });
-
-    map.on('idle', () => {
-      setIsMapLoading(false);
-    });
-
-    map.on('rotate', () => {
-      setMapBearing(map.getBearing());
-    });
-
-    mapInstance.current = map;
-
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
-    };
-  }, []); // Inicialización inmediata sin dependencias
-
-  // Detectar cambios en el estado de conexión
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      // Intentar recargar tiles si el mapa está listo
-      if (mapInstance.current) {
-        const style = mapInstance.current.getStyle();
-        if (style?.sources) {
-          Object.keys(style.sources).forEach((sourceId) => {
-            const source = mapInstance.current?.getSource(sourceId);
-            if (
-              source &&
-              'reload' in source &&
-              typeof source.reload === 'function'
-            ) {
-              (source as { reload: () => void }).reload();
-            }
-          });
-        }
-      }
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
-      console.warn('Conexión perdida, funcionando en modo offline');
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
   // Manejar ruta que viene desde RoutesPage
   useIonViewWillEnter(() => {
     const routeData = (globalThis as { routeData?: RouteFromNavigation })
@@ -719,356 +340,6 @@ export default function HomePage() {
     }
   });
 
-  // Procesar ruta cuando esté disponible y el mapa esté listo
-  useEffect(() => {
-    if (!routeFromNavigation || !mapInstance.current) return;
-
-    const processRouteFromNavigation = async () => {
-      try {
-        // Verificar si la ruta ya está graficada en el mapa
-        const routeLayerId = `route-main-${routeFromNavigation.id}`;
-        const routeExistsInMap =
-          mapInstance.current?.getLayer(routeLayerId) !== undefined;
-
-        // Si la ruta ya está en el mapa, solo actualizar el estado y evitar el fade
-        if (routeExistsInMap) {
-          // Crear objeto SearchItem compatible para actualizar el estado
-          const searchItem: SearchItem = {
-            id: routeFromNavigation.id,
-            type: 'route',
-            name: routeFromNavigation.name,
-            code: routeFromNavigation.code,
-            tags: [],
-            coordinates: routeFromNavigation.path,
-            color: routeFromNavigation.color || 'var(--color-secondary)',
-            routeStops: routeFromNavigation.stops?.map((stop) => ({
-              id: stop.id,
-              name: stop.name,
-              location: stop.location,
-            })),
-          };
-          setSelectedItem(searchItem);
-          highlightRoute(routeFromNavigation.id, true);
-          setRouteFromNavigation(null);
-          return;
-        }
-
-        // Limpiar rutas anteriores (con animación)
-        await clearAllRoutes();
-        if (currentMarker.current) {
-          currentMarker.current.remove();
-          currentMarker.current = null;
-        }
-
-        // Mostrar loader mientras se procesa
-        setIsMapLoading(true);
-
-        // Obtener la API key desde la configuración centralizada
-        const apiKey = getStadiaApiKey();
-        const shouldApplyMapMatching = isMapMatchingAvailable();
-
-        // Procesar la ruta con coordenadas
-        const processedRoute = await processRouteWithCoordinates(
-          routeFromNavigation.path,
-          apiKey,
-          shouldApplyMapMatching,
-        );
-
-        // Crear objeto SearchItem compatible
-        const searchItem: SearchItem = {
-          id: routeFromNavigation.id,
-          type: 'route',
-          name: routeFromNavigation.name,
-          code: routeFromNavigation.code,
-          tags: [],
-          coordinates: processedRoute.matchedGeometry.coordinates as [
-            number,
-            number,
-          ][],
-          color: routeFromNavigation.color || 'var(--color-secondary)',
-          routeStops: routeFromNavigation.stops?.map((stop) => ({
-            id: stop.id,
-            name: stop.name,
-            location: stop.location,
-          })),
-        };
-
-        // Dibujar la ruta en el mapa usando colores del tema actual (con animación)
-        await addRouteToMap(
-          searchItem.id,
-          processedRoute.matchedGeometry.coordinates as [number, number][],
-          {
-            color: getRouteColor('--color-route-default', '#1E56A0'),
-            width: 4,
-            opacity: 0.9,
-            outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
-            outlineWidth: 8,
-            stopColor: getRouteColor('--color-route-stop', '#FF6B35'),
-            endpointColor: getRouteColor('--color-route-endpoint', '#1E56A0'),
-          },
-          searchItem.routeStops?.map((stop) => ({
-            id: stop.id,
-            name: stop.name,
-            created_at: new Date().toISOString(),
-            location: stop.location,
-          })),
-        );
-
-        // Ajustar vista para mostrar toda la ruta
-        fitBoundsToRoute(
-          processedRoute.matchedGeometry.coordinates as [number, number][],
-          true, // hasInfoCard = true
-        );
-
-        // Resaltar la ruta
-        highlightRoute(searchItem.id, true);
-
-        // Cargar buses para esta ruta
-        await loadBusesForRoute(searchItem.id);
-
-        // Precargar tiles
-        setTimeout(() => {
-          if (mapInstance.current) {
-            const center = mapInstance.current.getCenter();
-            const zoom = mapInstance.current.getZoom();
-            mapTileCacheService
-              .preloadTiles([center.lng, center.lat], zoom, 2)
-              .catch(() => {
-                // Error silencioso
-              });
-          }
-        }, 2000);
-
-        setSelectedItem(searchItem);
-
-        // NO re-renderizar el marcador - mantener el marcador existente intacto
-        // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
-      } catch {
-        // Error silencioso
-        // Fallback: usar coordenadas originales
-        const searchItem: SearchItem = {
-          id: routeFromNavigation.id,
-          type: 'route',
-          name: routeFromNavigation.name,
-          code: routeFromNavigation.code,
-          tags: [],
-          coordinates: routeFromNavigation.path,
-          color: routeFromNavigation.color || 'var(--color-secondary)',
-          routeStops: routeFromNavigation.stops?.map((stop) => ({
-            id: stop.id,
-            name: stop.name,
-            location: stop.location,
-          })),
-        };
-
-        // Dibujar la ruta en el mapa usando colores del tema actual (fallback con animación)
-        await addRouteToMap(searchItem.id, searchItem.coordinates!, {
-          color: getRouteColor('--color-route-default', '#1E56A0'),
-          width: 4,
-          opacity: 0.9,
-          outlineColor: getRouteColor('--color-route-outline', '#ffffff'),
-          outlineWidth: 8,
-          stopColor: getRouteColor('--color-route-stop', '#FF6B35'),
-          endpointColor: getRouteColor('--color-route-endpoint', '#1E56A0'),
-        });
-        fitBoundsToRoute(searchItem.coordinates!, true); // hasInfoCard = true
-        highlightRoute(searchItem.id, true);
-
-        // Cargar buses para esta ruta (fallback)
-        await loadBusesForRoute(searchItem.id);
-
-        setSelectedItem(searchItem);
-
-        // NO re-renderizar el marcador - mantener el marcador existente intacto
-        // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
-      } finally {
-        setIsMapLoading(false);
-        setRouteFromNavigation(null); // Limpiar después de procesar
-      }
-    };
-
-    processRouteFromNavigation();
-  }, [
-    routeFromNavigation,
-    mapInstance,
-    addRouteToMap,
-    clearAllRoutes,
-    clearAllBuses,
-    fitBoundsToRoute,
-    highlightRoute,
-    loadBusesForRoute,
-  ]);
-
-  // Procesar bus cuando esté disponible y el mapa esté listo
-  useEffect(() => {
-    if (!busFromNavigation || !mapInstance.current) return;
-
-    const processBusFromNavigation = async () => {
-      try {
-        // Cargar la ruta completa para mostrar su geometría
-        let routeVariantId = busFromNavigation.id;
-        let routeExistsInMap = false;
-
-        try {
-          const routes = await fetchAllRoutesData();
-
-          // Buscar la ruta (cada variante es una ruta independiente)
-          // Primero intentar encontrar por ID directo
-          let route = routes.find((r) => r.id === busFromNavigation.id);
-
-          // Si no se encuentra por ID, buscar por código de ruta
-          if (!route) {
-            route = routes.find((r) => r.code === busFromNavigation.code);
-          }
-
-          // Si aún no se encuentra, buscar cualquier ruta con el mismo código
-          if (!route) {
-            const routesWithSameCode = routes.filter(
-              (r) => r.code === busFromNavigation.code,
-            );
-            if (routesWithSameCode.length > 0) {
-              route = routesWithSameCode[0];
-            }
-          }
-
-          if (route && route.path && route.path.length > 0) {
-            // Verificar si la ruta ya está graficada en el mapa usando el ID de la ruta encontrada
-            const routeLayerId = `route-main-${route.id}`;
-            routeExistsInMap =
-              mapInstance.current?.getLayer(routeLayerId) !== undefined;
-            // Obtener el color de la ruta
-            const routeColor = route.color || generateRouteColor(route.code);
-
-            // Usar el path de la ruta (cada ruta ya es una variante con path)
-            const routePath = route.path || route.variants?.[0]?.path;
-
-            if (routePath && routePath.length > 0) {
-              // Si la ruta ya está en el mapa, no limpiar ni redibujar
-              if (!routeExistsInMap) {
-                // Limpiar rutas y buses anteriores (con animación)
-                await clearAllRoutes();
-                await clearAllBuses();
-                if (currentMarker.current) {
-                  currentMarker.current.remove();
-                  currentMarker.current = null;
-                }
-              }
-
-              // Obtener la API key desde la configuración centralizada
-              const apiKey = getStadiaApiKey();
-              const shouldApplyMapMatching = isMapMatchingAvailable();
-
-              // Procesar la ruta con map matching si está disponible
-              let processedPath = routePath;
-              try {
-                const processedRoute = await processRouteWithCoordinates(
-                  routePath,
-                  apiKey,
-                  shouldApplyMapMatching,
-                );
-                processedPath = processedRoute.matchedGeometry.coordinates as [
-                  number,
-                  number,
-                ][];
-              } catch {
-                // Si falla el map matching, usar el path original
-                processedPath = routePath;
-              }
-
-              // Crear SearchItem con coordenadas reales
-              const searchItem: SearchItem = {
-                id: route.id,
-                type: 'route',
-                name: busFromNavigation.name,
-                code: busFromNavigation.code,
-                tags: [],
-                coordinates: processedPath,
-                color: routeColor,
-                routeStops: route.stops?.map((stop) => ({
-                  id: stop.id,
-                  name: stop.name,
-                  location: stop.location,
-                })),
-              };
-
-              // Solo agregar la ruta al mapa si no es la misma ruta que ya está graficada
-              if (!routeExistsInMap) {
-                // Agregar la ruta al mapa con opacidad menor y color verde (solo para buses, con animación)
-                await addRouteToMap(
-                  searchItem.id,
-                  processedPath,
-                  {
-                    color: '#10B981', // Verde para rutas de buses (mantener verde)
-                    width: 4,
-                    opacity: 0.5, // Opacidad menor para ruta y paradas
-                    outlineColor: getRouteColor(
-                      '--color-route-outline',
-                      '#ffffff',
-                    ),
-                    outlineWidth: 4, // Contorno reducido para buses
-                    stopColor: '#10B981', // Color verde para marcadores de paradas
-                    stopOpacity: 0.5, // Opacidad menor para marcadores de paradas
-                    endpointColor: '#10B981',
-                    showShadow: false,
-                  },
-                  // Agregar paradas de la ruta (con opacidad menor)
-                  route.stops?.map((stop) => ({
-                    id: stop.id,
-                    name: stop.name,
-                    created_at: stop.created_at || new Date().toISOString(),
-                    location: stop.location,
-                  })),
-                );
-
-                // Ajustar el mapa para mostrar toda la ruta
-                fitBoundsToRoute(processedPath, true); // hasInfoCard = true
-
-                // NO resaltar la ruta (ya tiene color verde y opacidad menor)
-                // highlightRoute(searchItem.id, true);
-
-                setSelectedItem(searchItem);
-              }
-              routeVariantId = route.id;
-            }
-          }
-        } catch {
-          // Error silencioso
-        }
-
-        // Cargar buses para esta ruta usando el ID de la variante
-        // No mostrar loader aquí para evitar parpadeo - los buses se cargan en segundo plano
-        await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
-
-        // Esperar un momento antes de hacer zoom al bus destacado
-        // Esto permite que el usuario vea la ruta brevemente antes de enfocar el bus
-        setTimeout(() => {
-          // Centrar la cámara en el bus específico con animación rápida
-          if (busFromNavigation.busLocation && mapInstance.current) {
-            mapInstance.current.flyTo({
-              center: [
-                busFromNavigation.busLocation.longitude,
-                busFromNavigation.busLocation.latitude,
-              ],
-              zoom: 16,
-              duration: 500, // Animación más rápida
-            });
-          }
-        }, 1500); // Reducido de 3 segundos a 1 segundo
-
-        // NO re-renderizar el marcador - mantener el marcador existente intacto
-        // El marcador de ubicación ya tiene su posición correcta y no debe tocarse
-      } catch {
-        // Error silencioso
-      } finally {
-        // Limpiar después de procesar
-        setBusFromNavigation(null);
-      }
-    };
-
-    processBusFromNavigation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busFromNavigation]);
-
   useIonViewDidEnter(() => {
     if (mapInstance.current) {
       setTimeout(() => {
@@ -1086,19 +357,7 @@ export default function HomePage() {
       </IonHeader>
 
       <IonContent fullscreen className="ion-no-padding">
-        <div
-          ref={mapRef}
-          style={{
-            width: '100vw',
-            height: '100vh',
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            zIndex: 1,
-            touchAction: 'pan-x pan-y',
-            backgroundColor: theme === 'dark' ? '#131517' : 'var(--color-bg)',
-          }}
-        />
+        <MapContainer mapRef={mapRef} />
 
         {/* Indicador de carga del mapa */}
         {isMapLoading && <GlobalLoader />}
@@ -1130,124 +389,46 @@ export default function HomePage() {
           />
         </div>
 
-        <div
-          className="fixed top-20 right-4 z-40 flex flex-col gap-2"
-          slot="fixed"
-        >
-          <button
-            onClick={handleZoomIn}
-            className="w-12 h-12 rounded-full backdrop-blur-lg 
-                       flex items-center justify-center transition-all duration-200
-                       hover:scale-105 active:scale-95 shadow-lg
-                       opacity-40 hover:opacity-100"
-            style={{
-              backgroundColor: 'rgba(var(--color-card-rgb), 0.95)',
-              border: `1px solid var(--color-border)`,
-              borderRadius: '50%',
-              boxShadow: 'var(--color-shadow)',
-            }}
-            aria-label="Acercar"
-          >
-            <RiAddLine size={20} style={{ color: 'var(--color-text)' }} />
-          </button>
+        <MapControls
+          mapBearing={mapBearing}
+          isDraggingCompass={isDraggingCompass}
+          isClearingRoutes={isClearingRoutes}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetBearing={handleResetBearing}
+          onLocationRequest={handleLocationRequest}
+          onClearRoutes={handleClearRoutes}
+          onCompassMouseDown={handleCompassMouseDown}
+          onCompassTouchStart={handleCompassTouchStart}
+        />
 
-          <button
-            onClick={handleZoomOut}
-            className="w-12 h-12 rounded-full backdrop-blur-lg 
-                       flex items-center justify-center transition-all duration-200
-                       hover:scale-105 active:scale-95 shadow-lg
-                       opacity-40 hover:opacity-100"
-            style={{
-              backgroundColor: 'rgba(var(--color-card-rgb), 0.95)',
-              border: `1px solid var(--color-border)`,
-              borderRadius: '50%',
-              boxShadow: 'var(--color-shadow)',
-            }}
-            aria-label="Alejar"
-          >
-            <RiSubtractLine size={20} style={{ color: 'var(--color-text)' }} />
-          </button>
+        <RouteHandler
+          routeFromNavigation={routeFromNavigation}
+          mapInstance={mapInstance}
+          addRouteToMap={addRouteToMap}
+          clearAllRoutes={clearAllRoutes}
+          clearAllBuses={clearAllBuses}
+          fitBoundsToRoute={fitBoundsToRoute}
+          highlightRoute={highlightRoute}
+          loadBusesForRoute={loadBusesForRoute}
+          setIsMapLoading={setIsMapLoading}
+          setSelectedItem={setSelectedItem}
+          setRouteFromNavigation={setRouteFromNavigation}
+          currentMarker={currentMarker}
+        />
 
-          <button
-            onClick={handleResetBearing}
-            onMouseDown={handleCompassMouseDown}
-            onTouchStart={handleCompassTouchStart}
-            className={`w-12 h-12 rounded-full backdrop-blur-lg 
-                       flex items-center justify-center transition-all duration-200
-                       hover:scale-105 active:scale-95 shadow-lg select-none
-                       ${isDraggingCompass ? 'cursor-grabbing scale-105 opacity-100' : 'cursor-pointer opacity-40 hover:opacity-100'}`}
-            style={{
-              backgroundColor: isDraggingCompass
-                ? 'rgba(var(--color-secondary-rgb), 0.95)'
-                : 'rgba(var(--color-card-rgb), 0.95)',
-              border: `1px solid ${isDraggingCompass ? 'rgba(var(--color-secondary-rgb), 0.5)' : 'var(--color-border)'}`,
-              borderRadius: '50%',
-              boxShadow: 'var(--color-shadow)',
-            }}
-            aria-label="Arrastrar para rotar - Click para resetear"
-          >
-            <RiCompassLine
-              size={20}
-              style={{
-                color: isDraggingCompass
-                  ? 'var(--color-on-secondary)'
-                  : 'var(--color-text)',
-                transform: `rotate(${mapBearing}deg)`,
-                transition: isDraggingCompass ? 'none' : 'transform 0.2s ease',
-              }}
-            />
-          </button>
-
-          <button
-            onClick={handleLocationRequest}
-            className="w-12 h-12 rounded-full backdrop-blur-lg 
-                       flex items-center justify-center transition-all duration-200
-                       hover:scale-105 active:scale-95 shadow-lg
-                       opacity-40 hover:opacity-100"
-            style={{
-              backgroundColor: 'rgba(var(--color-card-rgb), 0.95)',
-              border: `1px solid var(--color-border)`,
-              borderRadius: '50%',
-              boxShadow: 'var(--color-shadow)',
-            }}
-            aria-label="Mi ubicación"
-          >
-            <RiFocus3Line size={20} style={{ color: 'var(--color-text)' }} />
-          </button>
-
-          <button
-            onClick={handleClearRoutes}
-            disabled={isClearingRoutes}
-            className={`w-12 h-12 rounded-full backdrop-blur-lg 
-                       flex items-center justify-center transition-all duration-300 ease-out
-                       hover:scale-105 active:scale-95 shadow-lg
-                       ${isClearingRoutes ? 'scale-95 opacity-100' : 'cursor-pointer opacity-40 hover:opacity-100'}
-                       disabled:cursor-not-allowed`}
-            style={{
-              backgroundColor: isClearingRoutes
-                ? 'rgba(var(--color-error-rgb), 0.95)'
-                : 'rgba(var(--color-card-rgb), 0.95)',
-              border: `1px solid ${isClearingRoutes ? 'rgba(var(--color-error-rgb), 0.5)' : 'var(--color-border)'}`,
-              borderRadius: '50%',
-              boxShadow: isClearingRoutes
-                ? '0 10px 25px -5px rgba(var(--color-error-rgb), 0.4), 0 4px 6px -2px rgba(var(--color-error-rgb), 0.2)'
-                : 'var(--color-shadow)',
-              transform: isClearingRoutes ? 'scale(0.95)' : 'scale(1)',
-            }}
-            aria-label="Limpiar rutas"
-          >
-            <RiDeleteBinLine
-              size={20}
-              style={{
-                color: isClearingRoutes ? '#FFFFFF' : 'var(--color-text)',
-                transform: isClearingRoutes
-                  ? 'translateY(-2px)'
-                  : 'translateY(0)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
-              }}
-            />
-          </button>
-        </div>
+        <BusHandler
+          busFromNavigation={busFromNavigation}
+          mapInstance={mapInstance}
+          addRouteToMap={addRouteToMap}
+          clearAllRoutes={clearAllRoutes}
+          clearAllBuses={clearAllBuses}
+          fitBoundsToRoute={fitBoundsToRoute}
+          loadBusesForRoute={loadBusesForRoute}
+          setSelectedItem={setSelectedItem}
+          setBusFromNavigation={setBusFromNavigation}
+          currentMarker={currentMarker}
+        />
 
         <R2MMapInfoCard
           selectedItem={selectedItem}

@@ -156,9 +156,46 @@ export const fastConnectionConfig: CacheConfig = {
   },
 };
 
+import { isMobileDevice, hasSlowConnection } from '../utils/deviceDetection';
+
+// Configuración para móvil
+export const mobileCacheConfig: CacheConfig = {
+  ...defaultCacheConfig,
+  maxSize: 75 * 1024 * 1024, // 75MB en móvil (menos que desktop)
+  maxAge: 14 * 24 * 60 * 60 * 1000, // 14 días
+  cleanupInterval: 12 * 60 * 60 * 1000, // 12 horas (más frecuente)
+  cleanupThreshold: 0.75, // 75% de uso (más agresivo)
+
+  tileCache: {
+    ...defaultCacheConfig.tileCache,
+    preloadRadius: 1, // Reducir preload en móvil
+  },
+};
+
 // Detectar tipo de conexión y devolver configuración apropiada
 export function getCacheConfigForConnection(): CacheConfig {
+  const isMobile = isMobileDevice();
+  const isSlowConnection = hasSlowConnection();
+
+  // Prioridad: móvil + conexión lenta
+  if (isMobile && isSlowConnection) {
+    return {
+      ...mobileCacheConfig,
+      maxSize: 50 * 1024 * 1024, // 50MB
+      cleanupThreshold: 0.7, // 70% de uso
+    };
+  }
+
+  // Móvil normal
+  if (isMobile) {
+    return mobileCacheConfig;
+  }
+
   // Detectar si es una conexión lenta
+  if (isSlowConnection) {
+    return slowConnectionConfig;
+  }
+
   if ('connection' in navigator) {
     const connection = (
       navigator as Navigator & {
@@ -168,12 +205,6 @@ export function getCacheConfigForConnection(): CacheConfig {
         };
       }
     ).connection;
-    if (
-      connection.effectiveType === 'slow-2g' ||
-      connection.effectiveType === '2g'
-    ) {
-      return slowConnectionConfig;
-    }
     if (connection.effectiveType === '4g' && connection.downlink > 2) {
       return fastConnectionConfig;
     }

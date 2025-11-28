@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import {
   RiParkingFill,
   RiBusFill,
@@ -34,7 +34,7 @@ type AnimationState = 'hidden' | 'exiting' | 'entering' | 'visible';
 
 const ANIMATION_DURATION = 200; // ms
 
-export default function R2MMapInfoCard({
+function R2MMapInfoCard({
   selectedItem,
   selectedMarker,
   onClose,
@@ -615,3 +615,5 @@ export default function R2MMapInfoCard({
     </div>
   );
 }
+
+export default memo(R2MMapInfoCard);

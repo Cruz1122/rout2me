@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, memo, useMemo } from 'react';
 import type { SearchItem } from '../../../shared/types/search';
 import { useSearch } from '../hooks/useSearch';
 import R2MSearchBar from './R2MSearchBar';
@@ -11,7 +11,7 @@ interface R2MSearchOverlayProps {
   readonly onLayoutChange?: () => void;
 }
 
-export default function R2MSearchOverlay({
+function R2MSearchOverlay({
   onItemSelect,
   onLayoutChange,
 }: R2MSearchOverlayProps) {
@@ -122,6 +122,17 @@ export default function R2MSearchOverlay({
     [filters, updateFilters],
   );
 
+  // Memoizar el estado de visibilidad de resultados
+  const shouldShowResults = useMemo(
+    () => showResults && !isSearching,
+    [showResults, isSearching],
+  );
+
+  const shouldShowLoading = useMemo(
+    () => isSearching && showResults && !showFilters,
+    [isSearching, showResults, showFilters],
+  );
+
   return (
     <>
       {/* Search Container */}
@@ -145,12 +156,12 @@ export default function R2MSearchOverlay({
           <R2MResultsList
             items={results}
             onSelect={handleItemSelect}
-            isVisible={showResults && !isSearching}
+            isVisible={shouldShowResults}
           />
         )}
 
         {/* Loading indicator */}
-        {isSearching && showResults && !showFilters && (
+        {shouldShowLoading && (
           <div
             className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-lg z-50 p-4 text-center"
             style={{
@@ -179,3 +190,5 @@ export default function R2MSearchOverlay({
     </>
   );
 }
+
+export default memo(R2MSearchOverlay);

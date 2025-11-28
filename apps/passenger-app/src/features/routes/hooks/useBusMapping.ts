@@ -3,14 +3,19 @@ import maplibregl, { Map as MlMap } from 'maplibre-gl';
 import { createRoot } from 'react-dom/client';
 import { RiBus2Fill } from 'react-icons/ri';
 import type { Bus } from '../services/busService';
+import {
+  getOptimizedAnimationDuration,
+  isMobileDevice,
+} from '../../../utils/deviceDetection';
 
 export interface BusMappingCallbacks {
   onBusClick?: (bus: Bus) => void;
 }
 
-// Constantes de animación
-const FADE_OUT_DURATION = 300; // ms
-const FADE_IN_DURATION = 300; // ms
+// Constantes de animación optimizadas para móvil
+const BASE_FADE_DURATION = 300; // ms
+const FADE_OUT_DURATION = isMobileDevice() ? 200 : BASE_FADE_DURATION;
+const FADE_IN_DURATION = isMobileDevice() ? 200 : BASE_FADE_DURATION;
 
 // Helper para animar fade-out de un marcador
 const fadeOutMarker = (marker: maplibregl.Marker): Promise<void> => {
@@ -21,13 +26,18 @@ const fadeOutMarker = (marker: maplibregl.Marker): Promise<void> => {
       return;
     }
 
+    // Optimizar para GPU
+    element.style.willChange = 'opacity';
+    const duration = getOptimizedAnimationDuration(FADE_OUT_DURATION);
+
     // Animar opacidad a 0
-    element.style.transition = `opacity ${FADE_OUT_DURATION}ms ease-in-out`;
+    element.style.transition = `opacity ${duration}ms ease-in-out`;
     element.style.opacity = '0';
 
     setTimeout(() => {
+      element.style.willChange = 'auto';
       resolve();
-    }, FADE_OUT_DURATION);
+    }, duration);
   });
 };
 
@@ -36,9 +46,13 @@ const fadeInMarker = (marker: maplibregl.Marker): void => {
   const element = marker.getElement();
   if (!element) return;
 
+  // Optimizar para GPU
+  element.style.willChange = 'opacity';
+  const duration = getOptimizedAnimationDuration(FADE_IN_DURATION);
+
   // Asegurar que el elemento tenga opacidad 0 inicialmente
   element.style.opacity = '0';
-  element.style.transition = `opacity ${FADE_IN_DURATION}ms ease-in-out`;
+  element.style.transition = `opacity ${duration}ms ease-in-out`;
 
   // Usar requestAnimationFrame para asegurar que el cambio de opacidad se aplique
   // después de que el elemento esté en el DOM
@@ -47,6 +61,12 @@ const fadeInMarker = (marker: maplibregl.Marker): void => {
       // Verificar que el elemento todavía existe antes de animar
       if (element && element.parentElement) {
         element.style.opacity = '1';
+        // Limpiar will-change después de la animación
+        setTimeout(() => {
+          if (element) {
+            element.style.willChange = 'auto';
+          }
+        }, duration);
       }
     });
   });

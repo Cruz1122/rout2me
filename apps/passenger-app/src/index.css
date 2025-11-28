@@ -47,6 +47,49 @@ h6 { font-size: 0.75rem; }   /* 12px - Pequeños */
   display: none;
 }
 
+/* Optimizaciones de rendimiento */
+* {
+  /* Usar contain para mejorar el rendimiento de renderizado */
+  box-sizing: border-box;
+}
+
+/* Optimizar componentes que no cambian frecuentemente */
+.map-container,
+.search-overlay,
+.map-controls {
+  contain: layout style paint;
+}
+
+/* Usar content-visibility para secciones fuera del viewport */
+.off-screen {
+  content-visibility: auto;
+}
+
+/* Reducir backdrop-blur en móvil para mejor rendimiento */
+@media (max-width: 768px) {
+  .backdrop-blur-lg {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+  }
+}
+
+/* Optimizar animaciones con will-change solo cuando sea necesario */
+.animate-fade-in,
+.animate-fade-out {
+  will-change: opacity;
+}
+
+.animate-slide {
+  will-change: transform;
+}
+
+/* Limpiar will-change después de la animación */
+.animate-fade-in.animation-complete,
+.animate-fade-out.animation-complete,
+.animate-slide.animation-complete {
+  will-change: auto;
+}
+
 /* Smooth animations */
 @keyframes fadeIn {
   from {
