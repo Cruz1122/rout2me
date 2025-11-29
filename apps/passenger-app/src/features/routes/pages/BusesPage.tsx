@@ -14,6 +14,7 @@ import {
   RiGridLine,
   RiGridFill,
   RiMapPinLine,
+  RiErrorWarningLine,
 } from 'react-icons/ri';
 import {
   type Bus,
@@ -320,6 +321,10 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
   const isNearby =
     bus.status !== 'offline' && canCalculateDistance && distance <= 1.5; // 1.5 km threshold
 
+  // Determinar si el bus no tiene ubicación (solo cuando el usuario sí tiene ubicación)
+  const hasNoLocation =
+    userLocation !== null && bus.location === null && bus.status !== 'offline';
+
   // Determinar estado dinámico basado en la distancia
   const getDynamicStatus = (): Bus['status'] => {
     if (bus.status === 'offline') return 'offline';
@@ -387,28 +392,46 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
 
   return (
     <div
-      className="p-4 rounded-xl cursor-pointer hover:shadow-md transition-shadow"
+      className="p-4 rounded-xl cursor-pointer hover:shadow-md transition-all"
       style={{
-        backgroundColor: 'var(--color-card)',
-        border:
-          theme === 'dark'
+        backgroundColor: hasNoLocation
+          ? 'rgba(var(--color-card-rgb), 0.6)'
+          : 'var(--color-card)',
+        border: hasNoLocation
+          ? '2px dashed rgba(156, 163, 175, 0.5)'
+          : theme === 'dark'
             ? '1px solid var(--color-border)'
             : '1px solid rgba(var(--color-terciary-rgb), 0.2)',
+        opacity: hasNoLocation ? 0.75 : 1,
       }}
       onClick={onClick}
     >
       <div className="flex items-center gap-3">
         {/* Badge del bus */}
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold"
+          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold relative"
           style={{
             backgroundColor:
               theme === 'dark' ? 'var(--color-surface)' : '#FFFFFF',
-            border: `2.5px solid ${getOccupancyColor(bus.occupancy)}`,
-            color: getOccupancyColor(bus.occupancy),
+            border: hasNoLocation
+              ? '2.5px dashed rgba(156, 163, 175, 0.5)'
+              : `2.5px solid ${getOccupancyColor(bus.occupancy)}`,
+            color: hasNoLocation ? '#9CA3AF' : getOccupancyColor(bus.occupancy),
+            opacity: hasNoLocation ? 0.6 : 1,
           }}
         >
           <RiBusLine size={24} />
+          {hasNoLocation && (
+            <div
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+              style={{
+                backgroundColor: '#EF4444',
+                border: '2px solid var(--color-card)',
+              }}
+            >
+              <RiErrorWarningLine size={10} style={{ color: '#FFFFFF' }} />
+            </div>
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -467,10 +490,22 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
               Permite acceso a ubicación
             </p>
           )}
-          {dynamicStatus !== 'offline' && userLocation && !bus.location && (
-            <p className="text-xs text-gray-500 mb-0.5">
-              Sin ubicación disponible
-            </p>
+          {hasNoLocation && (
+            <div
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg mb-1"
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+              }}
+            >
+              <RiErrorWarningLine
+                size={16}
+                style={{ color: '#EF4444', flexShrink: 0 }}
+              />
+              <p className="text-xs font-medium" style={{ color: '#EF4444' }}>
+                Sin ubicación disponible
+              </p>
+            </div>
           )}
 
           {/* Ocupación */}

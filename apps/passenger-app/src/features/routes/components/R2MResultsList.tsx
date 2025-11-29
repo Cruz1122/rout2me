@@ -20,6 +20,9 @@ export default function R2MResultsList({
   const [activeIndex, setActiveIndex] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(
+    null,
+  );
 
   // Obtener combinaciones recientes (tipo-id) cuando cambian los items
   const recentSearchKeys = useMemo(() => {
@@ -156,10 +159,52 @@ export default function R2MResultsList({
             e.preventDefault();
             onSelect(item);
           }}
+          onTouchStart={(e) => {
+            // Capturar la posición inicial del toque para detectar scroll
+            const touch = e.touches[0];
+            touchStartRef.current = {
+              x: touch.clientX,
+              y: touch.clientY,
+              time: Date.now(),
+            };
+          }}
+          onTouchMove={(e) => {
+            // Si el usuario está moviendo el dedo, marcar como scroll
+            // Esto ayuda a cancelar la selección si el movimiento es significativo
+            if (touchStartRef.current) {
+              const touch = e.touches[0];
+              const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+              const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+
+              // Si el movimiento es significativo, es scroll
+              if (deltaX > 10 || deltaY > 10) {
+                // Marcar que fue scroll para evitar selección en onTouchEnd
+                touchStartRef.current = null;
+              }
+            }
+          }}
           onTouchEnd={(e) => {
-            // Para dispositivos táctiles, prevenir el comportamiento por defecto
-            e.preventDefault();
-            onSelect(item);
+            // Verificar si hubo scroll significativo antes de seleccionar
+            if (!touchStartRef.current) {
+              return;
+            }
+
+            const touch = e.changedTouches[0];
+            const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+            const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+
+            // Si el movimiento fue significativo (más de 10px), es scroll
+            // no seleccionar el item
+            const isScroll = deltaX > 10 || deltaY > 10;
+
+            // Si no fue scroll, seleccionar el item
+            if (!isScroll) {
+              e.preventDefault();
+              onSelect(item);
+            }
+
+            // Resetear la referencia
+            touchStartRef.current = null;
           }}
           onMouseEnter={(e) => {
             setActiveIndex(index);
