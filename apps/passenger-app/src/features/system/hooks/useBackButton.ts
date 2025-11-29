@@ -2,23 +2,27 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { App } from '@capacitor/app';
 import { isNativePlatform } from '../../../shared/utils/platform';
-import { useIonToast } from '@ionic/react';
+import { useIonToast, useIonRouter } from '@ionic/react';
+import { useAuth } from '../../auth/hooks/useAuth';
+import { useSmartNavigation } from './useSmartNavigation';
 
 const EXIT_WARNING_TIMEOUT = 2000; // 2 segundos para presionar de nuevo
 
-// Rutas principales donde no se puede navegar más atrás
-const MAIN_ROUTES = ['/inicio', '/welcome', '/location-permission'];
-
 /**
- * Hook para manejar el botón de atrás del hardware en Android
- * - Intenta navegar hacia atrás en el historial
- * - Si no hay historial, muestra un mensaje "Presiona otra vez para salir"
- * - Si el usuario presiona de nuevo dentro del tiempo límite, cierra la app
+ * Hook para manejar el botón de atrás del hardware en Android/iOS
+ * - Usa navegación inteligente basada en relaciones padre-hijo
+ * - Valida rutas destino para evitar retrocesos inválidos
+ * - Evita retrocesos a rutas de autenticación cuando el usuario está autenticado
+ * - Muestra mensaje "Presiona otra vez para salir" en rutas principales
+ * - Cierra la app si el usuario presiona de nuevo dentro del tiempo límite
  */
 export function useBackButton() {
   const location = useLocation();
+  const router = useIonRouter();
+  const { isAuthenticated } = useAuth();
   const [presentToast] = useIonToast();
   const lastBackPressRef = useRef<number | null>(null);
+  const smartNavigation = useSmartNavigation(isAuthenticated);
 
   useEffect(() => {
     // Solo activar en plataformas nativas (móvil)
@@ -31,22 +35,29 @@ export function useBackButton() {
     }> | null = null;
 
     const handleBackButton = async () => {
-      // Verificar si estamos en una ruta principal (donde normalmente no hay historial)
-      const isMainRoute = MAIN_ROUTES.includes(location.pathname);
-      const hasHistory = window.history.length > 1;
+      const currentPath = location.pathname;
 
-      // Si no estamos en una ruta principal y hay historial, intentar navegar atrás
-      if (!isMainRoute && hasHistory) {
+      // Determinar la ruta válida a la que retroceder usando navegación inteligente
+      const validBackRoute = smartNavigation.getValidBackRoute(currentPath);
+
+      // Si hay una ruta válida de retroceso, navegar a ella
+      if (validBackRoute) {
         try {
-          // Intentar navegar usando el router de Ionic
-          window.history.back();
+          router.push(validBackRoute, 'back');
         } catch (error) {
           console.error('Error navegando hacia atrás:', error);
+          // En caso de error, intentar con window.history como fallback
+          try {
+            window.history.back();
+          } catch (fallbackError) {
+            console.error('Error en fallback de navegación:', fallbackError);
+          }
         }
         return;
       }
 
-      // Si estamos en una ruta principal o no hay historial, mostrar mensaje de salida
+      // Si estamos en una ruta principal o no hay ruta válida de retroceso,
+      // mostrar mensaje de salida
       const now = Date.now();
 
       if (
@@ -80,5 +91,11 @@ export function useBackButton() {
         });
       }
     };
-  }, [location.pathname, presentToast]);
+  }, [
+    location.pathname,
+    presentToast,
+    router,
+    smartNavigation,
+    isAuthenticated,
+  ]);
 }
