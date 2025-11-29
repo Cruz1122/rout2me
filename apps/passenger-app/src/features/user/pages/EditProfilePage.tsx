@@ -17,7 +17,7 @@ import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MLoader from '../../../shared/components/R2MLoader';
 import R2MAvatar from '../../../shared/components/R2MAvatar';
-import ErrorNotification from '../../system/components/ErrorNotification';
+import R2MErrorToast from '../../../shared/components/R2MErrorToast';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 
 interface ProfileData {
@@ -327,7 +327,7 @@ export default function EditProfilePage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
-        <ErrorNotification error={error} onClose={clearError} />
+        <R2MErrorToast error={error} onClose={clearError} />
 
         <button
           ref={backButtonRef}

@@ -6,8 +6,6 @@ import {
   RiNotification3Line,
   RiMoonLine,
   RiShieldCheckLine,
-  RiQuestionLine,
-  RiFeedbackLine,
   RiLockPasswordLine,
   RiLogoutBoxRLine,
   RiBuilding2Line,
@@ -442,20 +440,6 @@ export default function ProfilePage() {
             </p>
 
             <div className="space-y-2">
-              {/* Centro de ayuda */}
-              <R2MProfileButton
-                icon={<RiQuestionLine size={20} />}
-                title="Centro de ayuda"
-                onClick={() => handleSupportClick('help')}
-              />
-
-              {/* Enviar comentarios */}
-              <R2MProfileButton
-                icon={<RiFeedbackLine size={20} />}
-                title="Enviar comentarios"
-                onClick={() => handleSupportClick('feedback')}
-              />
-
               {/* Cambiar contraseña */}
               <R2MProfileButton
                 icon={<RiLockPasswordLine size={20} />}

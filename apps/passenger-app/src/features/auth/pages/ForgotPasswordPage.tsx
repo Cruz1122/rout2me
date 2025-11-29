@@ -9,7 +9,7 @@ import { RiArrowLeftLine, RiMailLine } from 'react-icons/ri';
 import { recoverPassword } from '../services/authService';
 import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
-import ErrorNotification from '../../system/components/ErrorNotification';
+import R2MErrorToast from '../../../shared/components/R2MErrorToast';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 
 export default function ForgotPasswordPage() {
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
-        <ErrorNotification error={error} onClose={clearError} />
+        <R2MErrorToast error={error} onClose={clearError} />
 
         {/* Botón de retroceso */}
         <button

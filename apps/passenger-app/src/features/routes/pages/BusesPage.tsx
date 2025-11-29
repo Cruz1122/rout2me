@@ -35,6 +35,7 @@ import GlobalLoader from '../../system/components/GlobalLoader';
 import R2MModal from '../../../shared/components/R2MModal';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MPageHeader from '../../../shared/components/R2MPageHeader';
+import ConnectionError from '../../../shared/components/ConnectionError';
 import { useTheme } from '../../../contexts/ThemeContext';
 
 type FilterTab = 'all' | 'active' | 'nearby';
@@ -79,23 +80,27 @@ export default function BusesPage() {
   });
 
   // Cargar buses al montar el componente
-  useEffect(() => {
-    const loadBuses = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const fetchedBuses = await fetchBuses();
-        setBuses(fetchedBuses);
-      } catch (err) {
-        console.error('Error loading buses:', err);
-        setError(err as BusServiceError);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadBuses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedBuses = await fetchBuses();
+      setBuses(fetchedBuses);
+    } catch (err) {
+      console.error('Error loading buses:', err);
+      setError(err as BusServiceError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadBuses();
   }, []);
+
+  const handleRetry = () => {
+    loadBuses();
+  };
 
   const handleFilterChange = (filter: FilterTab | null) => {
     setActiveFilter(filter);
@@ -189,16 +194,11 @@ export default function BusesPage() {
 
     if (error) {
       return (
-        <div className="text-center py-12 text-red-500">
-          <p className="mb-2">Error al cargar los buses</p>
-          <p className="text-sm text-gray-500">{error.message}</p>
-          <button
-            onClick={() => globalThis.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
-          >
-            Reintentar
-          </button>
-        </div>
+        <ConnectionError
+          error={error}
+          onRetry={handleRetry}
+          title="Error al cargar los buses"
+        />
       );
     }
 
@@ -286,7 +286,19 @@ export default function BusesPage() {
         </div>
 
         {/* Lista de buses */}
-        <div className="px-4 py-2">{renderBusesContent()}</div>
+        <div
+          className={error ? 'flex-1 flex items-center' : 'px-4 py-2'}
+          style={
+            error
+              ? {
+                  minHeight: 'calc(100vh - 250px)',
+                  width: '100%',
+                }
+              : {}
+          }
+        >
+          {renderBusesContent()}
+        </div>
       </IonContent>
 
       {/* Modal de detalles del bus */}

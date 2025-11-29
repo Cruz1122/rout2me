@@ -10,7 +10,7 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import { updatePassword } from '../services/userService';
 import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
-import ErrorNotification from '../../system/components/ErrorNotification';
+import R2MErrorToast from '../../../shared/components/R2MErrorToast';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 
 interface PasswordData {
@@ -178,7 +178,7 @@ export default function ChangePasswordPage() {
   return (
     <IonPage>
       <IonContent fullscreen className="ion-padding">
-        <ErrorNotification error={error} onClose={clearError} />
+        <R2MErrorToast error={error} onClose={clearError} />
 
         <button
           ref={backButtonRef}

@@ -18,7 +18,7 @@ import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
 import R2MCodeInput from '../../../shared/components/R2MCodeInput';
-import ErrorNotification from '../../../features/system/components/ErrorNotification';
+import R2MErrorToast from '../../../shared/components/R2MErrorToast';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 import { signupUser, validateAuthConfig } from '../services/authService';
 import '../../../shared/components/R2MInput.css';
@@ -862,7 +862,7 @@ export default function RegisterPage() {
     <IonPage>
       <IonContent fullscreen className="ion-padding">
         {/* Notificación de error */}
-        <ErrorNotification error={error} onClose={clearError} />
+        <R2MErrorToast error={error} onClose={clearError} />
         {/* Botón de retroceso - visible después de la fase 1 y en confirmación */}
         {(currentPhase > 1 || showConfirmation) && (
           <button

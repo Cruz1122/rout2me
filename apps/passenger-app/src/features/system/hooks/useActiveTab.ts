@@ -17,9 +17,6 @@ export function useActiveTab() {
       case '/buses':
         setActiveTab('buses');
         break;
-      case '/alertas':
-        setActiveTab('alertas');
-        break;
       case '/perfil':
         setActiveTab('perfil');
         break;
@@ -33,7 +30,6 @@ export function useActiveTab() {
           (path.startsWith('/inicio') ||
             path.startsWith('/rutas') ||
             path.startsWith('/buses') ||
-            path.startsWith('/alertas') ||
             path.startsWith('/perfil'))
         ) {
           const tabName = path.split('/')[1];

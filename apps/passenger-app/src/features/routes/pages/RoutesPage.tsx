@@ -34,6 +34,7 @@ import GlobalLoader from '../../system/components/GlobalLoader';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MModal from '../../../shared/components/R2MModal';
 import R2MPageHeader from '../../../shared/components/R2MPageHeader';
+import ConnectionError from '../../../shared/components/ConnectionError';
 
 type FilterTab = 'all' | 'recent';
 
@@ -71,41 +72,45 @@ export default function RoutesPage() {
     setRefreshKey((prev) => prev + 1);
   });
 
-  // Cargar rutas al montar el componente
+  // Cargar rutas
+  const loadRoutes = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Cargar rutas y buses en paralelo
+      const [fetchedRoutes, allBuses] = await Promise.all([
+        fetchAllRoutesData(),
+        fetchBuses(),
+      ]);
+
+      // Calcular buses activos para cada ruta
+      const routesWithActiveBuses = fetchedRoutes.map((route) => {
+        const activeBuses = getBusesByRouteVariant(allBuses, route.id);
+        return {
+          ...route,
+          activeBuses: activeBuses.length,
+        };
+      });
+
+      setRoutes(routesWithActiveBuses);
+    } catch (err) {
+      console.error('Error loading routes:', err);
+      setError(
+        err instanceof Error ? err.message : 'Error al cargar las rutas',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadRoutes = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Cargar rutas y buses en paralelo
-        const [fetchedRoutes, allBuses] = await Promise.all([
-          fetchAllRoutesData(),
-          fetchBuses(),
-        ]);
-
-        // Calcular buses activos para cada ruta
-        const routesWithActiveBuses = fetchedRoutes.map((route) => {
-          const activeBuses = getBusesByRouteVariant(allBuses, route.id);
-          return {
-            ...route,
-            activeBuses: activeBuses.length,
-          };
-        });
-
-        setRoutes(routesWithActiveBuses);
-      } catch (err) {
-        console.error('Error loading routes:', err);
-        setError(
-          err instanceof Error ? err.message : 'Error al cargar las rutas',
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadRoutes();
   }, [refreshKey]);
+
+  const handleRetry = () => {
+    loadRoutes();
+  };
 
   const handleViewMore = (filter: FilterTab) => {
     setActiveFilter(filter);
@@ -195,18 +200,15 @@ export default function RoutesPage() {
   if (error) {
     return (
       <IonPage>
-        <IonContent>
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-red-600 mb-4">{error}</p>
-              <button
-                onClick={() => globalThis.location.reload()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg"
-              >
-                Reintentar
-              </button>
-            </div>
-          </div>
+        <IonContent
+          className="flex items-center justify-center"
+          style={{ '--background': 'var(--color-bg)' }}
+        >
+          <ConnectionError
+            error={error}
+            onRetry={handleRetry}
+            title="Error al cargar las rutas"
+          />
         </IonContent>
       </IonPage>
     );

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy } from 'react';
 import {
   IonApp,
   IonLabel,
@@ -11,6 +11,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
 import AnimatedTabIcon from './shared/components/AnimatedTabIcon';
 import GlobalLoader from './features/system/components/GlobalLoader';
+import SafeSuspense from './shared/components/SafeSuspense';
 import RouteGuard from './components/RouteGuard';
 import RecoveryRedirect from './features/auth/components/RecoveryRedirect';
 import { useActiveTab } from './features/system/hooks/useActiveTab';
@@ -21,7 +22,6 @@ import BackButtonHandler from './features/system/components/BackButtonHandler';
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
 const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
 const BusesPage = lazy(() => import('./features/routes/pages/BusesPage'));
-const AlertsPage = lazy(() => import('./features/system/pages/AlertsPage'));
 const ProfilePage = lazy(() => import('./features/user/pages/ProfilePage'));
 const LogoutConfirmationPage = lazy(
   () => import('./features/user/pages/LogoutConfirmationPage'),
@@ -69,34 +69,29 @@ function TabsWithIcons() {
       <IonTabs>
         <IonRouterOutlet>
           <Route exact path="/inicio">
-            <Suspense fallback={<GlobalLoader />}>
+            <SafeSuspense fallback={<GlobalLoader />}>
               <HomePage />
-            </Suspense>
+            </SafeSuspense>
           </Route>
           <Route exact path="/rutas">
-            <Suspense fallback={<GlobalLoader />}>
+            <SafeSuspense fallback={<GlobalLoader />}>
               <RoutesPage />
-            </Suspense>
+            </SafeSuspense>
           </Route>
           <Route exact path="/buses">
-            <Suspense fallback={<GlobalLoader />}>
+            <SafeSuspense fallback={<GlobalLoader />}>
               <BusesPage />
-            </Suspense>
-          </Route>
-          <Route exact path="/alertas">
-            <Suspense fallback={<GlobalLoader />}>
-              <AlertsPage />
-            </Suspense>
+            </SafeSuspense>
           </Route>
           <Route exact path="/perfil">
-            <Suspense fallback={<GlobalLoader />}>
+            <SafeSuspense fallback={<GlobalLoader />}>
               <ProfilePage />
-            </Suspense>
+            </SafeSuspense>
           </Route>
           <Route exact path="/perfil/cambiar-password">
-            <Suspense fallback={<GlobalLoader />}>
+            <SafeSuspense fallback={<GlobalLoader />}>
               <ChangePasswordPage />
-            </Suspense>
+            </SafeSuspense>
           </Route>
           <Route exact path="/">
             <Redirect to="/inicio" />
@@ -122,13 +117,6 @@ function TabsWithIcons() {
             <AnimatedTabIcon iconName="bus" isActive={activeTab === 'buses'} />
             <IonLabel>Buses</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="alertas" href="/alertas">
-            <AnimatedTabIcon
-              iconName="notification"
-              isActive={activeTab === 'alertas'}
-            />
-            <IonLabel>Alertas</IonLabel>
-          </IonTabButton>
           <IonTabButton tab="perfil" href="/perfil">
             <AnimatedTabIcon
               iconName="user"
@@ -152,74 +140,74 @@ export default function App() {
           <RecoveryRedirect />
           <IonRouterOutlet>
             <Route exact path="/location-permission">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <LocationPermissionPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/welcome">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <WelcomePage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/login">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <LoginPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/register">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <RegisterPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/2fa">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <TwoFAPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/forgot-password">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <ForgotPasswordPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/reset-password">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <ResetPasswordPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/expired-link">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <ExpiredLinkPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/auth/confirm">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <ConfirmAccountPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/perfil/cerrar-sesion">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <LogoutConfirmationPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/perfil/abandonar-organizacion">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <LeaveOrganizationConfirmationPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/perfil/unirse-organizacion">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <JoinOrganizationPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/perfil/editar">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <EditProfilePage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route exact path="/perfil/tema">
-              <Suspense fallback={<GlobalLoader />}>
+              <SafeSuspense fallback={<GlobalLoader />}>
                 <ThemeSelectionPage />
-              </Suspense>
+              </SafeSuspense>
             </Route>
             <Route
               exact

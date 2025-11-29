@@ -12,7 +12,7 @@ import maplibregl from 'maplibre-gl';
 import R2MSearchOverlay from '../../routes/components/R2MSearchOverlay';
 import R2MMapInfoCard from '../../routes/components/R2MMapInfoCard';
 import GlobalLoader from '../components/GlobalLoader';
-import ErrorNotification from '../components/ErrorNotification';
+import R2MErrorToast from '../../../shared/components/R2MErrorToast';
 import MapContainer from '../components/MapContainer';
 import MapControls from '../components/MapControls';
 import { RouteHandler } from '../components/RouteHandler';
@@ -445,7 +445,7 @@ export default function HomePage() {
           }}
         />
       </IonContent>
-      <ErrorNotification error={error} onClose={clearError} />
+      <R2MErrorToast error={error} onClose={clearError} />
     </IonPage>
   );
 }

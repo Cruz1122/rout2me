@@ -11,7 +11,7 @@ import { RiGoogleFill, RiMicrosoftFill, RiArrowLeftLine } from 'react-icons/ri';
 import R2MInput from '../../../shared/components/R2MInput';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
-import ErrorNotification from '../../../features/system/components/ErrorNotification';
+import R2MErrorToast from '../../../shared/components/R2MErrorToast';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 import {
   loginUser,
@@ -166,7 +166,7 @@ export default function LoginPage() {
         style={{ '--background': 'var(--color-bg)' }}
       >
         {/* Notificación de error */}
-        <ErrorNotification error={error} onClose={clearError} />
+        <R2MErrorToast error={error} onClose={clearError} />
         {/* Botón de retroceso */}
         <button
           ref={backButtonRef}

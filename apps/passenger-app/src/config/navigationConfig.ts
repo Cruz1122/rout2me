@@ -94,12 +94,6 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
     isMainRoute: true,
     requiresAuth: true,
   },
-  '/alertas': {
-    path: '/alertas',
-    category: 'main',
-    isMainRoute: true,
-    requiresAuth: true,
-  },
   '/perfil': {
     path: '/perfil',
     category: 'main',

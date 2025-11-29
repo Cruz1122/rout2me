@@ -5,7 +5,7 @@ import { RiLock2Line } from 'react-icons/ri';
 import R2MButton from '../../../shared/components/R2MButton';
 import R2MTextLink from '../../../shared/components/R2MTextLink';
 import R2MCodeInput from '../../../shared/components/R2MCodeInput';
-import ErrorNotification from '../../../features/system/components/ErrorNotification';
+import R2MErrorToast from '../../../shared/components/R2MErrorToast';
 import useErrorNotification from '../../system/hooks/useErrorNotification';
 
 export default function TwoFAPage() {
@@ -81,7 +81,7 @@ export default function TwoFAPage() {
     <IonPage>
       <IonContent fullscreen className="ion-padding">
         {/* Notificación de error */}
-        <ErrorNotification error={error} onClose={clearError} />
+        <R2MErrorToast error={error} onClose={clearError} />
         <div className="flex flex-col items-center justify-center min-h-full px-6 py-12">
           {/* Header */}
           <div className="mb-12 text-center">
