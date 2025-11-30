@@ -225,7 +225,7 @@ export function useRouteDrawing(
           try {
             // Intentar remover el marcador directamente
             startMarker.remove();
-          } catch (error) {
+          } catch {
             // Si falla, intentar verificar si el elemento existe y forzar eliminación
             try {
               const element = startMarker.getElement();
@@ -245,7 +245,7 @@ export function useRouteDrawing(
           try {
             // Intentar remover el marcador directamente
             endMarker.remove();
-          } catch (error) {
+          } catch {
             // Si falla, intentar verificar si el elemento existe y forzar eliminación
             try {
               const element = endMarker.getElement();
@@ -770,7 +770,7 @@ export function useRouteDrawing(
           // Intentar remover el marcador directamente
           // No verificar parentElement porque puede estar en proceso de eliminación
           marker.remove();
-        } catch (error) {
+        } catch {
           // Si falla, intentar verificar si el elemento existe y forzar eliminación
           try {
             const element = marker.getElement();

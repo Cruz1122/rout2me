@@ -35,7 +35,7 @@ export default class RouteErrorBoundary extends Component<
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('RouteErrorBoundary caught an error:', error, errorInfo);
   }
 

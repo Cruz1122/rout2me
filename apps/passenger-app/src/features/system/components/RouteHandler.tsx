@@ -8,6 +8,9 @@ import {
   isMapMatchingAvailable,
 } from '../../../config/config';
 import { getRouteColor } from '../../../utils/routeUtils';
+import type { Stop } from '../../routes/services/routeService';
+import type { RouteDrawingOptions } from '../../routes/hooks/useRouteDrawing';
+import type { Marker } from 'maplibre-gl';
 
 interface RouteFromNavigation {
   id: string;
@@ -28,8 +31,8 @@ interface RouteHandlerProps {
   addRouteToMap: (
     routeId: string,
     coordinates: [number, number][],
-    options?: any,
-    stops?: any[],
+    options?: RouteDrawingOptions,
+    stops?: Stop[],
   ) => Promise<void>;
   clearAllRoutes: () => Promise<void>;
   clearAllBuses: () => Promise<void>;
@@ -45,7 +48,7 @@ interface RouteHandlerProps {
   setIsMapLoading: (loading: boolean) => void;
   setSelectedItem: (item: SearchItem | null) => void;
   setRouteFromNavigation: (route: RouteFromNavigation | null) => void;
-  currentMarker: React.MutableRefObject<any>;
+  currentMarker: React.MutableRefObject<Marker | null>;
 }
 
 export function RouteHandler({

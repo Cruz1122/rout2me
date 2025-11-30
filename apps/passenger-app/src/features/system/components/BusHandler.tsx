@@ -4,6 +4,7 @@ import type { SearchItem } from '../../../shared/types/search';
 import {
   fetchAllRoutesData,
   generateRouteColor,
+  type Stop,
 } from '../../routes/services/routeService';
 import { processRouteWithCoordinates } from '../../routes/services/mapMatchingService';
 import {
@@ -11,6 +12,8 @@ import {
   isMapMatchingAvailable,
 } from '../../../config/config';
 import { getRouteColor } from '../../../utils/routeUtils';
+import type { RouteDrawingOptions } from '../../routes/hooks/useRouteDrawing';
+import type { Marker } from 'maplibre-gl';
 
 interface BusFromNavigation {
   id: string;
@@ -26,8 +29,8 @@ interface BusHandlerProps {
   addRouteToMap: (
     routeId: string,
     coordinates: [number, number][],
-    options?: any,
-    stops?: any[],
+    options?: RouteDrawingOptions,
+    stops?: Stop[],
   ) => Promise<void>;
   clearAllRoutes: () => Promise<void>;
   clearAllBuses: () => Promise<void>;
@@ -41,7 +44,7 @@ interface BusHandlerProps {
   ) => Promise<void>;
   setSelectedItem: (item: SearchItem | null) => void;
   setBusFromNavigation: (bus: BusFromNavigation | null) => void;
-  currentMarker: React.MutableRefObject<any>;
+  currentMarker: React.MutableRefObject<Marker | null>;
 }
 
 export function BusHandler({

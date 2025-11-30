@@ -310,7 +310,6 @@ export async function leaveOrganization(
 
     // Intentar parsear JSON de forma segura (algunos RPC pueden devolver 204 o texto vacío)
     const data = await safeParseLeaveResponse(response);
-    // eslint-disable-next-line no-console
     console.log('[leaveOrganization] response data:', data);
     return data;
   } catch (error) {

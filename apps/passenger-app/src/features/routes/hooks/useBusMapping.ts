@@ -331,7 +331,7 @@ export function useBusMapping(
         addBusToMap(bus);
       }
     },
-    [mapInstance, addBusToMap],
+    [mapInstance, addBusToMap, callbacks],
   );
 
   return {

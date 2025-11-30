@@ -13,14 +13,17 @@ import {
 } from '../../../config/config';
 import { getRouteColor } from '../../../utils/routeUtils';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
+import type { Stop } from '../../routes/services/routeService';
+import type { RouteDrawingOptions } from '../../routes/hooks/useRouteDrawing';
+import type { Marker } from 'maplibre-gl';
 
 export interface UseRouteSelectionOptions {
   mapInstance: React.RefObject<MlMap | null>;
   addRouteToMap: (
     routeId: string,
     coordinates: [number, number][],
-    options?: any,
-    stops?: any[],
+    options?: RouteDrawingOptions,
+    stops?: Stop[],
   ) => Promise<void>;
   clearAllRoutes: () => Promise<void>;
   clearAllBuses: () => Promise<void>;
@@ -36,7 +39,7 @@ export interface UseRouteSelectionOptions {
   getRouteIdForStop: (stopId: string) => string | null;
   setIsMapLoading: (loading: boolean) => void;
   setSelectedItem: (item: SearchItem | null) => void;
-  setSelectedMarker: (marker: any) => void;
+  setSelectedMarker: (marker: Marker | null) => void;
   selectedItem: SearchItem | null;
   currentMarker: React.MutableRefObject<maplibregl.Marker | null>;
 }

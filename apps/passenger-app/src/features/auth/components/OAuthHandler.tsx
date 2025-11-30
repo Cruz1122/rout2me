@@ -20,7 +20,27 @@ export default function OAuthHandler() {
 
   useEffect(() => {
     // Función para manejar sesión OAuth
-    const handleOAuthSession = async (session: any) => {
+    const handleOAuthSession = async (session: {
+      access_token: string;
+      token_type: string;
+      expires_in?: number;
+      expires_at?: number;
+      refresh_token: string;
+      user: {
+        id: string;
+        aud?: string;
+        role?: string;
+        email?: string;
+        user_metadata?: {
+          company_key?: string;
+          full_name?: string;
+          name?: string;
+          phone?: string;
+          avatar_url?: string;
+          picture?: string;
+        };
+      };
+    }) => {
       if (isProcessingOAuth.current) {
         console.log('Ya se está procesando una sesión OAuth, ignorando...');
         return;
@@ -200,6 +220,7 @@ export default function OAuthHandler() {
 
       try {
         console.log('Intercambiando código OAuth por sesión...');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = await (supabase.auth as any).exchangeCodeForSession({
           authCode: code,
         });
