@@ -138,6 +138,18 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
     parent: '/perfil',
     requiresAuth: true,
   },
+  '/perfil/mis-buses': {
+    path: '/perfil/mis-buses',
+    category: 'profile',
+    parent: '/perfil',
+    requiresAuth: true,
+  },
+  '/perfil/bus-activo': {
+    path: '/perfil/bus-activo',
+    category: 'profile',
+    parent: '/perfil/mis-buses',
+    requiresAuth: true,
+  },
 };
 
 /**

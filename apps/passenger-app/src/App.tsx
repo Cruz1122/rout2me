@@ -20,6 +20,7 @@ import OAuthHandler from './features/auth/components/OAuthHandler';
 import { ThemeProvider } from './contexts/ThemeContext';
 import BackButtonHandler from './features/system/components/BackButtonHandler';
 import { checkLocationPermission } from './features/system/utils/checkLocationPermission';
+import DriverLocationTracker from './features/user/components/DriverLocationTracker';
 
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
 const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
@@ -42,6 +43,12 @@ const EditProfilePage = lazy(
 );
 const ThemeSelectionPage = lazy(
   () => import('./features/user/pages/ThemeSelectionPage'),
+);
+const DriverBusesPage = lazy(
+  () => import('./features/user/pages/DriverBusesPage'),
+);
+const ActiveBusMenuPage = lazy(
+  () => import('./features/user/pages/ActiveBusMenuPage'),
 );
 const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
@@ -170,6 +177,7 @@ export default function App() {
           <BackButtonHandler />
           <OAuthHandler />
           <RecoveryRedirect />
+          <DriverLocationTracker />
           <IonRouterOutlet>
             <Route exact path="/location-permission">
               <SafeSuspense fallback={<GlobalLoader />}>
@@ -239,6 +247,16 @@ export default function App() {
             <Route exact path="/perfil/tema">
               <SafeSuspense fallback={<GlobalLoader />}>
                 <ThemeSelectionPage />
+              </SafeSuspense>
+            </Route>
+            <Route exact path="/perfil/mis-buses">
+              <SafeSuspense fallback={<GlobalLoader />}>
+                <DriverBusesPage />
+              </SafeSuspense>
+            </Route>
+            <Route exact path="/perfil/bus-activo">
+              <SafeSuspense fallback={<GlobalLoader />}>
+                <ActiveBusMenuPage />
               </SafeSuspense>
             </Route>
             <Route

@@ -115,6 +115,8 @@ export default function ProfilePage() {
       router.push('/perfil/abandonar-organizacion', 'forward');
     } else if (action === 'join') {
       router.push('/perfil/unirse-organizacion', 'forward');
+    } else if (action === 'manage-buses') {
+      router.push('/perfil/mis-buses', 'forward');
     } else {
       // Placeholder para otras acciones futuras
       console.log(`Acción de organización: ${action}`);

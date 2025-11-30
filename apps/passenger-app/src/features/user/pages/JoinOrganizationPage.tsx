@@ -14,7 +14,7 @@ import R2MLoader from '../../../shared/components/R2MLoader';
 
 export default function JoinOrganizationPage() {
   const router = useIonRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, isLoading: isAuthLoading } = useAuth();
   const contentRef = useRef<HTMLDivElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   // Usar new Array para satisfacer regla de lint
@@ -30,6 +30,20 @@ export default function JoinOrganizationPage() {
       setError(null);
     }
   };
+
+  // Debug: verificar estado del botón
+  useEffect(() => {
+    const keyLength = orgKey.join('').length;
+    const isButtonEnabled =
+      !isJoining && keyLength === 6 && !isAuthLoading && !!accessToken;
+    console.log('[JoinOrganizationPage] Estado del botón:', {
+      isJoining,
+      keyLength,
+      isAuthLoading,
+      hasAccessToken: !!accessToken,
+      isButtonEnabled,
+    });
+  }, [orgKey, isJoining, isAuthLoading, accessToken]);
 
   const handleJoinOrganization = async (key: string) => {
     // Prevenir ejecución si no hay accessToken (aún cargando)
@@ -223,72 +237,56 @@ export default function JoinOrganizationPage() {
             <div className="flex-shrink-0 py-6">
               <div className="flex justify-center">
                 <div className="w-full max-w-md">
-                  <button
-                    type="button"
-                    onClick={() => handleJoinOrganization(orgKey.join(''))}
-                    disabled={
-                      isJoining || orgKey.join('').length !== 6 || !accessToken
-                    }
-                    className="w-full h-14 !rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all duration-300 border-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{
-                      backgroundColor:
-                        orgKey.join('').length === 6 &&
-                        !isJoining &&
-                        accessToken
-                          ? 'var(--color-primary)'
-                          : 'var(--color-surface)',
-                      color: '#FFFFFF',
-                      boxShadow:
-                        orgKey.join('').length === 6 &&
-                        !isJoining &&
-                        accessToken
-                          ? '0 10px 25px -5px rgba(22, 49, 114, 0.3)'
-                          : 'none',
-                      cursor:
-                        orgKey.join('').length === 6 &&
-                        !isJoining &&
-                        accessToken
-                          ? 'pointer'
-                          : 'not-allowed',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (
-                        orgKey.join('').length === 6 &&
-                        !isJoining &&
-                        accessToken &&
-                        !e.currentTarget.disabled
-                      ) {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow =
-                          '0 15px 30px -5px rgba(22, 49, 114, 0.4)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (
-                        orgKey.join('').length === 6 &&
-                        !isJoining &&
-                        accessToken &&
-                        !e.currentTarget.disabled
-                      ) {
-                        e.currentTarget.style.transform = 'translateY(0px)';
-                        e.currentTarget.style.boxShadow =
-                          '0 10px 25px -5px rgba(22, 49, 114, 0.3)';
-                      }
-                    }}
-                    onMouseDown={(e) => {
-                      if (
-                        orgKey.join('').length === 6 &&
-                        !isJoining &&
-                        accessToken &&
-                        !e.currentTarget.disabled
-                      ) {
-                        e.currentTarget.style.transform = 'translateY(0px)';
-                      }
-                    }}
-                  >
-                    <RiUserAddLine size={20} />
-                    <span>Unirse</span>
-                  </button>
+                  {(() => {
+                    const keyLength = orgKey.join('').length;
+                    const isButtonEnabled =
+                      !isJoining &&
+                      keyLength === 6 &&
+                      !isAuthLoading &&
+                      !!accessToken;
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleJoinOrganization(orgKey.join(''))}
+                        disabled={!isButtonEnabled}
+                        className="w-full h-14 !rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all duration-300 border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          backgroundColor: isButtonEnabled
+                            ? 'var(--color-primary)'
+                            : 'var(--color-surface)',
+                          color: '#FFFFFF',
+                          boxShadow: isButtonEnabled
+                            ? '0 10px 25px -5px rgba(22, 49, 114, 0.3)'
+                            : 'none',
+                          cursor: isButtonEnabled ? 'pointer' : 'not-allowed',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (isButtonEnabled && !e.currentTarget.disabled) {
+                            e.currentTarget.style.transform =
+                              'translateY(-2px)';
+                            e.currentTarget.style.boxShadow =
+                              '0 15px 30px -5px rgba(22, 49, 114, 0.4)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (isButtonEnabled && !e.currentTarget.disabled) {
+                            e.currentTarget.style.transform = 'translateY(0px)';
+                            e.currentTarget.style.boxShadow =
+                              '0 10px 25px -5px rgba(22, 49, 114, 0.3)';
+                          }
+                        }}
+                        onMouseDown={(e) => {
+                          if (isButtonEnabled && !e.currentTarget.disabled) {
+                            e.currentTarget.style.transform = 'translateY(0px)';
+                          }
+                        }}
+                      >
+                        <RiUserAddLine size={20} />
+                        <span>Unirse</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
