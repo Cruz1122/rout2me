@@ -4,8 +4,10 @@ import {
   getUsers,
   deleteUser as deleteUserApi,
   updateUser as updateUserApi,
+  type UserRole,
 } from '../api/users_api';
 import type { User } from '../api/users_api';
+import { getCompanies, type Company } from '../api/vehicles_api';
 import R2MTable from '../components/R2MTable';
 import R2MModal from '../components/R2MModal';
 import R2MButton from '../components/R2MButton';
@@ -28,16 +30,20 @@ export default function UsersPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>('USER');
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
     name?: string;
     phone?: string;
+    company?: string;
   }>({});
 
   // Data state
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -64,9 +70,20 @@ export default function UsersPage() {
     }
   }
 
-  // Load users on mount
+  async function loadCompanies() {
+    try {
+      const data = await getCompanies();
+      setCompanies(data);
+    } catch (error) {
+      console.error('Error loading companies:', error);
+      showToast('error', 'Error al cargar las compañías');
+    }
+  }
+
+  // Load users and companies on mount
   useEffect(() => {
     loadUsers();
+    loadCompanies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -77,6 +94,8 @@ export default function UsersPage() {
     setPassword('');
     setName('');
     setPhone('');
+    setSelectedCompanyId('');
+    setSelectedRole('USER');
   }
 
   function closeEditModal() {
@@ -86,6 +105,8 @@ export default function UsersPage() {
     setPassword('');
     setName('');
     setPhone('');
+    setSelectedCompanyId('');
+    setSelectedRole('USER');
   }
 
   function closeDetailsModal() {
@@ -138,6 +159,7 @@ export default function UsersPage() {
       password?: string;
       name?: string;
       phone?: string;
+      company?: string;
     } = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\+?\d{10,15}$/;
@@ -151,6 +173,8 @@ export default function UsersPage() {
 
     if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
 
+    if (!selectedCompanyId) newErrors.company = 'La compañía es obligatoria';
+
     // Teléfono es opcional, solo validar formato si se proporciona
     if (phone.trim() && !phoneRegex.test(phone))
       newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
@@ -163,18 +187,21 @@ export default function UsersPage() {
       await createUserApi({
         email,
         password,
-        email_confirm: true,
-        user_metadata: {
-          name,
-          phone,
-        },
+        name,
+        phone: phone || undefined,
+        company_id: selectedCompanyId,
+        org_role: selectedRole,
+        is_superadmin: false,
       });
       showToast('success', 'Usuario creado correctamente');
       loadUsers();
       closeCreateModal();
     } catch (err) {
       console.error('create failed', err);
-      showToast('error', 'Error al crear el usuario');
+      showToast(
+        'error',
+        err instanceof Error ? err.message : 'Error al crear el usuario',
+      );
     } finally {
       setLoading(false);
     }
@@ -244,6 +271,8 @@ export default function UsersPage() {
     setName(user.name);
     setPhone(user.phone);
     setPassword('');
+    setSelectedCompanyId(user.company_id || '');
+    setSelectedRole(user.role || 'USER');
     setErrors({});
     setIsEditOpen(true);
   }
@@ -262,6 +291,7 @@ export default function UsersPage() {
       password?: string;
       name?: string;
       phone?: string;
+      company?: string;
     } = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\+?\d{10,15}$/;
@@ -274,6 +304,8 @@ export default function UsersPage() {
 
     if (!name.trim()) newErrors.name = 'El nombre es obligatorio';
 
+    if (!selectedCompanyId) newErrors.company = 'La compañía es obligatoria';
+
     // Teléfono es opcional, solo validar formato si se proporciona
     if (phone.trim() && !phoneRegex.test(phone))
       newErrors.phone = 'Teléfono no válido (ej: +573001234567)';
@@ -283,32 +315,28 @@ export default function UsersPage() {
 
     try {
       setLoading(true);
-      const updatePayload: {
-        email?: string;
-        password?: string;
-        user_metadata?: {
-          name: string;
-          phone: string;
-        };
-      } = {
+      const updatePayload = {
+        user_id: selectedUser.id,
         email,
+        password: password.trim() || undefined,
         user_metadata: {
           name,
-          phone,
+          phone: phone || undefined,
         },
+        company_id: selectedCompanyId,
+        org_role: selectedRole,
       };
 
-      if (password.trim()) {
-        updatePayload.password = password;
-      }
-
-      await updateUserApi(selectedUser.id, updatePayload);
+      await updateUserApi(updatePayload);
       showToast('success', 'Usuario actualizado correctamente');
       loadUsers();
       closeEditModal();
     } catch (err) {
       console.error('update failed', err);
-      showToast('error', 'Error al actualizar el usuario');
+      showToast(
+        'error',
+        err instanceof Error ? err.message : 'Error al actualizar el usuario',
+      );
     } finally {
       setLoading(false);
     }
@@ -706,6 +734,52 @@ export default function UsersPage() {
             error={errors.phone}
             icon="ri-phone-line"
           />
+
+          {/* Compañía */}
+          <div className="flex flex-col">
+            <label
+              className={`text-sm font-medium ${colorClasses.textSecondary} mb-2`}
+            >
+              Compañía <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className={`px-3 py-2 border rounded-lg ${colorClasses.textPrimary} bg-white focus:outline-none focus:ring-2 focus:ring-[#1E56A0] ${
+                errors.company ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Selecciona una compañía</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+            {errors.company && (
+              <span className="text-xs text-red-500 mt-1">
+                {errors.company}
+              </span>
+            )}
+          </div>
+
+          {/* Rol */}
+          <div className="flex flex-col">
+            <label
+              className={`text-sm font-medium ${colorClasses.textSecondary} mb-2`}
+            >
+              Rol <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as UserRole)}
+              className={`px-3 py-2 border border-gray-300 rounded-lg ${colorClasses.textPrimary} bg-white focus:outline-none focus:ring-2 focus:ring-[#1E56A0]`}
+            >
+              <option value="USER">Usuario</option>
+              <option value="DRIVER">Conductor</option>
+              <option value="ADMIN">Administrador</option>
+            </select>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
           <R2MButton
@@ -725,6 +799,7 @@ export default function UsersPage() {
               !email.trim() ||
               !password.trim() ||
               !name.trim() ||
+              !selectedCompanyId ||
               Object.keys(errors).length > 0
             }
             loading={loading}
@@ -783,6 +858,52 @@ export default function UsersPage() {
             error={errors.phone}
             icon="ri-phone-line"
           />
+
+          {/* Compañía */}
+          <div className="flex flex-col">
+            <label
+              className={`text-sm font-medium ${colorClasses.textSecondary} mb-2`}
+            >
+              Compañía <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className={`px-3 py-2 border rounded-lg ${colorClasses.textPrimary} bg-white focus:outline-none focus:ring-2 focus:ring-[#1E56A0] ${
+                errors.company ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Selecciona una compañía</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+            {errors.company && (
+              <span className="text-xs text-red-500 mt-1">
+                {errors.company}
+              </span>
+            )}
+          </div>
+
+          {/* Rol */}
+          <div className="flex flex-col">
+            <label
+              className={`text-sm font-medium ${colorClasses.textSecondary} mb-2`}
+            >
+              Rol <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as UserRole)}
+              className={`px-3 py-2 border border-gray-300 rounded-lg ${colorClasses.textPrimary} bg-white focus:outline-none focus:ring-2 focus:ring-[#1E56A0]`}
+            >
+              <option value="USER">Usuario</option>
+              <option value="DRIVER">Conductor</option>
+              <option value="ADMIN">Administrador</option>
+            </select>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
           <R2MButton
@@ -801,6 +922,7 @@ export default function UsersPage() {
               loading ||
               !email.trim() ||
               !name.trim() ||
+              !selectedCompanyId ||
               Object.keys(errors).length > 0
             }
             loading={loading}

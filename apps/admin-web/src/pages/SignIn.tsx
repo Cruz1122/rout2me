@@ -45,6 +45,15 @@ export default function SignIn() {
       showToast('success', '¡Correo verificado! Ya puedes iniciar sesión.');
     }
 
+    // Verificar si viene con error de permisos
+    const error = params.get('error');
+    if (error === 'no_permissions') {
+      showToast(
+        'error',
+        'No tienes permisos para acceder a esta aplicación. Solo administradores pueden iniciar sesión.',
+      );
+    }
+
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (toastHideTimerRef.current) clearTimeout(toastHideTimerRef.current);
