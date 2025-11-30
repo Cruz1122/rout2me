@@ -217,7 +217,7 @@ export default function RoutesPage() {
   return (
     <IonPage>
       <IonContent style={{ '--background': 'var(--color-bg)' }}>
-        <R2MPageHeader title="Rutas" />
+        <R2MPageHeader title="Rutas" onRefresh={loadRoutes} />
 
         {/* Barra de búsqueda y filtros */}
         <div

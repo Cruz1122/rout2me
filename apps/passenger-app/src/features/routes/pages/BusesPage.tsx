@@ -313,7 +313,7 @@ export default function BusesPage() {
     <IonPage>
       <IonContent style={{ '--background': 'var(--color-bg)' }}>
         {isNavigating && <GlobalLoader />}
-        <R2MPageHeader title="Buses en tiempo real" />
+        <R2MPageHeader title="Buses en tiempo real" onRefresh={loadBuses} />
 
         {/* Barra de búsqueda y filtros */}
         <div

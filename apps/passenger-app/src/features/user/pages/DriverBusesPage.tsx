@@ -172,6 +172,7 @@ export default function DriverBusesPage() {
           title="Mis Buses"
           leftIcon={<RiArrowLeftLine size={24} />}
           onLeftIconClick={() => router.push('/perfil', 'back')}
+          onRefresh={loadBuses}
         />
 
         <div className="px-4 py-4 space-y-4">

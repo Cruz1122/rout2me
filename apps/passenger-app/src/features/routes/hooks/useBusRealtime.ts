@@ -355,6 +355,5 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
         channelRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Array vacío: solo ejecutar una vez al montar
 }

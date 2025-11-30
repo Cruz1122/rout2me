@@ -293,6 +293,7 @@ export default function ActiveBusMenuPage() {
             title="Menú del Bus"
             leftIcon={<RiArrowLeftLine size={24} />}
             onLeftIconClick={() => router.push('/perfil/mis-buses', 'back')}
+            onRefresh={() => loadBus()}
           />
           <div className="flex items-center justify-center h-full px-4">
             <p style={{ color: 'var(--color-text)' }}>
@@ -331,6 +332,7 @@ export default function ActiveBusMenuPage() {
             title="Menú del Bus"
             leftIcon={<RiArrowLeftLine size={24} />}
             onLeftIconClick={() => router.push('/perfil/mis-buses', 'back')}
+            onRefresh={() => loadBus()}
           />
           <div className="flex items-center justify-center h-full px-4">
             <p style={{ color: 'var(--color-text)' }}>
@@ -363,6 +365,7 @@ export default function ActiveBusMenuPage() {
           title="Menú del Bus"
           leftIcon={<RiArrowLeftLine size={24} />}
           onLeftIconClick={() => router.push('/perfil/mis-buses', 'back')}
+          onRefresh={() => loadBus()}
         />
 
         <div
