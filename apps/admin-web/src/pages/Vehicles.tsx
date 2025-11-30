@@ -823,6 +823,11 @@ export default function VehiclesPage() {
         type: 'text',
       },
       {
+        label: 'Ocupación Actual',
+        value: `${vehicle.passenger_count || 0}/${vehicle.capacity} pasajeros`,
+        type: 'text',
+      },
+      {
         label: 'Estado',
         value: statusText,
         type: 'status',
