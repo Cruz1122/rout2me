@@ -10,12 +10,17 @@ export type VehicleStatus =
   | 'MAINTENANCE'
   | 'OUT_OF_SERVICE';
 
+export type VehicleType = 'BUS' | 'BUSETA' | 'MICROBUS';
+
 export type Vehicle = {
   id: string;
+  company_name?: string;
   company_id: string;
   plate: string;
   capacity: number;
   status: VehicleStatus;
+  type?: VehicleType;
+  has_ramp?: boolean;
   created_at: string;
   last_maintenance?: string;
   passenger_count: number;
@@ -34,6 +39,17 @@ export type VehicleCreate = {
   plate: string;
   capacity: number;
   status: VehicleStatus;
+  type: VehicleType;
+  has_ramp: boolean;
+  passenger_count?: number;
+};
+
+export type VehicleUpdate = {
+  capacity: number;
+  status: VehicleStatus;
+  type: VehicleType;
+  has_ramp: boolean;
+  last_maintenance?: string;
 };
 
 export type Company = {
@@ -142,7 +158,14 @@ export async function getVehicles(): Promise<Vehicle[]> {
       bus_id: string;
       plate: string;
       company_id: string;
+      company_name?: string;
       status: VehicleStatus;
+      capacity: number;
+      passenger_count: number | null;
+      type: string;
+      has_ramp: boolean;
+      last_maintenance: string;
+      bus_created_at: string;
       active_trip_id: string | null;
       active_route_variant_id: string | null;
       vp_id: string | null;
@@ -152,13 +175,16 @@ export async function getVehicles(): Promise<Vehicle[]> {
       heading: number | null;
     }) => ({
       id: vehicle.bus_id,
+      company_name: vehicle.company_name,
       company_id: vehicle.company_id,
       plate: vehicle.plate,
-      capacity: 0, // No disponible en esta vista
+      capacity: vehicle.capacity,
       status: vehicle.status,
-      created_at: '', // No disponible en esta vista
-      last_maintenance: undefined,
-      passenger_count: 0, // No disponible en esta vista
+      type: vehicle.type?.toUpperCase() as VehicleType,
+      has_ramp: vehicle.has_ramp,
+      created_at: vehicle.bus_created_at,
+      last_maintenance: vehicle.last_maintenance,
+      passenger_count: vehicle.passenger_count ?? 0,
       active_trip_id: vehicle.active_trip_id,
       active_route_variant_id: vehicle.active_route_variant_id,
       vp_id: vehicle.vp_id,
@@ -216,7 +242,10 @@ export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...payload,
+      type: payload.type.toLowerCase(),
+    }),
   });
 
   if (!res.ok) {
@@ -262,6 +291,76 @@ export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
   return {
     ...vehicle,
     passenger_count: vehicle.passenger_count ?? 0,
+  };
+}
+
+// Actualizar un vehículo existente
+export async function updateVehicle(
+  id: string,
+  payload: VehicleUpdate,
+): Promise<Vehicle> {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error(
+      'No hay token de autenticación. Por favor inicia sesión nuevamente.',
+    );
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/buses?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({
+      ...payload,
+      type: payload.type.toLowerCase(),
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Update vehicle error:', errorText);
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      throw new Error(
+        `Update vehicle failed: ${errorJson.message || errorJson.code || errorText}`,
+      );
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('Update vehicle failed')) {
+        throw e;
+      }
+      throw new Error(`Update vehicle failed: ${res.status} ${errorText}`);
+    }
+  }
+
+  const vehicles = await res.json();
+  const vehicle = vehicles[0];
+
+  // Mapear la respuesta para asegurar que tenga todos los campos necesarios
+  return {
+    id: vehicle.bus_id || vehicle.id,
+    company_name: vehicle.company_name,
+    company_id: vehicle.company_id,
+    plate: vehicle.plate,
+    capacity: vehicle.capacity,
+    status: vehicle.status,
+    type: vehicle.type?.toUpperCase() as VehicleType,
+    has_ramp: vehicle.has_ramp,
+    created_at: vehicle.bus_created_at || vehicle.created_at,
+    last_maintenance: vehicle.last_maintenance,
+    passenger_count: vehicle.passenger_count ?? 0,
+    active_trip_id: vehicle.active_trip_id || null,
+    active_route_variant_id: vehicle.active_route_variant_id || null,
+    vp_id: vehicle.vp_id || null,
+    vp_at: vehicle.vp_at || null,
+    location_json: vehicle.location_json || null,
+    speed_kph: vehicle.speed_kph ?? null,
+    heading: vehicle.heading ?? null,
   };
 }
 

@@ -66,15 +66,40 @@ export default function LiveFleet() {
     }
   }, []);
 
-  // Función para obtener el porcentaje de capacidad
-  const getVehicleCapacityLevel = (): number => {
-    return 0;
+  // Renderizado del item de vehículo para el componente reutilizable
+  // Función para calcular el porcentaje de ocupación
+  const getOccupancyPercentage = (vehicle: Vehicle): number => {
+    if (!vehicle.capacity || vehicle.capacity === 0) return 0;
+    const passengerCount = vehicle.passenger_count || 0;
+    return Math.round((passengerCount / vehicle.capacity) * 100);
   };
 
-  // Renderizado del item de vehículo para el componente reutilizable
+  // Función para obtener el color según el porcentaje
+  const getOccupancyColor = (
+    percentage: number,
+  ): { bg: string; text: string; bar: string } => {
+    if (percentage >= 80) {
+      return { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' };
+    } else if (percentage >= 50) {
+      return {
+        bg: 'bg-yellow-100',
+        text: 'text-yellow-700',
+        bar: 'bg-yellow-500',
+      };
+    } else {
+      return {
+        bg: 'bg-green-100',
+        text: 'text-green-700',
+        bar: 'bg-green-500',
+      };
+    }
+  };
+
   const renderVehicleItem = (vehicle: Vehicle, isSelected: boolean) => {
     const position = busPositions.find((pos) => pos.bus_id === vehicle.id);
     const hasPosition = position?.location_json;
+    const occupancyPercentage = getOccupancyPercentage(vehicle);
+    const occupancyColors = getOccupancyColor(occupancyPercentage);
 
     return (
       <div
@@ -87,11 +112,11 @@ export default function LiveFleet() {
                 : 'bg-white hover:bg-gray-50'
           }`}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-1">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-[#f0f2f4] text-[#111317]">
             <RiBusFill size={24} />
           </div>
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center flex-1 min-w-0">
             <p className="line-clamp-1 text-base font-medium leading-normal text-[#111317]">
               {vehicle.plate}
             </p>
@@ -105,10 +130,18 @@ export default function LiveFleet() {
             )}
           </div>
         </div>
-        <div className="shrink-0">
-          <p className="text-base font-normal leading-normal text-[#111317]">
-            {getVehicleCapacityLevel()}%
-          </p>
+        <div className="shrink-0 flex flex-col items-end gap-1 min-w-[80px]">
+          <div className={`px-2 py-0.5 rounded-full ${occupancyColors.bg}`}>
+            <p className={`text-sm font-semibold ${occupancyColors.text}`}>
+              {occupancyPercentage}%
+            </p>
+          </div>
+          <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className={`h-full ${occupancyColors.bar} transition-all duration-300`}
+              style={{ width: `${occupancyPercentage}%` }}
+            />
+          </div>
         </div>
       </div>
     );
@@ -906,6 +939,32 @@ export default function LiveFleet() {
               backgroundColor: '#e5e7eb',
             }}
           >
+            {/* Mensaje cuando no hay datos */}
+            {!loading && busPositions.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-xl z-20">
+                <div className="text-center p-8">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="64"
+                    height="64"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                    className="mx-auto mb-4 text-gray-400"
+                  >
+                    <path d="M247.42,117l-14-35A15.93,15.93,0,0,0,218.58,72H184V64a8,8,0,0,0-8-8H24A16,16,0,0,0,8,72V184a16,16,0,0,0,16,16H41a32,32,0,0,0,62,0h50a32,32,0,0,0,62,0h17a16,16,0,0,0,16-16V120A7.94,7.94,0,0,0,247.42,117ZM184,88h34.58l9.6,24H184ZM24,72H168v64H24ZM72,208a16,16,0,1,1,16-16A16,16,0,0,1,72,208Zm81-24H103a32,32,0,0,0-62,0H24V152H168v12.31A32.11,32.11,0,0,0,153,184Zm31,24a16,16,0,1,1,16-16A16,16,0,0,1,184,208Zm48-24H215a32.06,32.06,0,0,0-31-24V128h48Z" />
+                  </svg>
+                  <h3 className="text-[#111317] text-lg font-bold mb-2">
+                    No hay vehículos disponibles
+                  </h3>
+                  <p className="text-[#60758a] text-sm max-w-md">
+                    No se encontraron buses activos en tu organización. Los
+                    vehículos aparecerán aquí cuando estén operando con GPS
+                    activo.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Controles del Mapa */}
             <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
               {/* Zoom Controls */}

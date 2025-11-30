@@ -490,14 +490,15 @@ export default function HomePage() {
   useEffect(() => {
     if (!mapInstance.current || routeLayersIds.current.size === 0) return;
 
-    // Obtener el company_id del bus seleccionado
-    let selectedBusCompanyId: string | null = null;
+    // Obtener el active_route_variant_id del bus seleccionado
+    let selectedBusRouteVariantId: string | null = null;
     if (selectedBusId) {
       const selectedBusPosition = busPositions.find(
         (pos) => pos.bus_id === selectedBusId,
       );
       if (selectedBusPosition) {
-        selectedBusCompanyId = selectedBusPosition.company_id;
+        selectedBusRouteVariantId =
+          selectedBusPosition.active_route_variant_id || null;
       }
     }
 
@@ -505,14 +506,14 @@ export default function HomePage() {
     routeLayersIds.current.forEach((layerId) => {
       if (!mapInstance.current!.getLayer(layerId)) return;
 
-      // Extraer el companyId del layerId (formato: route-{variant_id}-company-{companyId})
-      const companyId = layerId.split('-company-')[1];
+      // Extraer el variant_id del layerId (formato: route-{variant_id}-company-{companyId})
+      const variantId = layerId.split('-company-')[0].replace('route-', '');
 
       // Determinar opacidad
       // Si no hay bus seleccionado, todas las rutas al 70%
-      // Si hay bus seleccionado, resaltar solo la ruta de su compañía
-      const isCompanySelected = selectedBusCompanyId === companyId;
-      const opacity = selectedBusId === null || isCompanySelected ? 0.7 : 0.2;
+      // Si hay bus seleccionado, resaltar solo la ruta específica del bus
+      const isRouteSelected = selectedBusRouteVariantId === variantId;
+      const opacity = selectedBusId === null || isRouteSelected ? 0.7 : 0.2;
 
       // Actualizar opacidad
       mapInstance.current!.setPaintProperty(layerId, 'line-opacity', opacity);
@@ -1045,6 +1046,36 @@ export default function HomePage() {
               {!mapReady && (
                 <div className="absolute inset-0 rounded-xl overflow-hidden">
                   <GlobalLoader />
+                </div>
+              )}
+
+              {/* Mensaje cuando no hay datos */}
+              {mapReady && busPositions.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-xl">
+                  <div className="text-center p-8">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="64"
+                      height="64"
+                      fill="currentColor"
+                      viewBox="0 0 256 256"
+                      className="mx-auto mb-4 text-gray-400"
+                    >
+                      <path d="M247.42,117l-14-35A15.93,15.93,0,0,0,218.58,72H184V64a8,8,0,0,0-8-8H24A16,16,0,0,0,8,72V184a16,16,0,0,0,16,16H41a32,32,0,0,0,62,0h50a32,32,0,0,0,62,0h17a16,16,0,0,0,16-16V120A7.94,7.94,0,0,0,247.42,117ZM184,88h34.58l9.6,24H184ZM24,72H168v64H24ZM72,208a16,16,0,1,1,16-16A16,16,0,0,1,72,208Zm81-24H103a32,32,0,0,0-62,0H24V152H168v12.31A32.11,32.11,0,0,0,153,184Zm31,24a16,16,0,1,1,16-16A16,16,0,0,1,184,208Zm48-24H215a32.06,32.06,0,0,0-31-24V128h48Z" />
+                    </svg>
+                    <h3
+                      className={`${colorClasses.textPrimary} text-lg font-bold mb-2`}
+                    >
+                      No hay vehículos en tiempo real
+                    </h3>
+                    <p
+                      className={`${colorClasses.textSecondary} text-sm max-w-md`}
+                    >
+                      No se encontraron buses activos con posiciones GPS
+                      disponibles. Los vehículos aparecerán aquí cuando estén en
+                      movimiento.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
