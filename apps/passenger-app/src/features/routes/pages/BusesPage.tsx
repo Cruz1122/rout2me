@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   IonContent,
   IonPage,
@@ -23,6 +23,7 @@ import {
   type BusServiceError,
   type CompanyInfo,
 } from '../services/busService';
+import { useBusRealtime } from '../hooks/useBusRealtime';
 import { generateRouteColor } from '../services/routeService';
 import FilterSwitcher, {
   type FilterOption,
@@ -104,6 +105,50 @@ export default function BusesPage() {
     loadBuses();
   }, []);
 
+  // Callback para manejar actualizaciones en tiempo real de buses
+  const handleBusUpdate = useCallback((updatedBus: Bus) => {
+    console.log('[BusesPage] Bus actualizado en tiempo real:', updatedBus.id);
+
+    // Actualizar el bus en el estado local
+    setBuses((prevBuses) => {
+      const busIndex = prevBuses.findIndex((b) => b.id === updatedBus.id);
+
+      if (busIndex === -1) {
+        // Si el bus no existe, agregarlo (por si acaso)
+        console.log(
+          '[BusesPage] Bus no encontrado en lista, agregando:',
+          updatedBus.id,
+        );
+        return [...prevBuses, updatedBus];
+      }
+
+      // Reemplazar el bus actualizado
+      const newBuses = [...prevBuses];
+      newBuses[busIndex] = updatedBus;
+      return newBuses;
+    });
+
+    // Actualizar el bus seleccionado si es el mismo
+    setSelectedBus((prevSelectedBus) => {
+      if (prevSelectedBus && prevSelectedBus.id === updatedBus.id) {
+        console.log('[BusesPage] Actualizando bus en modal:', updatedBus.id);
+        return updatedBus;
+      }
+      return prevSelectedBus;
+    });
+  }, []);
+
+  // Hook para suscripciones en tiempo real de buses
+  useBusRealtime({
+    onBusUpdate: handleBusUpdate,
+    onError: (error) => {
+      console.error(
+        '[BusesPage] Error en suscripción Realtime de buses:',
+        error,
+      );
+    },
+  });
+
   const handleRetry = () => {
     loadBuses();
   };
@@ -124,14 +169,27 @@ export default function BusesPage() {
     setIsNavigating(true);
 
     try {
+      // Determinar el ID de la ruta a usar
+      // Si tiene activeRouteVariantId, usarlo (ese es el ID de la ruta/variante)
+      // Si no, usar el routeNumber como código para buscar la ruta
+      const routeId =
+        selectedBus.activeRouteVariantId || selectedBus.routeNumber;
+
       // Navegar a HomePage con el bus seleccionado
       const busData = {
-        id: selectedBus.activeRouteVariantId || selectedBus.routeNumber,
+        id: routeId,
         code: selectedBus.routeNumber,
         name: selectedBus.routeName,
         busId: selectedBus.id,
         busLocation: selectedBus.location,
       };
+
+      console.log('[BusesPage] Navegando a mapa con bus:', {
+        busId: selectedBus.id,
+        routeId,
+        routeCode: selectedBus.routeNumber,
+        hasLocation: !!selectedBus.location,
+      });
 
       // Guardar en el estado global para que HomePage pueda acceder
       (globalThis as { busData?: typeof busData }).busData = busData;
@@ -143,7 +201,7 @@ export default function BusesPage() {
       // El loader se mantendrá hasta que HomePage complete el procesamiento
       await router.push('/inicio', 'forward', 'push');
     } catch (error) {
-      console.error('Error navigating to map:', error);
+      console.error('[BusesPage] Error navigating to map:', error);
       setIsNavigating(false);
     }
   };
@@ -687,10 +745,12 @@ function BusDetailModal({
   };
 
   // Verificar si el bus puede ser visto en el mapa
+  // Solo necesitamos que tenga ubicación y que no esté offline
+  // El routeId se puede obtener de activeRouteVariantId o buscar por código
   const canViewOnMap =
-    bus.status === 'active' &&
-    bus.activeRouteVariantId !== null &&
-    bus.location !== null;
+    bus.status !== 'offline' &&
+    bus.location !== null &&
+    (bus.activeRouteVariantId !== null || bus.routeNumber !== 'N/A');
 
   return (
     <R2MModal

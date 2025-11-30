@@ -21,6 +21,7 @@ import useErrorNotification from '../hooks/useErrorNotification';
 import { useMapResize } from '../../../shared/hooks/useMapResize';
 import { useRouteDrawing } from '../../routes/hooks/useRouteDrawing';
 import { useBusMapping } from '../../routes/hooks/useBusMapping';
+import { useBusRealtime } from '../../routes/hooks/useBusRealtime';
 import { useUserLocationMarker } from '../hooks/useUserLocationMarker';
 import { useMapInitialization } from '../hooks/useMapInitialization';
 import { useMapEventHandlers } from '../hooks/useMapEventHandlers';
@@ -135,9 +136,16 @@ export default function HomePage() {
     onStopClick: handleStopClick,
     onEndpointClick: handleEndpointClick,
   });
-  const { addBusesToMap, clearAllBuses } = useBusMapping(mapInstance, {
-    onBusClick: handleBusClick,
-  });
+  const { addBusesToMap, clearAllBuses, updateBusOnMap } = useBusMapping(
+    mapInstance,
+    {
+      onBusClick: handleBusClick,
+    },
+  );
+
+  // Cache de buses para actualizaciones en tiempo real
+  const busesCacheRef = useRef<Map<string, Bus>>(new Map());
+  const busesOnMapRef = useRef<Set<string>>(new Set());
 
   // Función para cargar buses de una ruta específica
   const loadBusesForRoute = useCallback(
@@ -146,8 +154,29 @@ export default function HomePage() {
         // Cargar todos los buses
         const allBuses = await fetchBuses();
 
+        // Actualizar cache de buses y usar datos del cache si están más actualizados
+        allBuses.forEach((bus) => {
+          const cachedBus = busesCacheRef.current.get(bus.id);
+          // Si hay un bus en cache, preferir el cache (puede tener datos más recientes de Realtime)
+          // Pero si el bus recién cargado tiene una timestamp más reciente, usar ese
+          busesCacheRef.current.set(bus.id, bus);
+        });
+
         // Filtrar buses que pertenecen a esta variante de ruta
-        const routeBuses = getBusesByRouteVariant(allBuses, routeVariantId);
+        let routeBuses = getBusesByRouteVariant(allBuses, routeVariantId);
+
+        // Si algún bus en el cache es más reciente y pertenece a la ruta, usarlo
+        routeBuses = routeBuses.map((bus) => {
+          const cachedBus = busesCacheRef.current.get(bus.id);
+          // Usar el bus del cache si existe (puede tener actualizaciones de Realtime)
+          return cachedBus || bus;
+        });
+
+        // Actualizar conjunto de buses visibles en el mapa
+        busesOnMapRef.current.clear();
+        routeBuses.forEach((bus) => {
+          busesOnMapRef.current.add(bus.id);
+        });
 
         // Mostrar buses en el mapa con el bus destacado si se especifica
         addBusesToMap(routeBuses, highlightedBusId);
@@ -157,6 +186,71 @@ export default function HomePage() {
     },
     [addBusesToMap],
   );
+
+  // Callback para manejar actualizaciones en tiempo real de buses
+  const handleBusUpdate = useCallback(
+    (updatedBus: Bus) => {
+      console.log('[HomePage] Bus actualizado en tiempo real:', updatedBus.id);
+
+      // Actualizar cache
+      busesCacheRef.current.set(updatedBus.id, updatedBus);
+
+      // Verificar si el bus está visible en el mapa
+      const isBusOnMap = busesOnMapRef.current.has(updatedBus.id);
+
+      // Si el bus está offline o no tiene ubicación, removerlo del tracking
+      if (updatedBus.status === 'offline' || !updatedBus.location) {
+        if (isBusOnMap) {
+          console.log(
+            '[HomePage] Removiendo bus del mapa (offline o sin ubicación):',
+            updatedBus.id,
+          );
+          busesOnMapRef.current.delete(updatedBus.id);
+        }
+        // updateBusOnMap manejará la remoción visual
+      }
+
+      // Si el bus está visible en el mapa, actualizarlo
+      if (isBusOnMap) {
+        console.log('[HomePage] Actualizando bus en el mapa:', updatedBus.id);
+        updateBusOnMap(updatedBus);
+      } else {
+        console.log(
+          '[HomePage] Bus no está visible en el mapa:',
+          updatedBus.id,
+        );
+      }
+
+      // Si el info card está mostrando este bus, actualizarlo también
+      setSelectedMarker((prevMarker) => {
+        if (
+          prevMarker &&
+          prevMarker.type === 'bus' &&
+          prevMarker.data.id === updatedBus.id
+        ) {
+          console.log(
+            '[HomePage] Actualizando bus en el info card:',
+            updatedBus.id,
+          );
+          return {
+            type: 'bus' as const,
+            data: updatedBus,
+          };
+        }
+        return prevMarker;
+      });
+    },
+    [updateBusOnMap],
+  );
+
+  // Hook para suscripciones en tiempo real de buses
+  useBusRealtime({
+    onBusUpdate: handleBusUpdate,
+    onError: (error) => {
+      console.error('Error en suscripción Realtime de buses:', error);
+      // No mostrar error al usuario para no interrumpir la experiencia
+    },
+  });
 
   // Hook para selección de rutas
   const { handleItemSelect } = useRouteSelection({
@@ -213,6 +307,8 @@ export default function HomePage() {
     // Con animación
     await clearAllRoutes();
     await clearAllBuses();
+    // Limpiar cache de buses visibles en el mapa
+    busesOnMapRef.current.clear();
     setSelectedItem(null);
     if (currentMarker.current) {
       currentMarker.current.remove();

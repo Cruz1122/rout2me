@@ -204,6 +204,7 @@ export function useBusMapping(
   callbacks?: BusMappingCallbacks,
 ) {
   const busMarkers = useRef<Map<string, maplibregl.Marker>>(new Map());
+  const highlightedBuses = useRef<Set<string>>(new Set());
 
   const removeBusFromMap = useCallback(
     async (busId: string) => {
@@ -248,6 +249,7 @@ export function useBusMapping(
       marker.remove();
     }
     busMarkers.current.clear();
+    highlightedBuses.current.clear();
   }, [mapInstance]);
 
   const addBusToMap = useCallback(
@@ -278,6 +280,13 @@ export function useBusMapping(
       // Guardar referencia del marcador
       busMarkers.current.set(bus.id, marker);
 
+      // Guardar si está destacado
+      if (isHighlighted) {
+        highlightedBuses.current.add(bus.id);
+      } else {
+        highlightedBuses.current.delete(bus.id);
+      }
+
       // Animar fade-in del marcador
       fadeInMarker(marker);
     },
@@ -303,35 +312,124 @@ export function useBusMapping(
   );
 
   const updateBusOnMap = useCallback(
-    (bus: Bus) => {
-      if (!mapInstance.current || !bus.location) return;
+    async (bus: Bus) => {
+      if (!mapInstance.current || !bus.location) {
+        // Si el bus no tiene ubicación o está offline, removerlo del mapa
+        if (bus.status === 'offline' || !bus.location) {
+          const marker = busMarkers.current.get(bus.id);
+          if (marker) {
+            await removeBusFromMap(bus.id);
+          }
+        }
+        return;
+      }
 
       const existingMarker = busMarkers.current.get(bus.id);
       if (existingMarker) {
-        // Actualizar posición del marcador existente
-        existingMarker.setLngLat([
+        // Verificar si el bus está destacado
+        const isHighlighted = highlightedBuses.current.has(bus.id);
+
+        // Obtener la posición actual del marcador
+        const currentLngLat = existingMarker.getLngLat();
+        const newLngLat: [number, number] = [
           bus.location.longitude,
           bus.location.latitude,
-        ]);
+        ];
 
-        // Actualizar elemento visual si el estado cambió
-        const newElement = createBusMarkerElement(bus);
+        // Verificar si cambió la posición significativamente (umbral más pequeño para detectar movimientos)
+        const lngDiff = Math.abs(currentLngLat.lng - newLngLat[0]);
+        const latDiff = Math.abs(currentLngLat.lat - newLngLat[1]);
+        const positionChanged = lngDiff > 0.00001 || latDiff > 0.00001; // Umbral más pequeño (aprox. 1 metro)
 
-        // Agregar event listener para clic en el marcador actualizado
-        newElement.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (callbacks?.onBusClick) {
-            callbacks.onBusClick(bus);
-          }
+        console.log(`[useBusMapping] Comparando posición para bus ${bus.id}:`, {
+          current: { lng: currentLngLat.lng, lat: currentLngLat.lat },
+          new: { lng: newLngLat[0], lat: newLngLat[1] },
+          diffs: { lng: lngDiff, lat: latDiff },
+          positionChanged,
         });
 
-        existingMarker.getElement().replaceWith(newElement);
+        // Obtener el elemento actual para verificar si necesita actualización visual
+        const currentElement = existingMarker.getElement();
+        const currentContainer = currentElement.querySelector(
+          'div',
+        ) as HTMLElement;
+        const currentBorder = currentContainer?.style.border || '';
+        const occupancyColor = getOccupancyColor(bus.occupancy);
+        const expectedBorder = `${isHighlighted ? '4px' : '3px'} solid ${occupancyColor}`;
+        const needsVisualUpdate = currentBorder !== expectedBorder;
+
+        // Si solo cambió la posición (no el visual), actualizar directamente (más eficiente)
+        if (positionChanged && !needsVisualUpdate) {
+          // Actualizar posición directamente sin recrear el marcador
+          existingMarker.setLngLat(newLngLat);
+          console.log(
+            `[useBusMapping] Posición actualizada directamente para bus ${bus.id}:`,
+            {
+              oldPosition: { lng: currentLngLat.lng, lat: currentLngLat.lat },
+              newPosition: { lng: newLngLat[0], lat: newLngLat[1] },
+            },
+          );
+        }
+        // Si cambió el visual (con o sin cambio de posición), recrear el marcador
+        else if (needsVisualUpdate || positionChanged) {
+          // Fade-out del marcador actual
+          await fadeOutMarker(existingMarker);
+
+          // Remover el marcador viejo
+          existingMarker.remove();
+          busMarkers.current.delete(bus.id);
+
+          // Crear nuevo elemento con los datos actualizados (opacidad inicial 0)
+          const newElement = createBusMarkerElement(bus, isHighlighted, 0);
+
+          // Agregar event listener para clic en el marcador
+          newElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (callbacks?.onBusClick) {
+              callbacks.onBusClick(bus);
+            }
+          });
+
+          // Crear nuevo marcador en la nueva posición
+          const newMarker = new maplibregl.Marker({
+            element: newElement,
+            anchor: 'center',
+          })
+            .setLngLat(newLngLat)
+            .addTo(mapInstance.current);
+
+          // Guardar referencia del nuevo marcador
+          busMarkers.current.set(bus.id, newMarker);
+
+          // Pequeño delay para asegurar que el DOM se actualice
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Fade-in del marcador actualizado
+          fadeInMarker(newMarker);
+
+          console.log(`[useBusMapping] Marcador recreado para bus ${bus.id}:`, {
+            positionChanged,
+            needsVisualUpdate,
+            oldPosition: { lng: currentLngLat.lng, lat: currentLngLat.lat },
+            newPosition: { lng: newLngLat[0], lat: newLngLat[1] },
+            occupancy: bus.occupancy,
+            status: bus.status,
+            isHighlighted,
+          });
+        } else {
+          console.log(
+            `[useBusMapping] Marcador no necesita actualización para bus ${bus.id}`,
+          );
+        }
       } else {
         // Si no existe el marcador, crearlo
-        addBusToMap(bus);
+        console.log(
+          `[useBusMapping] Marcador no existe, creando nuevo para bus ${bus.id}`,
+        );
+        await addBusToMap(bus, false);
       }
     },
-    [mapInstance, addBusToMap, callbacks],
+    [mapInstance, addBusToMap, callbacks, removeBusFromMap],
   );
 
   return {

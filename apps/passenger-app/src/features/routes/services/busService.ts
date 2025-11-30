@@ -133,6 +133,41 @@ export async function fetchBuses(): Promise<Bus[]> {
 }
 
 /**
+ * Obtiene un bus específico por su ID desde la vista v_bus_latest_positions
+ */
+export async function fetchBusById(busId: string): Promise<Bus | null> {
+  try {
+    const response = await fetch(
+      `${API_REST_URL}/v_bus_latest_positions?bus_id=eq.${encodeURIComponent(busId)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SERVICE_ROLE_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const apiBuses: ApiBusLatestPosition[] = await response.json();
+
+    if (!apiBuses || apiBuses.length === 0) {
+      return null;
+    }
+
+    // Transformar el primer (y único) bus al formato esperado por la UI
+    return await transformApiBusToBus(apiBuses[0]);
+  } catch (error) {
+    console.error(`Error fetching bus ${busId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Transforma un bus de la API al formato esperado por la UI
  */
 async function transformApiBusToBus(

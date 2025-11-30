@@ -64,16 +64,31 @@ export function BusHandler({
 
     const processBusFromNavigation = async () => {
       try {
+        console.log(
+          '[BusHandler] Procesando bus desde navegación:',
+          busFromNavigation,
+        );
         let routeVariantId = busFromNavigation.id;
         let routeExistsInMap = false;
 
         try {
           const routes = await fetchAllRoutesData();
+          console.log('[BusHandler] Rutas cargadas:', routes.length);
 
           let route = routes.find((r) => r.id === busFromNavigation.id);
+          console.log(
+            '[BusHandler] Buscando ruta por ID:',
+            busFromNavigation.id,
+            route ? 'encontrada' : 'no encontrada',
+          );
 
           if (!route) {
             route = routes.find((r) => r.code === busFromNavigation.code);
+            console.log(
+              '[BusHandler] Buscando ruta por código:',
+              busFromNavigation.code,
+              route ? 'encontrada' : 'no encontrada',
+            );
           }
 
           if (!route) {
@@ -82,6 +97,10 @@ export function BusHandler({
             );
             if (routesWithSameCode.length > 0) {
               route = routesWithSameCode[0];
+              console.log(
+                '[BusHandler] Usando primera ruta con código:',
+                busFromNavigation.code,
+              );
             }
           }
 
@@ -166,13 +185,36 @@ export function BusHandler({
                 setSelectedItem(searchItem);
               }
               routeVariantId = route.id;
+              console.log(
+                '[BusHandler] Ruta encontrada, variantId:',
+                routeVariantId,
+              );
+            } else {
+              console.warn(
+                '[BusHandler] Ruta encontrada pero sin path:',
+                route,
+              );
             }
+          } else {
+            console.warn('[BusHandler] No se encontró ruta para:', {
+              id: busFromNavigation.id,
+              code: busFromNavigation.code,
+            });
           }
-        } catch {
-          // Error silencioso
+        } catch (error) {
+          console.error('[BusHandler] Error al buscar ruta:', error);
         }
 
-        await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
+        // Intentar cargar buses incluso si no se encontró la ruta
+        // Si no hay routeVariantId válido, aún podemos centrar en la ubicación del bus
+        if (routeVariantId && routeVariantId !== busFromNavigation.code) {
+          console.log('[BusHandler] Cargando buses para ruta:', routeVariantId);
+          await loadBusesForRoute(routeVariantId, busFromNavigation.busId);
+        } else {
+          console.warn(
+            '[BusHandler] No se pudo determinar routeVariantId, solo centrando en ubicación del bus',
+          );
+        }
 
         setTimeout(() => {
           if (busFromNavigation.busLocation && mapInstance.current) {
