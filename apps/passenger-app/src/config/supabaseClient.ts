@@ -18,4 +18,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Configurar para manejar deep links en móvil
     flowType: 'pkce', // Usar PKCE para mejor seguridad y compatibilidad con móvil
   },
+  // Configuración de Realtime: el transporte se configura a nivel del canal
+  // Las opciones globales se configuran en el canal mismo
 });

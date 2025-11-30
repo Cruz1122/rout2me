@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '../../../config/supabaseClient';
 import { fetchBusById } from '../services/busService';
 import type { Bus } from '../services/busService';
+import { isAndroid } from '../../../shared/utils/platform';
 
 export interface UseBusRealtimeOptions {
   /**
@@ -24,21 +25,40 @@ export interface UseBusRealtimeOptions {
 /**
  * Hook para suscribirse a cambios en tiempo real de buses usando Supabase Realtime
  * Escucha cambios en las tablas: buses, vehicle_positions, driver_bus_assignments
+ *
+ * NOTA: Este hook NO usa debounce - procesa todos los cambios inmediatamente.
+ * El debounce solo debe estar en componentes de conductores (ActiveBusMenuPage).
  */
 export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
   const { onBusUpdate, onError, onlyActiveBuses = false } = options;
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const updateQueueRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map(),
-  );
+  // Cola para procesar actualizaciones en orden (sin debounce - procesa inmediatamente)
+  const processingSetRef = useRef<Set<string>>(new Set());
+  const reconnectAttemptsRef = useRef(0);
+
+  // Usar refs para los callbacks para evitar recrear el canal cuando cambian
+  const onBusUpdateRef = useRef(onBusUpdate);
+  const onErrorRef = useRef(onError);
+  const onlyActiveBusesRef = useRef(onlyActiveBuses);
+
+  // Actualizar refs cuando cambian los callbacks
+  useEffect(() => {
+    onBusUpdateRef.current = onBusUpdate;
+    onErrorRef.current = onError;
+    onlyActiveBusesRef.current = onlyActiveBuses;
+  }, [onBusUpdate, onError, onlyActiveBuses]);
 
   useEffect(() => {
-    // Capturar la ref actual para usar en la función de limpieza
-    const updateQueue = updateQueueRef.current;
+    const processingSet = processingSetRef.current;
+    const platform = isAndroid() ? 'Android' : 'Web';
 
-    // Crear canal de Realtime
+    // Crear canal de Realtime con nombre único para evitar colisiones
+    const channelName = `bus-realtime-${Date.now()}`;
+    console.log(`[Realtime ${platform}] Creando canal: ${channelName}`);
+
+    // Supabase maneja automáticamente el transporte (WebSocket en Android, mejor disponible en web)
     const channel = supabase
-      .channel('bus-realtime')
+      .channel(channelName)
       // Suscribirse a cambios en la tabla buses (ocupación, status, etc.)
       .on(
         'postgres_changes',
@@ -49,12 +69,12 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
         },
         async (payload) => {
           try {
-            console.log('Cambio en buses:', payload);
-            console.log('Payload.new:', payload.new);
-            console.log('Payload.old:', payload.old);
+            console.log(
+              `[Realtime ${platform}] Cambio en buses:`,
+              payload.eventType,
+            );
 
             // Extraer bus_id del payload
-            // Intentar diferentes posibles nombres de campo
             const newRecord = payload.new as Record<string, unknown> | null;
             const oldRecord = payload.old as
               | Record<string, unknown>
@@ -66,33 +86,35 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
               (oldRecord?.id as string) ||
               (oldRecord?.bus_id as string);
 
-            console.log('[Realtime buses] Bus ID extraído:', busId);
-
             if (!busId) {
               console.warn(
-                'No se pudo extraer bus_id del payload de buses. Payload completo:',
-                JSON.stringify(payload, null, 2),
+                `[Realtime ${platform}] No se pudo extraer bus_id del payload de buses`,
               );
               return;
             }
 
-            // Debounce: cancelar actualización pendiente si existe
-            const existingTimeout = updateQueueRef.current.get(busId);
-            if (existingTimeout) {
-              clearTimeout(existingTimeout);
+            // Procesar inmediatamente sin debounce (solo para pasajeros)
+            // Evitar procesar el mismo bus simultáneamente
+            if (processingSet.has(busId)) {
+              console.log(
+                `[Realtime ${platform}] Bus ${busId} ya está siendo procesado, ignorando duplicado`,
+              );
+              return;
             }
 
-            // Programar actualización con debounce de 500ms
-            const timeout = setTimeout(async () => {
+            processingSet.add(busId);
+            try {
               await handleBusUpdate(busId);
-              updateQueueRef.current.delete(busId);
-            }, 500);
-
-            updateQueueRef.current.set(busId, timeout);
+            } finally {
+              processingSet.delete(busId);
+            }
           } catch (error) {
-            console.error('Error procesando cambio en buses:', error);
-            if (onError) {
-              onError(
+            console.error(
+              `[Realtime ${platform}] Error procesando cambio en buses:`,
+              error,
+            );
+            if (onErrorRef.current) {
+              onErrorRef.current(
                 error instanceof Error
                   ? error
                   : new Error('Error desconocido procesando cambio en buses'),
@@ -111,38 +133,39 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
         },
         async (payload) => {
           try {
-            console.log('Cambio en vehicle_positions:', payload);
+            console.log(`[Realtime ${platform}] Cambio en vehicle_positions`);
 
             // Extraer bus_id del payload
             const busId = (payload.new as { bus_id?: string })?.bus_id;
 
             if (!busId) {
               console.warn(
-                'No se pudo extraer bus_id del payload de vehicle_positions',
+                `[Realtime ${platform}] No se pudo extraer bus_id del payload de vehicle_positions`,
               );
               return;
             }
 
-            // Debounce: cancelar actualización pendiente si existe
-            const existingTimeout = updateQueueRef.current.get(busId);
-            if (existingTimeout) {
-              clearTimeout(existingTimeout);
+            // Procesar inmediatamente sin debounce
+            if (processingSet.has(busId)) {
+              console.log(
+                `[Realtime ${platform}] Bus ${busId} ya está siendo procesado, ignorando duplicado`,
+              );
+              return;
             }
 
-            // Programar actualización con debounce de 500ms
-            const timeout = setTimeout(async () => {
+            processingSet.add(busId);
+            try {
               await handleBusUpdate(busId);
-              updateQueueRef.current.delete(busId);
-            }, 500);
-
-            updateQueueRef.current.set(busId, timeout);
+            } finally {
+              processingSet.delete(busId);
+            }
           } catch (error) {
             console.error(
-              'Error procesando cambio en vehicle_positions:',
+              `[Realtime ${platform}] Error procesando cambio en vehicle_positions:`,
               error,
             );
-            if (onError) {
-              onError(
+            if (onErrorRef.current) {
+              onErrorRef.current(
                 error instanceof Error
                   ? error
                   : new Error(
@@ -163,38 +186,41 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
         },
         async (payload) => {
           try {
-            console.log('Cambio en driver_bus_assignments:', payload);
+            console.log(
+              `[Realtime ${platform}] Cambio en driver_bus_assignments`,
+            );
 
             // Extraer bus_id del payload
             const busId = (payload.new as { bus_id?: string })?.bus_id;
 
             if (!busId) {
               console.warn(
-                'No se pudo extraer bus_id del payload de driver_bus_assignments',
+                `[Realtime ${platform}] No se pudo extraer bus_id del payload de driver_bus_assignments`,
               );
               return;
             }
 
-            // Debounce: cancelar actualización pendiente si existe
-            const existingTimeout = updateQueueRef.current.get(busId);
-            if (existingTimeout) {
-              clearTimeout(existingTimeout);
+            // Procesar inmediatamente sin debounce
+            if (processingSet.has(busId)) {
+              console.log(
+                `[Realtime ${platform}] Bus ${busId} ya está siendo procesado, ignorando duplicado`,
+              );
+              return;
             }
 
-            // Programar actualización con debounce de 500ms
-            const timeout = setTimeout(async () => {
+            processingSet.add(busId);
+            try {
               await handleBusUpdate(busId);
-              updateQueueRef.current.delete(busId);
-            }, 500);
-
-            updateQueueRef.current.set(busId, timeout);
+            } finally {
+              processingSet.delete(busId);
+            }
           } catch (error) {
             console.error(
-              'Error procesando cambio en driver_bus_assignments:',
+              `[Realtime ${platform}] Error procesando cambio en driver_bus_assignments:`,
               error,
             );
-            if (onError) {
-              onError(
+            if (onErrorRef.current) {
+              onErrorRef.current(
                 error instanceof Error
                   ? error
                   : new Error(
@@ -207,12 +233,52 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Suscripción Realtime activa para buses');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Error en la suscripción Realtime de buses');
-          if (onError) {
-            onError(new Error('Error en la suscripción Realtime de buses'));
+          reconnectAttemptsRef.current = 0; // Resetear intentos de reconexión en suscripción exitosa
+          console.log(
+            `[Realtime ${platform}] ✅ Suscripción activa para buses`,
+          );
+          if (isAndroid()) {
+            console.log(
+              `[Realtime ${platform}] WebSocket conectado en Android`,
+            );
           }
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(
+            `[Realtime ${platform}] ❌ Error en la suscripción Realtime`,
+          );
+          reconnectAttemptsRef.current++;
+
+          // Intentar reconectar después de un delay
+          if (reconnectAttemptsRef.current <= 5) {
+            const delay = Math.min(reconnectAttemptsRef.current * 2000, 10000);
+            console.log(
+              `[Realtime ${platform}] Intentando reconectar en ${delay}ms (intento ${reconnectAttemptsRef.current}/5)`,
+            );
+
+            setTimeout(() => {
+              if (channelRef.current) {
+                console.log(`[Realtime ${platform}] Reconectando...`);
+                channelRef.current.subscribe();
+              }
+            }, delay);
+          } else {
+            console.error(
+              `[Realtime ${platform}] ❌ Máximo de intentos de reconexión alcanzado`,
+            );
+            if (onErrorRef.current) {
+              onErrorRef.current(
+                new Error(
+                  'Error en la suscripción Realtime de buses - reconexión fallida',
+                ),
+              );
+            }
+          }
+        } else if (status === 'TIMED_OUT') {
+          console.warn(
+            `[Realtime ${platform}] ⚠️ Timeout en suscripción Realtime`,
+          );
+        } else if (status === 'CLOSED') {
+          console.warn(`[Realtime ${platform}] ⚠️ Canal cerrado`);
         }
       });
 
@@ -220,46 +286,54 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
 
     // Función helper para manejar actualización de bus
     async function handleBusUpdate(busId: string) {
+      const platform = isAndroid() ? 'Android' : 'Web';
       try {
-        console.log(`[Realtime] Iniciando actualización del bus: ${busId}`);
+        console.log(
+          `[Realtime ${platform}] 🔄 Iniciando actualización del bus: ${busId}`,
+        );
         const updatedBus = await fetchBusById(busId);
 
         if (!updatedBus) {
           console.warn(
-            `[Realtime] No se encontró el bus ${busId} después de la actualización`,
+            `[Realtime ${platform}] ⚠️ No se encontró el bus ${busId} después de la actualización`,
           );
           return;
         }
 
-        console.log(`[Realtime] Bus obtenido exitosamente:`, {
+        console.log(`[Realtime ${platform}] ✅ Bus obtenido:`, {
           id: updatedBus.id,
           plate: updatedBus.plate,
           status: updatedBus.status,
+          currentCapacity: updatedBus.currentCapacity,
+          maxCapacity: updatedBus.maxCapacity,
         });
 
         // Si solo queremos buses activos, filtrar
-        if (onlyActiveBuses && updatedBus.status === 'offline') {
+        if (onlyActiveBusesRef.current && updatedBus.status === 'offline') {
           console.log(
-            `[Realtime] Bus ${busId} está offline, ignorando (onlyActiveBuses=true)`,
+            `[Realtime ${platform}] Bus ${busId} está offline, ignorando (onlyActiveBuses=true)`,
           );
           return;
         }
 
-        // Invocar callback si existe
-        if (onBusUpdate) {
+        // Invocar callback si existe (usar ref para obtener el callback más reciente)
+        if (onBusUpdateRef.current) {
           console.log(
-            `[Realtime] Invocando callback onBusUpdate para bus ${busId}`,
+            `[Realtime ${platform}] 📢 Invocando callback onBusUpdate para bus ${busId}`,
           );
-          onBusUpdate(updatedBus);
+          onBusUpdateRef.current(updatedBus);
         } else {
           console.warn(
-            `[Realtime] No hay callback onBusUpdate definido para bus ${busId}`,
+            `[Realtime ${platform}] ⚠️ No hay callback onBusUpdate definido para bus ${busId}`,
           );
         }
       } catch (error) {
-        console.error(`[Realtime] Error actualizando bus ${busId}:`, error);
-        if (onError) {
-          onError(
+        console.error(
+          `[Realtime ${platform}] ❌ Error actualizando bus ${busId}:`,
+          error,
+        );
+        if (onErrorRef.current) {
+          onErrorRef.current(
             error instanceof Error
               ? error
               : new Error(`Error actualizando bus ${busId}`),
@@ -268,13 +342,12 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
       }
     }
 
-    // Cleanup: limpiar suscripción y timeouts pendientes
+    // Cleanup: limpiar suscripción
     return () => {
-      // Limpiar todos los timeouts pendientes
-      updateQueue.forEach((timeout) => {
-        clearTimeout(timeout);
-      });
-      updateQueue.clear();
+      console.log(
+        `[Realtime ${isAndroid() ? 'Android' : 'Web'}] 🧹 Limpiando suscripción`,
+      );
+      processingSet.clear();
 
       // Remover suscripción
       if (channelRef.current) {
@@ -282,5 +355,6 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
         channelRef.current = null;
       }
     };
-  }, [onBusUpdate, onError, onlyActiveBuses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Array vacío: solo ejecutar una vez al montar
 }
