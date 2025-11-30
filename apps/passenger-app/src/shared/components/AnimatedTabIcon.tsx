@@ -48,7 +48,7 @@ export default function AnimatedTabIcon({
     // Observar cambios en las clases
     const observer = new MutationObserver(checkIonicActive);
     const tabButton = document.querySelector(
-      `ion-tab-button[tab="${iconName === 'home' ? 'inicio' : iconName === 'route' ? 'rutas' : iconName === 'bus' ? 'buses' : iconName === 'notification' ? 'alertas' : 'perfil'}"]`,
+      `ion-tab-button[tab="${iconName === 'home' ? 'inicio' : iconName === 'route' ? 'rutas' : iconName === 'bus' ? 'buses' : 'perfil'}"]`,
     );
     if (tabButton) {
       observer.observe(tabButton, {

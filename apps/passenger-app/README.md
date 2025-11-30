@@ -139,7 +139,29 @@ pnpm dev          # Iniciar servidor de desarrollo con HMR
 pnpm build        # Build para producción
 pnpm preview      # Vista previa del build localmente
 pnpm lint         # Ejecutar ESLint
+pnpm generate:icons # Generar iconos de la app para Android/iOS
 ```
+
+### Generación de Iconos
+
+El proyecto usa `@capacitor/assets` para generar automáticamente los iconos de la aplicación en todas las densidades necesarias para Android.
+
+**Estructura requerida:**
+```
+assets/
+└── icon.png  # Icono fuente (recomendado: 1024x1024px)
+```
+
+**Generar iconos:**
+```bash
+pnpm generate:icons
+```
+
+Este comando generará automáticamente todos los tamaños de iconos necesarios en `android/app/src/main/res/mipmap-*` y configurará los adaptive icons para Android 8.0+.
+
+**Nota:** Si encuentras errores relacionados con `sharp`, puedes intentar:
+1. Reinstalar sharp: `pnpm install --ignore-scripts=false sharp`
+2. O usar npm directamente: `npm install --ignore-scripts=false sharp` en el workspace root
 
 ## Configuración
 

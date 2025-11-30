@@ -9,6 +9,7 @@ interface R2MButtonProps {
   readonly disabled?: boolean;
   readonly loading?: boolean;
   readonly fullWidth?: boolean;
+  readonly style?: React.CSSProperties;
 }
 
 export default function R2MButton({
@@ -20,6 +21,7 @@ export default function R2MButton({
   disabled = false,
   loading = false,
   fullWidth = false,
+  style,
 }: R2MButtonProps) {
   const getClassNames = () => {
     const classes = [
@@ -46,6 +48,7 @@ export default function R2MButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={getClassNames()}
+      style={style}
     >
       {loading ? (
         <div

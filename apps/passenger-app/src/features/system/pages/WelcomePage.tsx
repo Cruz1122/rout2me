@@ -5,7 +5,10 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { RiRouteLine, RiBus2Line, RiRoadMapLine } from 'react-icons/ri';
 
 interface Stage {
-  icon: React.ComponentType<{ className?: string }> | null;
+  icon: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }> | null;
   message: string;
 }
 

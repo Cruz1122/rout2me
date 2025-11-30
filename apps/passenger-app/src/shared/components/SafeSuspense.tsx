@@ -1,5 +1,4 @@
-import { Suspense, type ComponentType, type ReactNode } from 'react';
-import { LazyExoticComponent } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import GlobalLoader from '../../features/system/components/GlobalLoader';
 import RouteErrorBoundary from './RouteErrorBoundary';
 

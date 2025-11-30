@@ -381,11 +381,18 @@ export default function EditProfilePage() {
                     >
                       {isUploadingAvatar ? (
                         <div
-                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                          className="w-4 h-4 border-2 rounded-full animate-spin"
+                          style={{
+                            borderColor: 'var(--color-on-primary)',
+                            borderTopColor: 'transparent',
+                          }}
                           aria-label="Subiendo foto"
                         />
                       ) : (
-                        <RiCamera2Line size={16} color="white" />
+                        <RiCamera2Line
+                          size={16}
+                          style={{ color: 'var(--color-on-primary)' }}
+                        />
                       )}
                     </button>
                   </button>

@@ -67,10 +67,10 @@ export default function LocationPermissionPage() {
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: '2rem',
-              boxShadow: '0 8px 24px rgba(30, 86, 160, 0.25)',
+              boxShadow: `0 8px 24px rgba(var(--color-primary-rgb), 0.25)`,
             }}
           >
-            <RiMapPinLine size={64} color="white" />
+            <RiMapPinLine size={64} color="var(--color-on-primary)" />
           </div>
 
           {/* Título */}
@@ -89,7 +89,7 @@ export default function LocationPermissionPage() {
           <p
             style={{
               fontSize: '1.1rem',
-              color: '#666',
+              color: 'var(--color-terciary)',
               marginBottom: '2rem',
               lineHeight: '1.6',
               maxWidth: '400px',
@@ -106,23 +106,21 @@ export default function LocationPermissionPage() {
                 padding: '1rem 2.5rem',
                 fontSize: '1.1rem',
                 fontWeight: '600',
-                color: 'white',
+                color: 'var(--color-on-primary)',
                 backgroundColor: 'var(--color-primary)',
                 border: 'none',
                 borderRadius: '12px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(22, 49, 114, 0.3)',
+                boxShadow: `0 4px 12px rgba(var(--color-primary-rgb), 0.3)`,
                 transition: 'all 0.3s ease',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow =
-                  '0 6px 16px rgba(22, 49, 114, 0.4)';
+                e.currentTarget.style.boxShadow = `0 6px 16px rgba(var(--color-primary-rgb), 0.4)`;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow =
-                  '0 4px 12px rgba(22, 49, 114, 0.3)';
+                e.currentTarget.style.boxShadow = `0 4px 12px rgba(var(--color-primary-rgb), 0.3)`;
               }}
             >
               Activar ubicación
@@ -148,7 +146,7 @@ export default function LocationPermissionPage() {
           <p
             style={{
               fontSize: '0.85rem',
-              color: '#999',
+              color: 'var(--color-gray-500)',
               marginTop: '2rem',
               maxWidth: '350px',
             }}
