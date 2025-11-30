@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { lazy, useEffect } from 'react';
 import {
   IonApp,
   IonLabel,
@@ -6,6 +6,7 @@ import {
   IonTabBar,
   IonTabButton,
   IonTabs,
+  useIonRouter,
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
@@ -18,6 +19,7 @@ import { useActiveTab } from './features/system/hooks/useActiveTab';
 import OAuthHandler from './features/auth/components/OAuthHandler';
 import { ThemeProvider } from './contexts/ThemeContext';
 import BackButtonHandler from './features/system/components/BackButtonHandler';
+import { checkLocationPermission } from './features/system/utils/checkLocationPermission';
 
 const HomePage = lazy(() => import('./features/system/pages/HomePage'));
 const RoutesPage = lazy(() => import('./features/routes/pages/RoutesPage'));
@@ -60,6 +62,36 @@ const LocationPermissionPage = lazy(
   () => import('./features/system/pages/LocationPermissionPage'),
 );
 const WelcomePage = lazy(() => import('./features/system/pages/WelcomePage'));
+
+/**
+ * Componente que verifica permisos de localización antes de redirigir
+ * Evita mostrar la página de permisos si ya están otorgados
+ */
+function InitialLocationCheck() {
+  const router = useIonRouter();
+
+  useEffect(() => {
+    // Verificar permisos de forma rápida
+    checkLocationPermission(true)
+      .then((hasPermission) => {
+        if (hasPermission) {
+          // Si ya tiene permisos, ir directamente a welcome
+          router.push('/welcome', 'forward', 'replace');
+        } else {
+          // Si no tiene permisos, ir a la página de permisos
+          router.push('/location-permission', 'forward', 'replace');
+        }
+      })
+      .catch((error) => {
+        console.error('Error al verificar permisos de localización:', error);
+        // En caso de error, ir a la página de permisos
+        router.push('/location-permission', 'forward', 'replace');
+      });
+  }, [router]);
+
+  // Mostrar loader mientras se verifica
+  return <GlobalLoader />;
+}
 
 function TabsWithIcons() {
   const activeTab = useActiveTab();
@@ -241,7 +273,8 @@ export default function App() {
                     return <Redirect to={`/reset-password${hash}`} />;
                   }
                 }
-                return <Redirect to="/location-permission" />;
+                // Verificar permisos antes de redirigir
+                return <InitialLocationCheck />;
               }}
             />
             <Route>

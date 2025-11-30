@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { IonContent, IonPage, useIonRouter } from '@ionic/react';
 import { RiMapPinLine } from 'react-icons/ri';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 import { useLocationPermission } from '../hooks/useLocationPermission';
+import {
+  markPermissionGranted,
+  markPermissionDenied,
+} from '../utils/checkLocationPermission';
 
 export default function LocationPermissionPage() {
   const router = useIonRouter();
@@ -15,30 +21,66 @@ export default function LocationPermissionPage() {
     }
   }, [hasPermission, isChecking, router]);
 
-  const handleRequestPermission = () => {
+  const handleRequestPermission = async () => {
     setIsRequesting(true);
 
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        console.log('Permiso de ubicación otorgado');
-        router.push('/welcome', 'forward', 'replace');
-      },
-      (error) => {
-        console.error('Error al solicitar ubicación:', error);
-        setIsRequesting(false);
+    const isNative = Capacitor.isNativePlatform();
 
-        if (error.code === 1) {
+    try {
+      if (isNative) {
+        // En Android/iOS, usar el plugin de Capacitor
+        // Primero solicitar permisos
+        const permissionResult = await Geolocation.requestPermissions();
+
+        if (permissionResult.location === 'granted') {
+          console.log('Permiso de ubicación otorgado');
+          // Marcar que los permisos fueron otorgados para futuras verificaciones
+          markPermissionGranted();
+          router.push('/welcome', 'forward', 'replace');
+        } else {
+          // Permiso denegado
+          markPermissionDenied();
+          setIsRequesting(false);
           alert(
-            'Por favor, permite el acceso a tu ubicación en la configuración de tu navegador para usar la aplicación.',
+            'Por favor, permite el acceso a tu ubicación en la configuración de tu dispositivo para usar la aplicación.',
           );
         }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      },
-    );
+      } else {
+        // En web, usar la API del navegador
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            console.log('Permiso de ubicación otorgado');
+            // Marcar que los permisos fueron otorgados para futuras verificaciones
+            markPermissionGranted();
+            router.push('/welcome', 'forward', 'replace');
+          },
+          (error) => {
+            console.error('Error al solicitar ubicación:', error);
+            setIsRequesting(false);
+
+            if (error.code === 1) {
+              // PERMISSION_DENIED - marcar como denegado
+              markPermissionDenied();
+              alert(
+                'Por favor, permite el acceso a tu ubicación en la configuración de tu navegador para usar la aplicación.',
+              );
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          },
+        );
+      }
+    } catch (error) {
+      console.error('Error al solicitar permisos:', error);
+      setIsRequesting(false);
+      markPermissionDenied();
+      alert(
+        'Error al solicitar permisos de ubicación. Por favor, verifica la configuración de tu dispositivo.',
+      );
+    }
   };
 
   return (

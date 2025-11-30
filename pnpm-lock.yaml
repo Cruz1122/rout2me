@@ -132,6 +132,9 @@ importers:
       '@capacitor/core':
         specifier: ^7.4.4
         version: 7.4.4
+      '@capacitor/geolocation':
+        specifier: ^7.1.6
+        version: 7.1.6(@capacitor/core@7.4.4)
       '@ionic/react':
         specifier: ^8.7.5
         version: 8.7.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -395,6 +398,14 @@ packages:
 
   '@capacitor/core@7.4.4':
     resolution: {integrity: sha512-xzjxpr+d2zwTpCaN0k+C6wKSZzWFAb9OVEUtmO72ihjr/NEDoLvsGl4WLfjWPcCO2zOy0b2X52tfRWjECFUjtw==}
+
+  '@capacitor/geolocation@7.1.6':
+    resolution: {integrity: sha512-K+SXF8X01sEyCLb1ITqir5Gi3qMNnua7TMdxKmxYBAJATUGoHzJQ0itslkoP4HM6JZac+f8lTpRl1RMWKErRIg==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+
+  '@capacitor/synapse@1.0.4':
+    resolution: {integrity: sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -4315,6 +4326,13 @@ snapshots:
   '@capacitor/core@7.4.4':
     dependencies:
       tslib: 2.8.1
+
+  '@capacitor/geolocation@7.1.6(@capacitor/core@7.4.4)':
+    dependencies:
+      '@capacitor/core': 7.4.4
+      '@capacitor/synapse': 1.0.4
+
+  '@capacitor/synapse@1.0.4': {}
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
