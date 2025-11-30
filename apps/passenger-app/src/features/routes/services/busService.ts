@@ -3,6 +3,9 @@ export interface ApiBusLatestPosition {
   bus_id: string;
   plate: string;
   company_id: string;
+  company_name: string;
+  company_short_name: string;
+  company_org_key: string;
   status: 'AVAILABLE' | 'IN_SERVICE' | 'OUT_OF_SERVICE' | 'MAINTENANCE';
   active_trip_id: string | null;
   active_route_variant_id: string | null;
@@ -29,6 +32,14 @@ export interface RouteInfo {
   name: string;
 }
 
+// Tipo para información de empresa
+export interface CompanyInfo {
+  id: string;
+  name: string;
+  shortName: string;
+  orgKey: string;
+}
+
 // Tipo para el bus transformado para la UI
 export interface Bus {
   id: string;
@@ -45,6 +56,7 @@ export interface Bus {
   activeRouteVariantId: string | null;
   hasRamp: boolean;
   type: 'bus' | 'buseta' | 'microbus';
+  company: CompanyInfo;
 }
 
 const API_REST_URL = import.meta.env.VITE_BACKEND_REST_URL;
@@ -182,6 +194,12 @@ async function transformApiBusToBus(
     activeRouteVariantId: apiBus.active_route_variant_id,
     hasRamp: apiBus.has_ramp,
     type: apiBus.type,
+    company: {
+      id: apiBus.company_id,
+      name: apiBus.company_name,
+      shortName: apiBus.company_short_name,
+      orgKey: apiBus.company_org_key,
+    },
   };
 }
 

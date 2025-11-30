@@ -15,16 +15,19 @@ import {
   RiGridFill,
   RiMapPinLine,
   RiErrorWarningLine,
+  RiBuilding2Line,
 } from 'react-icons/ri';
 import {
   type Bus,
   fetchBuses,
   type BusServiceError,
+  type CompanyInfo,
 } from '../services/busService';
 import { generateRouteColor } from '../services/routeService';
 import FilterSwitcher, {
   type FilterOption,
 } from '../components/FilterSwitcher';
+import CompanyFilter from '../components/CompanyFilter';
 import {
   getDistanceBetweenLocations,
   formatDistance,
@@ -72,6 +75,9 @@ export default function BusesPage() {
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
   const [showBusModal, setShowBusModal] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null,
+  );
   const userLocation = useUserLocation();
 
   // Resetear el estado de navegación cuando se vuelve a la página
@@ -142,8 +148,26 @@ export default function BusesPage() {
     }
   };
 
+  // Extraer lista única de empresas y ordenarlas alfabéticamente
+  const companies = buses
+    .reduce((acc, bus) => {
+      const existingCompany = acc.find((c) => c.id === bus.company.id);
+      if (!existingCompany) {
+        acc.push(bus.company);
+      }
+      return acc;
+    }, [] as CompanyInfo[])
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const getFilteredBuses = (): Bus[] => {
     let filteredBuses = buses;
+
+    // Aplicar filtro por empresa
+    if (selectedCompanyId) {
+      filteredBuses = filteredBuses.filter(
+        (bus) => bus.company.id === selectedCompanyId,
+      );
+    }
 
     // Aplicar filtro de categoría (no excluyentes)
     if (activeFilter === 'active') {
@@ -156,11 +180,14 @@ export default function BusesPage() {
 
     // Aplicar filtro de búsqueda
     if (searchQuery.trim()) {
+      const queryLower = searchQuery.toLowerCase();
       filteredBuses = filteredBuses.filter(
         (bus) =>
-          bus.routeNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          bus.routeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          bus.plate?.toLowerCase().includes(searchQuery.toLowerCase()),
+          bus.routeNumber.toLowerCase().includes(queryLower) ||
+          bus.routeName.toLowerCase().includes(queryLower) ||
+          bus.plate?.toLowerCase().includes(queryLower) ||
+          bus.company.name.toLowerCase().includes(queryLower) ||
+          bus.company.shortName.toLowerCase().includes(queryLower),
       );
     }
 
@@ -269,12 +296,23 @@ export default function BusesPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                placeholder="Buscar bus por ruta o placa..."
+                placeholder="Buscar bus por ruta, placa o empresa..."
                 className="w-full h-12 pl-12 pr-4 bg-transparent focus:outline-none"
                 style={{ color: 'var(--color-text)' }}
               />
             </div>
           </div>
+
+          {/* Filtro por empresa */}
+          {companies.length > 0 && (
+            <div className="mb-3">
+              <CompanyFilter
+                companies={companies}
+                selectedCompanyId={selectedCompanyId}
+                onCompanyChange={setSelectedCompanyId}
+              />
+            </div>
+          )}
 
           {/* Filtros tipo switch con iconos animados */}
           <FilterSwitcher
@@ -481,6 +519,19 @@ function BusCard({ bus, userLocation, onClick }: BusCardProps) {
                   {bus.routeName}
                 </span>
               )}
+              {/* Nombre de la empresa */}
+              <div className="flex items-center gap-1 mt-1">
+                <RiBuilding2Line
+                  size={12}
+                  style={{ color: 'var(--color-terciary)', flexShrink: 0 }}
+                />
+                <span
+                  className="text-xs truncate"
+                  style={{ color: 'var(--color-terciary)' }}
+                >
+                  {bus.company.name}
+                </span>
+              </div>
             </div>
             <span
               className="text-xs font-medium px-2 py-1 rounded flex-shrink-0"
@@ -748,6 +799,18 @@ function BusDetailModal({
             ? `$${fare.toLocaleString('es-CO')} COP`
             : 'No disponible'}
         </span>
+      </div>
+
+      {/* Empresa */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Empresa</span>
+        <div className="flex items-center gap-2">
+          <RiBuilding2Line
+            size={16}
+            style={{ color: 'var(--color-primary)' }}
+          />
+          <span className="text-sm font-semibold">{bus.company.name}</span>
+        </div>
       </div>
     </R2MModal>
   );
