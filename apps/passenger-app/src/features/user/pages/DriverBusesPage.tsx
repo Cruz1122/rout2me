@@ -226,9 +226,22 @@ export default function DriverBusesPage() {
                       <div className="flex items-center gap-3 mb-3">
                         <div
                           className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: 'var(--color-primary)' }}
+                          style={{
+                            backgroundColor:
+                              theme === 'dark'
+                                ? 'rgba(229, 231, 235, 0.15)'
+                                : 'var(--color-primary)',
+                          }}
                         >
-                          <RiBusLine size={24} style={{ color: '#FFFFFF' }} />
+                          <RiBusLine
+                            size={24}
+                            style={{
+                              color:
+                                theme === 'dark'
+                                  ? 'var(--color-primary)'
+                                  : '#FFFFFF',
+                            }}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3

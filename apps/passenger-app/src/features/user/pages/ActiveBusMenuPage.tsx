@@ -375,7 +375,7 @@ export default function ActiveBusMenuPage() {
             style={{
               background:
                 theme === 'dark'
-                  ? 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)'
+                  ? 'linear-gradient(135deg, rgba(229, 231, 235, 0.15) 0%, rgba(163, 163, 163, 0.2) 100%)'
                   : 'linear-gradient(135deg, #163172 0%, #1E56A0 100%)',
               padding: '20px 24px',
               minHeight: '45%',
@@ -387,11 +387,20 @@ export default function ActiveBusMenuPage() {
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    backgroundColor:
+                      theme === 'dark'
+                        ? 'rgba(229, 231, 235, 0.25)'
+                        : 'rgba(255, 255, 255, 0.2)',
                     backdropFilter: 'blur(10px)',
                   }}
                 >
-                  <RiBusLine size={24} style={{ color: '#FFFFFF' }} />
+                  <RiBusLine
+                    size={24}
+                    style={{
+                      color:
+                        theme === 'dark' ? 'var(--color-primary)' : '#FFFFFF',
+                    }}
+                  />
                 </div>
                 <div>
                   <h2
@@ -411,8 +420,11 @@ export default function ActiveBusMenuPage() {
               <div
                 className="px-3 py-1.5 rounded-full text-xs font-semibold"
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.25)',
-                  color: '#FFFFFF',
+                  backgroundColor:
+                    theme === 'dark'
+                      ? 'rgba(229, 231, 235, 0.25)'
+                      : 'rgba(255, 255, 255, 0.25)',
+                  color: theme === 'dark' ? 'var(--color-primary)' : '#FFFFFF',
                   backdropFilter: 'blur(10px)',
                 }}
               >
@@ -424,15 +436,20 @@ export default function ActiveBusMenuPage() {
             <div className="text-center flex-1 flex flex-col justify-center -mt-8">
               <p
                 className="text-sm font-medium mb-3 opacity-90"
-                style={{ color: '#FFFFFF' }}
+                style={{
+                  color: theme === 'dark' ? 'var(--color-text)' : '#FFFFFF',
+                }}
               >
                 Pasajeros a bordo
               </p>
               <div
                 className="text-9xl font-black mb-2 leading-none"
                 style={{
-                  color: '#FFFFFF',
-                  textShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+                  color: theme === 'dark' ? 'var(--color-primary)' : '#FFFFFF',
+                  textShadow:
+                    theme === 'dark'
+                      ? '0 4px 20px rgba(0, 0, 0, 0.5)'
+                      : '0 4px 20px rgba(0, 0, 0, 0.2)',
                 }}
               >
                 {bus.passenger_count}
@@ -442,20 +459,26 @@ export default function ActiveBusMenuPage() {
                   className="h-1 rounded-full"
                   style={{
                     width: '100px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor:
+                      theme === 'dark'
+                        ? 'rgba(229, 231, 235, 0.3)'
+                        : 'rgba(255, 255, 255, 0.3)',
                   }}
                 >
                   <div
                     className="h-full rounded-full transition-all duration-300"
                     style={{
                       width: `${occupancyPercentage}%`,
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor:
+                        theme === 'dark' ? 'var(--color-primary)' : '#FFFFFF',
                     }}
                   />
                 </div>
                 <p
                   className="text-base font-semibold"
-                  style={{ color: '#FFFFFF' }}
+                  style={{
+                    color: theme === 'dark' ? 'var(--color-text)' : '#FFFFFF',
+                  }}
                 >
                   {bus.capacity}
                 </p>
