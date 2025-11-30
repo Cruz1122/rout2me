@@ -11,7 +11,6 @@ import {
   getDriverBuses,
   setBusActive,
   type DriverBus,
-  type DriverServiceError,
 } from '../services/driverService';
 import { useActiveBus } from '../hooks/useActiveBus';
 import R2MLoader from '../../../shared/components/R2MLoader';

@@ -33,6 +33,9 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
   );
 
   useEffect(() => {
+    // Capturar la ref actual para usar en la función de limpieza
+    const updateQueue = updateQueueRef.current;
+
     // Crear canal de Realtime
     const channel = supabase
       .channel('bus-realtime')
@@ -268,10 +271,10 @@ export function useBusRealtime(options: UseBusRealtimeOptions = {}) {
     // Cleanup: limpiar suscripción y timeouts pendientes
     return () => {
       // Limpiar todos los timeouts pendientes
-      updateQueueRef.current.forEach((timeout) => {
+      updateQueue.forEach((timeout) => {
         clearTimeout(timeout);
       });
-      updateQueueRef.current.clear();
+      updateQueue.clear();
 
       // Remover suscripción
       if (channelRef.current) {

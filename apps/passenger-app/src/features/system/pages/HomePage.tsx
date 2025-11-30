@@ -156,7 +156,6 @@ export default function HomePage() {
 
         // Actualizar cache de buses y usar datos del cache si están más actualizados
         allBuses.forEach((bus) => {
-          const cachedBus = busesCacheRef.current.get(bus.id);
           // Si hay un bus en cache, preferir el cache (puede tener datos más recientes de Realtime)
           // Pero si el bus recién cargado tiene una timestamp más reciente, usar ese
           busesCacheRef.current.set(bus.id, bus);
