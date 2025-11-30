@@ -15,7 +15,7 @@ import { getRouteColor } from '../../../utils/routeUtils';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 import type { Stop } from '../../routes/services/routeService';
 import type { RouteDrawingOptions } from '../../routes/hooks/useRouteDrawing';
-import type { Marker } from 'maplibre-gl';
+import type { MarkerSelection } from '../../routes/components/R2MMapInfoCard';
 
 export interface UseRouteSelectionOptions {
   mapInstance: React.RefObject<MlMap | null>;
@@ -39,7 +39,7 @@ export interface UseRouteSelectionOptions {
   getRouteIdForStop: (stopId: string) => string | null;
   setIsMapLoading: (loading: boolean) => void;
   setSelectedItem: (item: SearchItem | null) => void;
-  setSelectedMarker: (marker: Marker | null) => void;
+  setSelectedMarker: (marker: MarkerSelection | null) => void;
   selectedItem: SearchItem | null;
   currentMarker: React.MutableRefObject<maplibregl.Marker | null>;
 }
