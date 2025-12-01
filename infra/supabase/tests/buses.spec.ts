@@ -78,8 +78,7 @@ describe('[US-ADM-005] Crear bus & [US-ADM-006] Leer bus', () => {
       capacity: 0
     });
 
-    // Si tu BD aún permite 0 (CHECK >= 0), este test FALLARÁ para señalar que falta la validación.
-    // Recomendado: CHECK (capacity > 0)
+    
     expect(error).toBeTruthy();
   });
 
@@ -143,5 +142,91 @@ describe('[US-ADM-005] Crear bus & [US-ADM-006] Leer bus', () => {
 
     expect(detail?.id).toBe(bus.id);
     expect(hasRoute).toBe(true);
+  });
+});
+
+/**
+ *
+ * - [US-ADM-008] Actualizar bus
+ * - [US-ADM-009] Eliminar bus
+ */
+describe('[US-ADM-008 & US-ADM-009] Actualizar y eliminar buses (casos de error)', () => {
+  /**
+   * [US-ADM-008] Test de editar un bus existente con valores inválidos.
+   *
+   * Se reutiliza la regla de negocio ya probada en creación:
+   *  - capacity debe ser > 0
+   *
+   * Aquí se intenta actualizar un bus válido para dejarle capacity = 0
+   * y se comprueba que la BD / lógica de negocio no lo permita.
+   */
+  it('rechaza actualizar un bus existente con capacidad inválida (0)', async () => {
+    // Se crea un bus válido
+    const bus = await must(
+      admin.from('buses')
+        .insert({
+          company_id: (await ensureCompany()).id,
+          plate: uniq('UPD000'),
+          capacity: 30
+        })
+        .select('id, capacity')
+        .single()
+    );
+
+    // Dejar capacity = 0
+    const { error } = await admin
+      .from('buses')
+      .update({ capacity: 0 })
+      .eq('id', bus.id);
+
+    // Se espera el error de validación / constraint
+    expect(error).toBeTruthy();
+
+    // Se confirma que en BD siga con capacidad > 0
+    const { data: after } = await admin
+      .from('buses')
+      .select('capacity')
+      .eq('id', bus.id)
+      .single();
+
+    expect(after!.capacity).toBeGreaterThan(0);
+  });
+
+  /**
+   * [US-ADM-008] Test de editar un bus que no existe.
+   *
+   * UPDATE sobre un id inexistente no debería afectar ninguna fila.
+   */
+  it('intentar actualizar un bus inexistente no afecta la tabla', async () => {
+    const nonExistingId = '00000000-0000-0000-0000-000000000000';
+
+    const { error, status, count } = await admin
+      .from('buses')
+      .update({ plate: 'NO-EXISTE-999' })
+      .eq('id', nonExistingId);
+
+    expect(count === 0).toBe(true);
+
+    if (error) {
+      expect([400, 404].includes(status ?? 0)).toBe(true);
+    }
+  });
+
+  /**
+   * [US-ADM-009] Test para eliminar un bus que no exista.
+   */
+  it('intentar eliminar un bus inexistente no afecta la tabla', async () => {
+    const nonExistingId = '00000000-0000-0000-0000-000000000000';
+
+    const { error, status, count } = await admin
+      .from('buses')
+      .delete({ count: 'exact' })
+      .eq('id', nonExistingId);
+
+    expect(count === 0).toBe(true);
+
+    if (error) {
+      expect([400, 404].includes(status ?? 0)).toBe(true);
+    }
   });
 });

@@ -20,7 +20,7 @@ export async function must<T>(promise: Promise<{ data: T; error: any }>) {
   return data!;
 }
 
-// Decide si usamos clientes reales o el mock en memoria.
+// Decide si se usa clientes reales o el mock en memoria.
 let admin: any;
 let anon: any;
 
@@ -76,13 +76,13 @@ if (RUN_INTEGRATION) {
     ilike(field: string, pattern: string) { this._filters.push({ type: 'ilike', field, pattern }); return this; }
     order(field: string, opts: any) { this._order = { field, opts }; return this; }
 
-    async execute(): Promise<{ data: any; error: any }> {
+    async execute(): Promise<{ data: any; error: any; count?: number }> {
       const tbl = ensureTable(this.table);
       try {
         if (this.op === 'insert') {
           const row = { ...this.payload };
-          // simulate some DB/business rules for tests
-          // unique constraints
+          // simular algunas reglas de negocio/DB para tests
+          // restricciones únicas
           if (this.table === 'routes' && row.code) {
             const dup = tbl.find(r => String(r.code) === String(row.code));
             if (dup) return { data: null, error: { message: 'duplicate key', code: '23505' } };
@@ -90,7 +90,7 @@ if (RUN_INTEGRATION) {
           if (this.table === 'buses' && row.plate) {
             const dup = tbl.find(r => String(r.plate) === String(row.plate));
             if (dup) return { data: null, error: { message: 'duplicate key', code: '23505' } };
-            // business rule: capacity > 0
+            // regla de negocio: capacity > 0
             if (typeof row.capacity === 'number' && row.capacity <= 0) {
               return { data: null, error: { message: 'capacity must be > 0' } };
             }
@@ -103,20 +103,38 @@ if (RUN_INTEGRATION) {
 
         if (this.op === 'delete') {
           const before = tbl.length;
-          const toKeep = applyFilters(tbl, this._filters);
-          // if filters present, remove matching
+          const toDelete = applyFilters(tbl, this._filters);
+          const count = toDelete.length;
+          // si hay filtros, eliminar los que coincidan
           if (this._filters.length) {
-            const idsToRemove = toKeep.map((r:any) => r.id);
+            const idsToRemove = toDelete.map((r:any) => r.id);
             for (let i = tbl.length -1; i>=0; i--) if (idsToRemove.includes(tbl[i].id)) tbl.splice(i,1);
-            return { data: null, error: null };
+            return { data: null, error: null, count };
           }
-          return { data: null, error: null };
+          return { data: null, error: null, count: 0 };
         }
 
         if (this.op === 'update') {
           const rows = applyFilters(tbl, this._filters);
+          const count = rows.length;
+          
+          // validar las reglas de negocio antes de aplicar la actualización
+
+          if (this.table === 'buses' && this.payload.capacity !== undefined) {
+            if (typeof this.payload.capacity === 'number' && this.payload.capacity <= 0) {
+              return { data: null, error: { message: 'capacity must be > 0' }, count: 0 };
+            }
+          }
+          
+          // validar restricciones unicas para routes.code
+          if (this.table === 'routes' && this.payload.code !== undefined) {
+            const targetIds = rows.map((r:any) => r.id);
+            const dup = tbl.find(r => String(r.code) === String(this.payload.code) && !targetIds.includes(r.id));
+            if (dup) return { data: null, error: { message: 'duplicate key', code: '23505' }, count: 0 };
+          }
+          
           rows.forEach(r => Object.assign(r, this.payload));
-          return { data: rows, error: null };
+          return { data: rows, error: null, count };
         }
 
         // select
