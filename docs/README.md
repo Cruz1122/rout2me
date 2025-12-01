@@ -25,12 +25,17 @@ El transporte público genera incertidumbre para pasajeros (ruta/horarios, buses
 - **Experiencia del pasajero:** ubicación del bus, ocupación y ETA en tiempo real.  
 - **Gestión de flota:** decisiones basadas en datos en vivo para mejorar eficiencia y costos.
 
-**Alcance (MVP)**  
-- **Pasajeros (app móvil):** ver rutas y paraderos cercanos; seguimiento en vivo con ocupación y ETA; próxima parada durante el viaje.  
-- **Administradores (panel web):** mapa con toda la flota en vivo y datos por vehículo (ruta/ocupación).
-
-**Fuera del MVP (posteriores)**  
-Pagos/tarifas, calificaciones, alertas, soporte/objetos perdidos, reportes e IA para demanda, datos de accesibilidad.
+**Capacidades Actuales**  
+- **Pasajeros (App Móvil):** 
+  - Rastreo en vivo de buses con animación suave (10s refresh).
+  - Visualización de rutas y paraderos cercanos.
+  - Estimación de tiempos de llegada (ETA).
+  - Modo oscuro y claro.
+- **Administradores (Panel Web):** 
+  - Mapa de flota en tiempo real con filtros por organización.
+  - Gestión completa de vehículos, conductores y rutas.
+  - Editor visual de rutas y paradas.
+  - Roles y permisos (Admin, Supervisor, Conductor).
 
 **Usuarios**  
 - **Pasajeros** de transporte público.  

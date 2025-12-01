@@ -1,6 +1,12 @@
 # Rout2Me - Admin Web
 
-Panel de administración web para la plataforma Rout2Me, un sistema de gestión de transporte urbano con monitoreo en tiempo real.
+[![React](https://img.shields.io/badge/React-18%2B-blue.svg)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-6%2B-purple.svg)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-4%2B-cyan.svg)](https://tailwindcss.com/)
+
+> **Panel de administración web para la plataforma Rout2Me.**
+
+Sistema de gestión de transporte urbano con monitoreo en tiempo real, diseñado para administradores de flota y supervisores.
 
 ## 🚀 Características
 
